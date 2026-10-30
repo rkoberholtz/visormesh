@@ -23,7 +23,7 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
 
 - PCB: 2 layers, **1.6 mm**, 1 oz, any color. **ENIG recommended** (flat pads for the 0.65 mm TSSOP, SC-70 parts and the straddle connector); lead-free HASL works too.
 - Board is 50.43 x 75.15 mm. The bottom 50.47 mm is the in-slot section, using springSD's exact outline. The top 24.6 mm sticks out of the Visor and carries the XIAO stack.
-- Assembly: top side, Economic PCBA is fine. Upload BOM + CPL. **Check part rotations in JLC's placement preview** before paying, especially U1-U7, Y1 and D1; KiCad and JLC disagree on rotation for some SOT/SC-70 footprints. Pin 1 of each IC is marked on the silkscreen and assembly drawing.
+- Assembly: top side, Economic PCBA is fine. Upload BOM + CPL. **Check part rotations in JLC's placement preview** before paying, especially U1-U7, Y1 and D1; KiCad and JLC disagree on rotation for some SOT/SC-70 footprints. Pin 1 of each IC is marked on the silkscreen and assembly drawing. The CPL already includes the corrections found in the first order's preview (U1, U2, U4 at 270; U3, U5-U7 at 180), so the dots should land on the pin-1 triangles without adjustment. Still glance at the preview: JLC can change its part models.
 - Extended parts: SC16IS740 (C407851), 74LVC1G80 (C353857), crystal (C2901666) and probably the SN74LVC1T45 (C9382) and 74LVC1G04 (C10237). Expect extended-part loading fees.
 
 ## Parts you fit by hand
