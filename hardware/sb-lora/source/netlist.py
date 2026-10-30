@@ -24,7 +24,7 @@ PARTS = {
     "U5": ("SN74LVC1T45DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C9382", "Ioff xlate: bridge TX -> XIAO D7", False),
     "U6": ("SN74LVC1T45DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C9382", "Ioff xlate: XIAO D6 -> bridge RX", False),
     "U7": ("SN74LVC1T45DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C9382", "Ioff xlate: Visor-present -> XIAO D0", False),
-    "Y1": ("14.7456MHz 13pF", "Crystal", "Crystal_SMD_3225-4Pin_3.2x2.5mm", "C6264361", "SXT32413BA07-14.7456M", False),
+    "Y1": ("14.7456MHz 20pF", "Crystal", "Crystal_SMD_3225-4Pin_3.2x2.5mm", "C2901666", "SX3B14.7456F2010F30", False),
     "C1": ("1uF", "Capacitor_SMD", "C_0603_1608Metric", "C15849", "VSB bulk", False),
     "C2": ("100nF", "Capacitor_SMD", "C_0603_1608Metric", "C14663", "U1 decoupling", False),
     "C3": ("100nF", "Capacitor_SMD", "C_0603_1608Metric", "C14663", "U2 decoupling", False),

@@ -24,7 +24,7 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
 - PCB: 2 layers, **1.6 mm**, 1 oz, any color. **ENIG recommended** (flat pads for the 0.65 mm TSSOP, SC-70 parts and the straddle connector); lead-free HASL works too.
 - Board is 50.43 x 75.15 mm. The bottom 50.47 mm is the in-slot section, using springSD's exact outline. The top 24.6 mm sticks out of the Visor and carries the XIAO stack.
 - Assembly: top side, Economic PCBA is fine. Upload BOM + CPL. **Check part rotations in JLC's placement preview** before paying, especially U1-U7, Y1 and D1; KiCad and JLC disagree on rotation for some SOT/SC-70 footprints. Pin 1 of each IC is marked on the silkscreen and assembly drawing.
-- Extended parts: SC16IS740 (C407851), 74LVC1G80 (C353857), crystal (C6264361) and probably the SN74LVC1T45 (C9382) and 74LVC1G04 (C10237). Expect extended-part loading fees.
+- Extended parts: SC16IS740 (C407851), 74LVC1G80 (C353857), crystal (C2901666) and probably the SN74LVC1T45 (C9382) and 74LVC1G04 (C10237). Expect extended-part loading fees.
 
 ## Parts you fit by hand
 
@@ -45,7 +45,7 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
   - A CS0* access latches A17 and A8 on its rising edge. Through Q-bar, `nCS = NOT A17` and `MOSI = NOT A8`.
   - A CS1* read produces one SCLK pulse; MISO comes back on D0 through a 1k resistor.
   - SC16IS740 is SPI mode 0. Register byte: bit7 = R/W (1 = read), bits 6:3 = register, bits 2:1 = channel 00.
-- **UART**: 14.7456 MHz crystal, so 115200 baud with DLL=8, DLH=0 (prescaler 1). 64-byte TX/RX FIFOs. IRQ* goes straight to the Springboard IRQ* (the Visor has the pull-up). RESET* follows the slot RESET*.
+- **UART**: 14.7456 MHz crystal (SCTF SX3B14.7456F2010F30, 20 pF load; replaced the out-of-stock SXT32413BA07 rated 13 pF), so 115200 baud with DLL=8, DLH=0 (prescaler 1). 64-byte TX/RX FIFOs. IRQ* goes straight to the Springboard IRQ* (the Visor has the pull-up). RESET* follows the slot RESET*.
 - **Power isolation**: only U5-U7 (SN74LVC1T45) touch both domains, and both of their ports go Hi-Z when either supply is 0 V. Removing the module, a LOWBAT power cut, or a flat LiPo can't back-power the other side.
 - **Visor-present**: XIAO D0 is high when the slot is powered. The firmware can stop pushing frames when it's low; the companion queues messages anyway.
 - **Slot budget**: a few mA active, against the 100 mA limit. To stay inside the 100 uA standby limit, put the SC16IS740 to sleep (IER bit 4) when the Palm app is idle.
