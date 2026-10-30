@@ -1,0 +1,5 @@
+(version 1)
+# Springboard straddle-connector pads run to the board edge by design (connector clamps the edge).
+(rule "J1 pads at edge"
+  (constraint edge_clearance (min 0mm))
+  (condition "A.Parent == 'J1'"))

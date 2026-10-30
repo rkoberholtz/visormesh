@@ -1,0 +1,5 @@
+Ref,Part,Notes
+J1,Springboard 68p straddle,Hirose IC1HA-68RD-1.27SH(51) (DigiKey HR1187-ND); hand-solder
+JP1,VDOCK EN,Open by default
+J2,XIAO left 1x7,XIAO pins 1-7 (D0..D6); female socket or solder pins direct
+J3,XIAO right 1x7,"XIAO pins 14-8 (VBUS,GND,3V3,D10,D9,D8,D7)"

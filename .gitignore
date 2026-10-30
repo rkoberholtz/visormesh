@@ -1,0 +1,15 @@
+# KiCad
+*-backups/
+*.kicad_prl
+fp-info-cache
+*.lck
+# generator intermediates
+*.dsn
+*.ses
+freerouting.log
+*_unrouted.kicad_pcb
+# Palm build output
+palm-client/build/
+*.o
+# OS
+.DS_Store
