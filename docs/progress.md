@@ -4,8 +4,9 @@
 
 ### Hardware: SB-LoRa v0.1
 - [x] Board designed, DRC clean, fab package generated
-- [ ] Check part rotations in JLC preview (U1–U7, Y1, D1)
-- [ ] Order PCBs + assembly (2-layer, 1.6 mm, ENIG)
+- [x] Check part rotations in JLC preview (U1–U7, Y1, D1); corrections saved to the CPL
+- [x] Order PCBs + assembly from JLCPCB (5 boards, 2-layer, 1.6 mm, leaded HASL); tagged `hw-v0.1`
+- [ ] Boards received
 - [ ] Order J1 (Hirose IC1HA-68RD-1.27SH(51), DigiKey HR1187-ND) and 2x 1x7 female headers
 - [ ] Bare board: continuity check, dry-fit in Visor slot
 - [ ] Fit J1, bench-power VSB at 3.3 V, check current and 14.7456 MHz on Y1
@@ -34,3 +35,7 @@
 ### 2026-10-30
 - Planning done in claude.ai. Chose a custom Springboard module (SB-LoRa) over cradle serial/IR.
 - SB-LoRa v0.1 fab package generated. Repo set up and files organized.
+- Crystal Y1 swapped to SX3B14.7456F2010F30 (C2901666, 20 pF load) because C6264361 was out of stock.
+- JLC placement preview showed U1, U2, U4 a quarter-turn off and U3, U5–U7 a half-turn off. Fixed in the preview and in the CPL (270 / 180).
+- Chose leaded HASL over ENIG (+$18). JLC does the fine-pitch assembly, so pad flatness isn't critical.
+- PCB + assembly order placed with JLCPCB. `hw-v0.1` tag moved to the ordered commit.
