@@ -40,12 +40,18 @@ pilot-link isn't in Homebrew any more, so build https://github.com/desrod/pilot-
 brew install autoconf automake libtool pkg-config libpng readline popt
 git clone https://github.com/desrod/pilot-link.git ~/src/pilot-link
 cd ~/src/pilot-link
+git checkout 6d696653   # the commit the patch below was made against
+git apply /path/to/visormesh/palm-client/tools/pilot-link-darwin-usb-open-retry.patch
 ./autogen.sh --prefix=$HOME/.local --enable-conduits && make -j"$(sysctl -n hw.ncpu)" && make install
 ```
 
+**The patch is needed for the Visor on macOS.** When the Visor appears on USB after HotSync, macOS's own USB driver holds it for a moment. Unpatched pilot-link tries to open it once, fails with `kIOReturnExclusiveAccess` (`0xe00002c5`), and the Visor shows "The connection between your handheld computer and the desktop could not be established". The patch retries the open for up to 2 seconds.
+
+To debug USB on macOS, add `CPPFLAGS="-DPI_DEBUG=1"` to `make`, then run with `PILOT_DEBUG="DEV SLP" PILOT_DEBUG_LEVEL=DEBUG`. Without that flag, `darwinusb.c` logs nothing, because it doesn't include `config.h`.
+
 The Makefile uses `~/.local/bin/pilot-xfer` when it exists. On Linux, use the kernel `visor` driver and `make install PORT=/dev/ttyUSB1`.
 
-**Not tested end to end yet.** pilot-link's macOS USB support was tested with a Tungsten E2, not a Visor.
+Verified: `pilot-xfer -p usb: -l` lists the Visor Neo's databases from macOS on Apple Silicon. The Visor is behind a USB hub, so a hub works.
 
 ## Testing without hardware
 

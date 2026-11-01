@@ -1,0 +1,38 @@
+diff --git a/libpisock/darwinusb.c b/libpisock/darwinusb.c
+index d6c89a0f..56c39d49 100644
+--- a/libpisock/darwinusb.c
++++ b/libpisock/darwinusb.c
+@@ -78,6 +78,7 @@
+ #include <mach/mach.h>
+ #include <stdio.h>
+ #include <pthread.h>
++#include <unistd.h>
+ 
+ #include <IOKit/IOKitLib.h>
+ #include <IOKit/IOMessage.h>
+@@ -731,6 +732,7 @@ device_added (void *refCon, io_iterator_t iterator)
+ 		input_pipe_number = 0xff,
+ 		output_pipe_number = 0xff,
+ 		pipe_info_retrieved = 0;
++	int open_tries;
+ 
+ 	LOG((PI_DBG_DEV, PI_DBG_LVL_DEBUG, "darwinusb: device_added\n"));
+ 
+@@ -782,7 +784,17 @@ device_added (void *refCon, io_iterator_t iterator)
+ 
+ 		LOG((PI_DBG_DEV, PI_DBG_LVL_DEBUG, "darwinusb: Accepted USB device, vendor: 0x%04x product: 0x%04x\n", vendor, product));
+ 
++		/* macOS's own USB driver can hold the device for a moment right
++		 * after it appears (seen with a Handspring Visor), so retry for up
++		 * to 2 seconds instead of giving up on the first attempt.
++		 */
+ 		kr = (*dev)->USBDeviceOpen (dev);
++		for (open_tries = 0; kr == kIOReturnExclusiveAccess && open_tries < 20; open_tries++)
++		{
++			LOG((PI_DBG_DEV, PI_DBG_LVL_DEBUG, "darwinusb: device busy (exclusive access), retrying open\n"));
++			usleep (100000);
++			kr = (*dev)->USBDeviceOpen (dev);
++		}
+ 		if (kr != kIOReturnSuccess)
+ 		{
+ 			LOG((PI_DBG_DEV, PI_DBG_LVL_ERR, "darwinusb: unable to open device (kr=0x%08x)\n", kr));
