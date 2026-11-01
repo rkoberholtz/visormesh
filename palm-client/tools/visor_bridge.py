@@ -8,7 +8,7 @@ bytes between it and the radio, logging each companion frame.
     visor_bridge.py /dev/cu.usbserial-XXXX     # radio on a USB-TTL adapter (D6/D7)
     visor_bridge.py /dev/cu.usbmodemXXXX       # radio's own USB companion link
 
-Then put the Visor in its USB cradle and tap "Query radio" with Link = USB.
+Then put the Visor in its USB cradle and tap Connect with Link = USB.
 The app's 'HsUd' driver turns out to send on the Visor's HOTSYNC port (2), so
 the bridge also grabs the Visor during a HotSync: stop it before `make install`
 (the Makefile does this for you).
@@ -107,7 +107,7 @@ class FrameLogger:
 
 
 def wait_for_visor(lib):
-    print('Waiting for the Visor (open VisorMesh, Link = USB, tap Query radio)...', flush=True)
+    print('Waiting for the Visor (open VisorMesh, Link = USB, tap Connect)...', flush=True)
     while True:
         h = lib.libusb_open_device_with_vid_pid(None, VISOR_VID, VISOR_PID)
         if h:

@@ -30,7 +30,9 @@
 - [ ] Port springSD bus routines; SC16IS740 driver
 - [x] Companion protocol: framing, builders (DEVICE_QUERY, APP_START, GET_CONTACTS, SYNC_NEXT_MESSAGE), parsers (SELF_INFO, contacts, v3 contact/channel messages); host tests from real captures + MeshCore layouts
 - [x] USB bench link: app (`HsUd`) → Visor USB cradle → `tools/visor_bridge.py` → FTDI → XIAO D6/D7. Query radio shows `Reply 0x000D, 82 bytes` on the Visor
-- [ ] Wire the protocol into the app: connect sequence, contact list, message sync on PUSH_MSG_WAITING
+- [x] Connect screen: DEVICE_QUERY + APP_START via session.c; shows node, freq, BW/SF/CR, TX power, firmware (verified on the Neo over the USB bridge)
+- [ ] Contact list: GET_CONTACTS into a Palm database + contacts screen
+- [ ] Messages: sync on PUSH_MSG_WAITING, store, per-contact/channel views
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 
@@ -61,3 +63,4 @@
 - UART path verified: FT232R on D6/D7 at 115200 8N1 gets the same DEVICE_INFO as USB. The radio side of SB-LoRa is proven; what remains is the carrier board (SC16IS740 + bus) and the Palm transport for it.
 - Protocol layer for the read-only commands, built against MeshCore's MyMesh.cpp and captured replies (DEVICE_QUERY, APP_START → SELF_INFO, GET_CONTACTS with 0 contacts, SYNC → NO_MORE_MESSAGES). LE fields are assembled byte by byte for the big-endian 68k. The radio is on MeshCore factory defaults (869.618 MHz / 62.5 kHz / SF8, 22 dBm, no name).
 - **First end-to-end round trip from the Visor:** DEVICE_QUERY from VisorMesh on the Neo went over USB, through the Mac bridge and the FTDI adapter, into the XIAO's UART, and DEVICE_INFO came back and decoded on the Visor. `HsUd` turned out to use the Visor's HOTSYNC USB port (2); the endpoints stall around open/close and need clear-halt.
+- Connect screen verified on the Neo: shows the radio's real SELF_INFO/DEVICE_INFO (9B1E4F92, 869.618 MHz, BW 62.5 SF8 CR5, 22 dBm, v1.17.1). Fixed a hand-typed DEVICE_INFO fixture that had two bytes shifted.

@@ -62,7 +62,7 @@ tools/visor_bridge.py /dev/cu.usbserial-XXXX    # radio's D6/D7 UART on a 3.3 V 
 tools/visor_bridge.py /dev/cu.usbmodemXXXX      # or the XIAO's own USB companion link
 ```
 
-In VisorMesh, set **Link** to **USB** and tap **Query radio**. The app opens the Neo's `'HsUd'` Serial Manager driver, so the Visor appears on USB. The bridge reads the Visor's port list (vendor request `0x03`), forwards bytes to the radio, and logs every companion frame in both directions. What we found while getting it working:
+In VisorMesh, set **Link** to **USB** and tap **Connect**. The app opens the Neo's `'HsUd'` Serial Manager driver, so the Visor appears on USB. The bridge reads the Visor's port list (vendor request `0x03`), forwards bytes to the radio, and logs every companion frame in both directions. What we found while getting it working:
 
 - `HsUd` sends on the Visor's HOTSYNC USB port (2), not GENERIC (1). The bridge listens on every port and replies on whichever one the Visor used.
 - The endpoints stall briefly around open and close, so the bridge clears them (`libusb_clear_halt`) and carries on.
