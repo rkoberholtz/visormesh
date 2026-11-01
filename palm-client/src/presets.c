@@ -6,7 +6,10 @@
  */
 #include "presets.h"
 
-const VmPreset gPresets[] = {
+/* Not const: prc-tools puts const data in the code section, but other files reach an
+ * extern table A5-relative as if it were data, so a const table reads as garbage on the Visor. */
+
+VmPreset gPresets[] = {
 	{ "PhillyMesh", 919500UL, 500000UL, 10, 5, 2 },
 	{ "Australia", 915800UL, 250000UL, 10, 5, 0 },
 	{ "Australia (Narrow)", 916575UL, 62500UL, 7, 7, 0 },
@@ -37,4 +40,4 @@ const VmPreset gPresets[] = {
 	{ "Vietnam (Deprecated)", 920250UL, 250000UL, 11, 5, 0 },
 };
 
-const UInt16 gPresetCount = sizeof(gPresets) / sizeof(gPresets[0]);
+UInt16 gPresetCount = sizeof(gPresets) / sizeof(gPresets[0]);

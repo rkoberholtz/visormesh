@@ -4,6 +4,7 @@
 #include "../protocol.h"   /* integer types on both Palm and host */
 
 /* Small-font character widths in pixels, indexed by (UInt8) character. */
-extern const UInt8 gSmallFontWidths[256];
+/* Not const: see the note in fontmetrics.c (prc-tools puts const data in code). */
+extern UInt8 gSmallFontWidths[256];
 
 #endif

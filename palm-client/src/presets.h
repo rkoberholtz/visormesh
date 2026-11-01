@@ -12,7 +12,8 @@ typedef struct {
 	UInt8  pathHashSize;    /* bytes; 0 = preset doesn't specify one */
 } VmPreset;
 
-extern const VmPreset gPresets[];
-extern const UInt16 gPresetCount;
+/* Not const: see the note in presets.c (prc-tools puts const data in code). */
+extern VmPreset gPresets[];
+extern UInt16 gPresetCount;
 
 #endif

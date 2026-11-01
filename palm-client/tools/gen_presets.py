@@ -60,11 +60,14 @@ def main():
  */
 #include "presets.h"
 
-const VmPreset gPresets[] = {{
+/* Not const: prc-tools puts const data in the code section, but other files reach an
+ * extern table A5-relative as if it were data, so a const table reads as garbage on the Visor. */
+
+VmPreset gPresets[] = {{
 ''' + '\n'.join(rows) + f'''
 }};
 
-const UInt16 gPresetCount = sizeof(gPresets) / sizeof(gPresets[0]);
+UInt16 gPresetCount = sizeof(gPresets) / sizeof(gPresets[0]);
 ''')
     print(f'{len(rows)} presets -> {os.path.relpath(OUT)}')
 
