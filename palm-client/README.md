@@ -32,26 +32,20 @@ Creator ID is `VMsh`. The database has the backup bit set, so HotSync keeps a co
 
 ## Install on the Visor
 
-The Visor's USB cradle is plugged into a Linux sync host: the Mac mini running Debian 13 at `roberholtzer@10.3.0.150`. `make install` builds the `.prc`, copies it there, and runs `tools/cradle-install.sh`. That script waits for you to press the HotSync button and then runs `pilot-xfer -i`.
+The Visor's USB cradle plugs straight into the dev Mac. `make install` builds the `.prc` and runs `pilot-xfer -p usb: -i`. Press the HotSync button when it asks.
+
+pilot-link isn't in Homebrew any more, so build https://github.com/desrod/pilot-link (maintained by pilot-link's original author) into `~/.local`. Its macOS USB backend uses IOKit directly, so no driver is needed:
 
 ```sh
-make install                                   # default SYNC_HOST is the Mac mini
-make install SYNC_HOST=user@host SYNC_PORT=usb:   # another host, or pilot-link via libusb
+brew install autoconf automake libtool pkg-config libpng readline popt
+git clone https://github.com/desrod/pilot-link.git ~/src/pilot-link
+cd ~/src/pilot-link
+./autogen.sh --prefix=$HOME/.local && make -j"$(sysctl -n hw.ncpu)" && make install
 ```
 
-The sync host needs:
-- the kernel `visor` USB-serial driver. Debian 13 ships it as a module that loads when the Visor connects, and the Visor appears as `/dev/ttyUSB1` during HotSync.
-- membership in the `dialout` group to open the tty
-- `pilot-xfer`, from pilot-link. Debian 13 no longer packages it, so build https://github.com/desrod/pilot-link (maintained by pilot-link's original author) into `~/.local`:
+The Makefile uses `~/.local/bin/pilot-xfer` when it exists. On Linux, use the kernel `visor` driver and `make install PORT=/dev/ttyUSB1`.
 
-  ```sh
-  git clone https://github.com/desrod/pilot-link.git ~/src/pilot-link
-  cd ~/src/pilot-link
-  ./autogen.sh --prefix=$HOME/.local && make -j"$(nproc)" && make install
-  ```
-- SSH key login from your dev machine
-
-**Not tested end to end yet.**
+**Not tested end to end yet.** pilot-link's macOS USB support was tested with a Tungsten E2, not a Visor.
 
 ## Testing without hardware
 

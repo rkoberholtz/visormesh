@@ -22,7 +22,7 @@
 ### Palm client
 - [x] Toolchain set up: prc-tools-remix 2.3.6 + PilRC + Palm OS 3.5 SDK in Docker (`palm-client/Dockerfile`)
 - [x] Scaffold: builds `visormesh.prc` (main form + "Query radio" → CMD_DEVICE_QUERY); protocol framing with host tests
-- [ ] Sync host (Mac mini, Debian 13): visor driver present ✓, build pilot-link into ~/.local, `make install` tested
+- [ ] Install over USB from the dev Mac: build pilot-link (desrod) into ~/.local, `make install` tested with the Visor
 - [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
 - [ ] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them), needed for module-ROM work only
 - [ ] Port springSD bus routines; SC16IS740 driver

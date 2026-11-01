@@ -2,7 +2,7 @@
 #
 #   make           build build/visormesh.prc (in Docker if the toolchain isn't installed)
 #   make test      run the host-side protocol tests
-#   make install   copy the .prc to the sync host and install it over the USB cradle
+#   make install   install the .prc over the USB cradle (press HotSync when asked)
 #   make clean
 
 APP     = visormesh
@@ -16,9 +16,10 @@ CC      = m68k-palmos-gcc
 CFLAGS  = -palmos3.5 -O2 -Wall -Isrc
 PILRC   = pilrc
 
-# Linux host with the Visor USB cradle attached (see tools/cradle-install.sh).
-SYNC_HOST ?= roberholtzer@10.3.0.150
-SYNC_PORT ?= /dev/ttyUSB1
+# pilot-link built from source into ~/.local (see README). On macOS the
+# cradle is "usb:"; on Linux with the visor driver it's /dev/ttyUSB1.
+PILOT_XFER ?= $(firstword $(wildcard $(HOME)/.local/bin/pilot-xfer) pilot-xfer)
+PORT       ?= usb:
 
 DOCKER_IMAGE = visormesh-palm
 DOCKER_RUN   = docker run --rm --platform linux/amd64 -v "$(CURDIR)":/src -w /src $(DOCKER_IMAGE)
@@ -59,8 +60,8 @@ build:
 endif
 
 install: all
-	scp -q build/$(APP).prc $(SYNC_HOST):/tmp/$(APP).prc
-	ssh $(SYNC_HOST) "bash -s -- /tmp/$(APP).prc $(SYNC_PORT)" < tools/cradle-install.sh
+	@echo "Press the HotSync button on the Visor cradle..."
+	$(PILOT_XFER) -p $(PORT) -i build/$(APP).prc
 
 clean:
 	rm -rf build
