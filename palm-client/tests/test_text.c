@@ -45,6 +45,16 @@ static void test_fit_and_wrap(void)
 	n = TxtWrap("https://example.com/long", 24, 10 * 4, Four, &used);
 	CHECK(n == 10 && used == 10);
 
+	/* line breaks end the line and are consumed */
+	n = TxtWrap("ab\ncd", 5, 100, Four, &used);
+	CHECK(n == 2 && used == 3);
+	n = TxtWrap("ab\r\ncd", 6, 100, Four, &used);
+	CHECK(n == 2 && used == 4);
+	n = TxtWrap("\n\nx", 3, 100, Four, &used);            /* an empty line */
+	CHECK(n == 0 && used == 1);
+	n = TxtWrap("abcdef ghij\nk", 13, 5 * 4, Four, &used);  /* the width wraps before the break */
+	CHECK(n == 5 && used == 5);
+
 	/* the rest fits */
 	n = TxtWrap("short", 5, 100, Four, &used);
 	CHECK(n == 5 && used == 5);

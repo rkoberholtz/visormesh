@@ -319,6 +319,48 @@ Err SessionGetChannel(UInt8 slot, VmChannel *out)
 	return err;
 }
 
+/* The newest message that should alert (a DM, or a mention of us in a channel). */
+static VmConv  gAlertConv;
+
+static void NoteAlert(const VmMessage *m)
+{
+	MemSet(&gAlertConv, sizeof(gAlertConv), 0);
+	if (m->isChannel) {
+		gAlertConv.type = VM_CONV_CHANNEL;
+		gAlertConv.channel = m->channelIdx;
+	} else {
+		gAlertConv.type = VM_CONV_DIRECT;
+		MemMove(gAlertConv.key, m->senderPrefix, 6);
+	}
+	gChanged |= VM_CHANGED_ALERT;
+}
+
+/* True if the (UTF-8) text contains "@[our name]". */
+static Boolean MentionsUs(const VmMessage *m)
+{
+	UInt8 tag[VM_NAME_SIZE + 4];
+	UInt16 n, i;
+
+	if (!gSelf.name[0])
+		return false;
+	tag[0] = '@';
+	tag[1] = '[';
+	n = TxtPalmToUtf8(gSelf.name, StrLen(gSelf.name), tag + 2, VM_NAME_SIZE);
+	if (n == 0)
+		return false;
+	tag[2 + n] = ']';
+	n += 3;
+	for (i = 0; i + n <= m->textLen; i++)
+		if (MemCmp(m->text + i, tag, n) == 0)
+			return true;
+	return false;
+}
+
+const VmConv *SessionAlertConv(void)
+{
+	return &gAlertConv;
+}
+
 Err SessionSyncMessages(void)
 {
 	static const UInt8 codes[] = { VM_RESP_CONTACT_MSG_V3, VM_RESP_CHANNEL_MSG_V3, VM_RESP_NO_MORE_MESSAGES };
@@ -338,8 +380,11 @@ Err SessionSyncMessages(void)
 			return err;
 		if (gDecoder.payload[0] == VM_RESP_NO_MORE_MESSAGES)
 			return errNone;
-		if (VmParseMessage(gDecoder.payload, gDecoder.len, &m) && MessagesAddIncoming(&m, SessionNow()) == errNone)
+		if (VmParseMessage(gDecoder.payload, gDecoder.len, &m) && MessagesAddIncoming(&m, SessionNow()) == errNone) {
 			gChanged |= VM_CHANGED_MESSAGES;
+			if (!m.isChannel || MentionsUs(&m))
+				NoteAlert(&m);
+		}
 	}
 	gMsgWaiting = true;     /* more left: carry on at the next poll */
 	return errNone;

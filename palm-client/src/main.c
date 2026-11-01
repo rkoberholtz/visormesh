@@ -109,8 +109,12 @@ static void CheckWake(void)
 static void Poll(void)
 {
 	UInt16 formId = FrmGetActiveFormID();
+	UInt16 changed = SessionPoll();
 
-	if (SessionPoll())
+	/* a short beep for a new DM or mention, unless that conversation is on screen */
+	if ((changed & VM_CHANGED_ALERT) && !(formId == ConvoForm && ConvEqual(SessionAlertConv(), &gAppConv)))
+		SndPlaySystemSound(sndConfirmation);
+	if (changed)
 		FrmUpdateForm(formId, VM_UPDATE_DATA);
 	if (formId == ConvoForm)
 		ConvoFormIdle();

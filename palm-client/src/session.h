@@ -18,6 +18,7 @@
 /* What SessionPoll found changed, so the screen on show can redraw. */
 #define VM_CHANGED_MESSAGES  0x0001
 #define VM_CHANGED_CONTACTS  0x0002
+#define VM_CHANGED_ALERT     0x0004   /* a new DM or mention of us arrived: see SessionAlertConv */
 
 
 /* Opens the link and runs DEVICE_QUERY + APP_START. On error the link is closed. */
@@ -69,6 +70,8 @@ UInt32  SessionRadioTime(void);
  * messages and times out unacked DMs. Returns VM_CHANGED_* flags.
  */
 UInt16  SessionPoll(void);
+/* The conversation of the newest message that should alert (a DM or a mention of us). */
+const VmConv *SessionAlertConv(void);
 /* Pulls queued messages into the message store (SYNC_NEXT_MESSAGE until none are left). */
 Err     SessionSyncMessages(void);
 Err     SessionGetChannel(UInt8 slot, VmChannel *out);

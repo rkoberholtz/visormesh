@@ -16,6 +16,23 @@
 #include "ui/rowlist.h"
 #include "convo_form.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static UInt16 TextWidth(void) VM_SECT2;
+static void SenderOf(const VmMsgHeader *h, Char *out, UInt16 size) VM_SECT2;
+static void SuffixOf(const VmMsgHeader *h, Char *out) VM_SECT2;
+static UInt32 LocalDay(UInt32 utc) VM_SECT2;
+static void AddLine(UInt8 kind, UInt16 msg, UInt16 off, UInt16 len, Boolean first, Boolean last, UInt32 day) VM_SECT2;
+static void Build(void) VM_SECT2;
+static void DrawTextWithMentions(const Char *text, UInt16 len, Coord x, Coord y) VM_SECT2;
+static void DrawLine(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
+static void DrawCounter(void) VM_SECT2;
+static UInt16 FirstUnread(void) VM_SECT2;
+static void ScrollToNew(void) VM_SECT2;
+static void Refresh(Boolean toEnd) VM_SECT2;
+static void Send(FormType *form) VM_SECT2;
+static void InsertMention(const Char *sender) VM_SECT2;
+static void Tapped(UInt16 row) VM_SECT2;
+
 #define MAX_MSGS    40        /* newest messages shown */
 #define MAX_LINES   200
 #define LINE_H      VM_CHIP_H /* chips need the extra 2 px */
@@ -25,6 +42,8 @@
 #define L_DAY   0
 #define L_CHIP  1
 #define L_TEXT  2
+#define L_NEW   3      /* "── new ──" before the first message unread when the screen opened */
+#define NO_NEW  0xFFFF
 
 typedef struct {
 	UInt8  kind;
@@ -39,6 +58,7 @@ static Line   *gLines = NULL;
 static UInt16  gCount = 0;
 static RowList gList;
 static Char    gTitle[VM_NAME_SIZE + 2];
+static UInt16  gNewFrom = NO_NEW;   /* message record of the first unread one at open */
 
 static const Char *kDays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static const Char *kMonths[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -137,6 +157,10 @@ static void Build(void)
 			lastDay = day;
 			lastSender[0] = 0;
 		}
+		if (m == gNewFrom) {
+			AddLine(L_NEW, m, 0, 0, false, false, 0);
+			lastSender[0] = 0;      /* start the new part with a sender chip */
+		}
 		SenderOf(h, sender, sizeof(sender));
 		if (StrCompare(sender, lastSender) != 0) {
 			AddLine(L_CHIP, m, 0, 0, false, false, 0);
@@ -210,7 +234,9 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 		FntSetFont(old);
 		return;
 	}
-	if (l->kind == L_DAY) {
+	if (l->kind == L_NEW) {
+		DrawSection("new", x, y, b->extent.x);
+	} else if (l->kind == L_DAY) {
 		TimSecondsToDateTime(l->day * 86400UL, &dt);
 		StrPrintF(buf, "%s %s %u", kDays[DayOfWeek(dt.month, dt.day, dt.year)], kMonths[dt.month - 1], dt.day);
 		DrawSection(buf, x, y, b->extent.x);
@@ -256,6 +282,37 @@ static void DrawCounter(void)
 	WinEraseRectangle(&r, 0);
 	DrawRight(buf, 146, 149);
 	FntSetFont(old);
+}
+
+/* The oldest unread message of this conversation, or NO_NEW. */
+static UInt16 FirstUnread(void)
+{
+	UInt16 i, n = MessagesCount(), found = NO_NEW;
+
+	for (i = n; i > 0; i--) {
+		const VmMsgHeader *h = MessagesLock(i - 1);
+
+		if (h) {
+			if (h->unread && ConvEqual(&h->conv, &gAppConv))
+				found = i - 1;
+			MessagesRelease(i - 1);
+		}
+	}
+	return found;
+}
+
+/* Opens at the "new" divider (one line of context above it), or at the end. */
+static void ScrollToNew(void)
+{
+	UInt16 i;
+
+	for (i = 0; i < gCount; i++) {
+		if (gLines[i].kind == L_NEW) {
+			RowListScrollTo(&gList, i > 0 ? i - 1 : 0);
+			return;
+		}
+	}
+	RowListScrollToEnd(&gList);
 }
 
 static void Refresh(Boolean toEnd)
@@ -348,10 +405,11 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		ConvName(&gAppConv, gTitle, VM_NAME_SIZE);
 		FrmCopyTitle(form, gTitle);
 		RowListInit(&gList, ConvoGadget, ConvoScroll, LINE_H, DrawLine, NULL, NULL);
-		MessagesMarkRead(&gAppConv);
+		gNewFrom = FirstUnread();
 		Build();
+		MessagesMarkRead(&gAppConv);
 		RowListSetCount(&gList, gCount);
-		RowListScrollToEnd(&gList);
+		ScrollToNew();
 		FrmDrawForm(form);
 		RowListDraw(&gList);
 		DrawCounter();

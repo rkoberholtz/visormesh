@@ -122,6 +122,9 @@ static void SetPreview(VmConvRow *r, const VmMsgHeader *h)
 	}
 	StrNCopy(r->preview + len, text, VM_PREVIEW_LEN - 1 - len);
 	r->preview[VM_PREVIEW_LEN - 1] = 0;
+	for (len = 0; r->preview[len]; len++)        /* one line: breaks become spaces */
+		if (r->preview[len] == '\n' || r->preview[len] == '\r')
+			r->preview[len] = ' ';
 }
 
 UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)

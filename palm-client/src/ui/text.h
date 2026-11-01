@@ -22,7 +22,8 @@ UInt16 TxtFit(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w) VM_SECT2;
  * One line of word wrap: returns how many characters to draw on this line
  * (breaking after the last space that fits, or mid-word if a word is longer
  * than the line) and sets *consumed to that plus any spaces to skip before
- * the next line. Returns 0 with *consumed 0 only for empty input.
+ * the next line. A \n (or \r, \r\n) in the text ends the line there and is
+ * consumed. Returns 0 with *consumed 0 only for empty input.
  */
 UInt16 TxtWrap(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w, UInt16 *consumed) VM_SECT2;
 

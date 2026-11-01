@@ -35,8 +35,18 @@ UInt16 TxtFit(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w)
 
 UInt16 TxtWrap(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w, UInt16 *consumed)
 {
-	UInt16 fit = TxtFit(s, len, maxW, w);
-	UInt16 brk, end;
+	UInt16 fit, brk, end, nl;
+
+	/* a line break in the text ends the line there, if it comes before the wrap point */
+	for (nl = 0; nl < len && s[nl] != '\n' && s[nl] != '\r'; nl++)
+		;
+	fit = TxtFit(s, nl, maxW, w);
+	if (fit >= nl && nl < len) {
+		*consumed = nl + 1;
+		if (s[nl] == '\r' && nl + 1 < len && s[nl + 1] == '\n')
+			(*consumed)++;              /* \r\n counts as one break */
+		return nl;
+	}
 
 	if (fit >= len) {
 		*consumed = len;
