@@ -28,7 +28,11 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
 
 ## Parts you fit by hand
 
-1. **J1 Springboard connector**: Hirose **IC1HA-68RD-1.27SH(51)** (DigiKey HR1187-ND), the PC-Card-style straddle receptacle springSD uses. It clamps the board edge; pins 1-34 land on the top pads, 35-68 on the bottom. Dmitry also sourced keyless 2x34 1.27 mm parts from LCSC (XKB X1321FV-2x34, C2881777); check that part's drawing before substituting. Pin 1 is marked on silk at the right-hand end of the top row.
+1. **J1 Springboard connector**: Hirose **IC1HA-68RD-1.27SH(51)**, the PC-Card-style straddle receptacle springSD uses. It clamps the board edge; pins 1-34 land on the top pads, 35-68 on the bottom.
+   - **Obsolete** (no longer stocked at DigiKey or Mouser as of Nov 2026). Sources: new-old stock on eBay or brokers (search Octopart for the exact part number with the `(51)` suffix; about $24 each), or harvest one from a used Springboard module.
+   - The Springboard connector core is a standard PCMCIA 68-pin connector with different housing keying (Dev Guide §5, §7.1). Handspring used four board-offset variants (−0.3, 0, +0.3, +0.6 mm); a harvested connector's offset sets how high the board sits in the slot, so compare it against a (51) or dry-fit before soldering.
+   - An earlier note here suggested XKB X1321FV-2x34 (LCSC C2881777) as a substitute. That was never verified: the closest LCSC listing (X1321FVS-2x34, C2881881) is a vertical SMD socket, not an edge straddle, and won't fit this footprint.
+   - Pin 1 is marked on silk at the right-hand end of the top row.
 2. **J2/J3**: two 1x7 2.54 mm female headers (low-profile if you can find them). Your XIAO+Wio stack plugs in here. You can also solder the stack's pins straight into the holes.
 3. **JP1**: leave **open**. See VDOCK below.
 

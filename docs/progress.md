@@ -7,7 +7,9 @@
 - [x] Check part rotations in JLC preview (U1–U7, Y1, D1); corrections saved to the CPL
 - [x] Order PCBs + assembly from JLCPCB (5 boards, 2-layer, 1.6 mm, leaded HASL); tagged `hw-v0.1`
 - [ ] Boards received
-- [ ] Order J1 (Hirose IC1HA-68RD-1.27SH(51), DigiKey HR1187-ND) and 2x 1x7 female headers
+- [x] Order J1: Hirose IC1HA-68RD-1.27SH(51) is obsolete; 1 ordered as new-old stock from eBay ($24)
+- [ ] Order 2x 1x7 female headers
+- [ ] Buy 2–3 cheap used Springboard modules (spare connectors to harvest + slot-fit reference)
 - [ ] Bare board: continuity check, dry-fit in Visor slot
 - [ ] Fit J1, bench-power VSB at 3.3 V, check current and 14.7456 MHz on Y1
 - [ ] In Visor: read/write SC16IS740 scratch register (SPR, 0x07) from Palm side
@@ -28,6 +30,8 @@
 ## Open questions
 - Which CF adapter is it, and does its ROM include an app installer?
 - Is the J1 footprint correct against the Hirose drawing? (Only checked against springSD.)
+- Which Handspring offset variant (−0.3 / 0 / +0.3 / +0.6 mm) is the (51)? This matters if a harvested connector replaces it.
+- Long-term J1 supply: no current-production part known. Could a PCMCIA card-side straddle receptacle work? (The keying fit is untested.)
 - Does the extension clear the Visor body? Is the slot-opening alignment right?
 
 ## Log
@@ -39,3 +43,8 @@
 - JLC placement preview showed U1, U2, U4 a quarter-turn off and U3, U5–U7 a half-turn off. Fixed in the preview and in the CPL (270 / 180).
 - Chose leaded HASL over ENIG (+$18). JLC does the fine-pitch assembly, so pad flatness isn't critical.
 - PCB + assembly order placed with JLCPCB. `hw-v0.1` tag moved to the ordered commit.
+
+### 2026-11-01
+- J1 (IC1HA-68RD-1.27SH(51)) found to be obsolete at DigiKey and Mouser. Ordered 1 NOS from eBay at $24.
+- Removed the unverified XKB/LCSC substitute from the hardware README (it's a vertical SMD socket, not a straddle).
+- Starting Palm client development.
