@@ -11,7 +11,16 @@ BEGIN
   LABEL "MeshCore client for the Visor" AUTOID AT (5 20)
   LABEL "Radio:" AUTOID AT (5 45) FONT 1
   LABEL "Not connected                  " ID MainStatusLabel AT (40 45)
-  BUTTON "Query radio" ID MainQueryButton AT (CENTER 140 AUTO AUTO)
+  BUTTON "Query radio" ID MainQueryButton AT (20 140 AUTO AUTO)
+  BUTTON "Ports" ID MainPortsButton AT (PREVRIGHT+10 PREVTOP AUTO AUTO)
+END
+
+FORM ID PortsForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Serial Ports"
+  BUTTON "Done" ID PortsDoneButton AT (CENTER 145 AUTO AUTO)
 END
 
 ALERT ID RomIncompatibleAlert

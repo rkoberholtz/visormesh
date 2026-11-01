@@ -3,13 +3,14 @@
 #   make           build build/visormesh.prc (in Docker if the toolchain isn't installed)
 #   make test      run the host-side protocol tests
 #   make install   install the .prc over the USB cradle (press HotSync when asked)
+#   make editor    copy the SDK headers to .sdk/ and write compile_flags.txt for clangd
 #   make clean
 
 APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/protocol.c src/transport_srm.c
+SRCS = src/main.c src/protocol.c src/transport_srm.c src/ports.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -66,4 +67,14 @@ install: all
 clean:
 	rm -rf build
 
-.PHONY: all test image install clean
+# Editor support: clangd can't see the SDK inside the image, so copy it out.
+editor: image
+	rm -rf .sdk && mkdir -p .sdk
+	cid=$$(docker create --platform linux/amd64 $(DOCKER_IMAGE)) && \
+	  docker cp -q $$cid:/opt/palmdev/sdk-3.5/include .sdk/sdk-3.5; docker rm $$cid >/dev/null
+	printf '%s\n' -std=gnu89 -D__palmos__=1 -Isrc -Wno-implicit-int -Wno-pointer-sign \
+	  -Wno-deprecated-non-prototype -Wno-incompatible-library-redeclaration \
+	  -Wno-ignored-attributes -Wno-pragma-once-outside-header > compile_flags.txt
+	find .sdk/sdk-3.5 -type d | sed 's|^|-I|' >> compile_flags.txt
+
+.PHONY: all test image install clean editor

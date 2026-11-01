@@ -15,3 +15,7 @@ palm-client/build/
 .DS_Store
 # MeshCore build checkout (firmware/Makefile)
 firmware/meshcore/
+
+# Palm SDK headers copied out of the Docker image for the editor (see Makefile: editor)
+palm-client/.sdk/
+palm-client/compile_flags.txt

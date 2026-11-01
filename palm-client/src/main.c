@@ -2,6 +2,7 @@
 #include "resources.h"
 #include "protocol.h"
 #include "transport.h"
+#include "ports.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_QUERY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -88,6 +89,10 @@ static Boolean MainFormHandleEvent(EventType *event)
 			QueryRadio();
 			return true;
 		}
+		if (event->data.ctlSelect.controlID == MainPortsButton) {
+			FrmGotoForm(PortsForm);
+			return true;
+		}
 		break;
 	default:
 		break;
@@ -107,6 +112,8 @@ static Boolean AppHandleEvent(EventType *event)
 	FrmSetActiveForm(form);
 	if (formId == MainForm)
 		FrmSetEventHandler(form, MainFormHandleEvent);
+	else if (formId == PortsForm)
+		FrmSetEventHandler(form, PortsFormHandleEvent);
 	return true;
 }
 
