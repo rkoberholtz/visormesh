@@ -198,6 +198,25 @@ Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *cou
 	}
 }
 
+#define VM_REBOOT_WAIT  (4 * SysTicksPerSecond())   /* XIAO restart until it answers again */
+
+Err SessionRebootAndReconnect(void)
+{
+	UInt8 frame[VM_HEADER_LEN + 7];
+	UInt16 len = VmBuildReboot(frame, sizeof(frame));
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	DrainInput();
+	err = TransportSend(frame, len);
+	SessionDisconnect();
+	if (err != errNone)
+		return err;
+	SysTaskDelay(VM_REBOOT_WAIT);
+	return SessionConnect();
+}
+
 const VmDeviceInfo *SessionDevice(void)
 {
 	return &gDevice;

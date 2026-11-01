@@ -176,6 +176,12 @@ static void test_settings_builders(void)
 	CHECK(memcmp(out, power, sizeof(power)) == 0);
 	CHECK(VmBuildSetPathHashMode(out, sizeof(out), 2) == sizeof(hash));
 	CHECK(memcmp(out, hash, sizeof(hash)) == 0);
+	{
+		static const UInt8 reboot[] = { 0x3c, 0x07, 0x00, 0x13, 'r', 'e', 'b', 'o', 'o', 't' };
+
+		CHECK(VmBuildReboot(out, sizeof(out)) == sizeof(reboot));
+		CHECK(memcmp(out, reboot, sizeof(reboot)) == 0);
+	}
 }
 
 static void test_path_len(void)

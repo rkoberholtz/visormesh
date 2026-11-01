@@ -45,6 +45,7 @@ typedef char     Char;
 #define VM_CMD_SYNC_NEXT_MESSAGE  10
 #define VM_CMD_SET_RADIO_PARAMS   11
 #define VM_CMD_SET_RADIO_TX_POWER 12
+#define VM_CMD_REBOOT             19
 #define VM_CMD_DEVICE_QUERY       22
 #define VM_CMD_SET_PATH_HASH_MODE 61
 
@@ -181,6 +182,8 @@ UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 
                              Boolean includeRepeat, Boolean repeat);
 UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm);
 UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode);
+/* CMD_REBOOT: the radio restarts without replying. */
+UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize);
 
 /* Reply parsers: take a decoded payload (code byte first). Return true if it has the expected code and length. */
 Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out);

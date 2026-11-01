@@ -177,6 +177,7 @@ static Boolean Save(FormType *form)
 	UInt8 hashMode = (UInt8)(SelectedHashSize(form) - 1);
 	UInt16 len;
 	Char msg[64];
+	Boolean radioChanged = false;
 
 	/* Validate everything first, with the firmware's limits, so nothing is half-applied. */
 	if (StrLen(name) == 0 || StrLen(name) > VM_NAME_MAX) {
@@ -218,6 +219,7 @@ static Boolean Save(FormType *form)
 		                            dev->hasRepeat, dev->repeatEnabled);
 		if (!Send(form, frame, len, "radio settings"))
 			return false;
+		radioChanged = true;
 	}
 	if (power != self->txPowerDbm) {
 		len = VmBuildSetTxPower(frame, sizeof(frame), (Int8)power);
@@ -228,6 +230,16 @@ static Boolean Save(FormType *form)
 		len = VmBuildSetPathHashMode(frame, sizeof(frame), hashMode);
 		if (!Send(form, frame, len, "path hash size"))
 			return false;
+	}
+
+	/* The radio saves new radio settings at once, but its receiver only retunes on a restart. */
+	if (radioChanged && FrmAlert(RebootRadioAlert) == 0) {
+		SetStatus(form, "Rebooting radio...");
+		if (SessionRebootAndReconnect() != errNone) {
+			SetStatus(form, "");
+			ShowError("The radio didn't come back after rebooting. Tap Connect to retry.");
+		}
+		return true;
 	}
 
 	SetStatus(form, "Reading back...");

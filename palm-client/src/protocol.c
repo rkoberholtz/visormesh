@@ -278,6 +278,14 @@ UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode)
 	return VmEncodeFrame(out, outSize, p, 3);
 }
 
+/* CMD_REBOOT: code + "reboot" (the firmware checks the word, so a stray byte can't reboot it). */
+UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize)
+{
+	static const UInt8 p[7] = { VM_CMD_REBOOT, 'r', 'e', 'b', 'o', 'o', 't' };
+
+	return VmEncodeFrame(out, outSize, p, sizeof(p));
+}
+
 /*
  * DEVICE_INFO: code, fw_ver_code, max_contacts / 2, max_channels, ble_pin (4),
  * build_date[12], manufacturer[40], version[20], then optional newer fields.

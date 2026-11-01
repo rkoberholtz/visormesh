@@ -122,3 +122,12 @@ BEGIN
   MESSAGE "VisorMesh needs Palm OS 3.5 or later."
   BUTTONS "OK"
 END
+
+ALERT ID RebootRadioAlert
+CONFIRMATION
+DEFAULTBUTTON 0
+BEGIN
+  TITLE "Apply Radio Settings"
+  MESSAGE "The radio saved the new settings, but only retunes after a restart. Reboot it now?"
+  BUTTONS "Reboot" "Later"
+END

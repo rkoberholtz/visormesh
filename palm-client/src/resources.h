@@ -35,6 +35,7 @@
 
 #define SettingsErrorAlert    2001
 #define ContactInfoAlert      2002
+#define RebootRadioAlert      2003
 
 #define ContactsForm          1300
 #define ContactsList          1301

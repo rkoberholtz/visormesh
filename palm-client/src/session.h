@@ -25,6 +25,12 @@ const VmSelfInfo   *SessionSelf(void);
 
 /* Sends a complete command frame and requires RESP_OK. */
 Err     SessionCommand(const UInt8 *frame, UInt16 len);
+/*
+ * Asks the radio to reboot (it restarts without replying), drops the link,
+ * waits for it to come back and reconnects. Used after radio-parameter
+ * changes, which the receiver only picks up after a restart.
+ */
+Err     SessionRebootAndReconnect(void);
 /* Re-reads DEVICE_INFO and SELF_INFO, e.g. after changing settings. */
 Err     SessionRefresh(void);
 
