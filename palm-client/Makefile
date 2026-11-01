@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/preview_form.c src/ui/draw.c src/ui/fontmetrics.c src/ports.c
+SRCS = src/main.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/fontmetrics.c src/ports.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -55,6 +55,8 @@ build/$(APP).prc: build/$(APP) build/res.stamp
 test: | build
 	gcc -std=c99 -Wall -Wextra -o build/test_protocol tests/test_protocol.c src/protocol.c
 	build/test_protocol
+	gcc -std=c99 -Wall -Wextra -o build/test_text tests/test_text.c src/ui/text.c src/ui/fontmetrics.c src/protocol.c
+	build/test_text
 
 build:
 	mkdir -p build

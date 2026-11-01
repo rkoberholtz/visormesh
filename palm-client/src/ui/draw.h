@@ -18,7 +18,8 @@ void UiFontRelease(void);
 /* "── Label ──" across the full width at y, in the small font. */
 void DrawSection(const Char *label, Coord y);
 
-/* A name chip: text inverted (white on black) with a 1px pad. Returns its width. */
+/* A name chip: text inverted (white on black), VM_CHIP_H tall. Returns its width. */
+#define VM_CHIP_H        (VM_SMALL_FONT_HEIGHT + 2)
 Coord DrawChip(const Char *text, Coord x, Coord y);
 
 /* Draws text in the current font, cut with an ellipsis to fit maxW. Returns the width drawn. */

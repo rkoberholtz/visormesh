@@ -41,15 +41,19 @@ void DrawSection(const Char *label, Coord y)
 	FntSetFont(old);
 }
 
+/* 2 px of black either side and 1 px above and below: inverted 4x6 text smears with less. */
+#define CHIP_PAD_X 2
+#define CHIP_PAD_Y 1
+
 Coord DrawChip(const Char *text, Coord x, Coord y)
 {
 	UInt16 len = StrLen(text);
-	Coord w = FntCharsWidth(text, len) + 2;
+	Coord w = FntCharsWidth(text, len) + 2 * CHIP_PAD_X;
 	RectangleType r;
 
-	RctSetRectangle(&r, x, y, w, FntLineHeight());
+	RctSetRectangle(&r, x, y, w, FntLineHeight() + 2 * CHIP_PAD_Y);
 	WinDrawRectangle(&r, 0);
-	WinDrawInvertedChars(text, len, x + 1, y);
+	WinDrawInvertedChars(text, len, x + CHIP_PAD_X, y + CHIP_PAD_Y);
 	return w;
 }
 
