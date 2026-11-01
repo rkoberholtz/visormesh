@@ -2,6 +2,7 @@
 
 enum { ST_SYNC, ST_LEN_LO, ST_LEN_HI, ST_PAYLOAD };
 
+#define DEVICE_INFO_MIN_LEN  80     /* through the version string */
 #define SELF_INFO_FIXED_LEN  58     /* everything before the variable-length name */
 #define CONTACT_LEN          (1 + VM_PUB_KEY_SIZE + 3 + VM_MAX_PATH_SIZE + VM_NAME_SIZE + 16)
 #define MSG_V3_HEADER_LEN    4      /* code, snr, 2 reserved */
@@ -129,6 +130,23 @@ UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize)
 
 	p[0] = VM_CMD_SYNC_NEXT_MESSAGE;
 	return VmEncodeFrame(out, outSize, p, 1);
+}
+
+/*
+ * DEVICE_INFO: code, fw_ver_code, max_contacts / 2, max_channels, ble_pin (4),
+ * build_date[12], manufacturer[40], version[20], then optional newer fields.
+ */
+Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out)
+{
+	if (len < DEVICE_INFO_MIN_LEN || p[0] != VM_RESP_DEVICE_INFO)
+		return 0;
+	out->fwVerCode = p[1];
+	out->maxContacts = (UInt16)p[2] * 2;
+	out->maxChannels = p[3];
+	CopyName(out->buildDate, sizeof(out->buildDate), p + 8, 12);
+	CopyName(out->manufacturer, sizeof(out->manufacturer), p + 20, 40);
+	CopyName(out->version, sizeof(out->version), p + 60, 20);
+	return 1;
 }
 
 /*

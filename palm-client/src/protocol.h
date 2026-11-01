@@ -74,6 +74,15 @@ typedef struct {
 } VmFrameDecoder;
 
 typedef struct {
+	UInt8  fwVerCode;        /* companion protocol version the firmware speaks */
+	UInt16 maxContacts;
+	UInt8  maxChannels;
+	Char   buildDate[13];
+	Char   manufacturer[41];
+	Char   version[21];
+} VmDeviceInfo;
+
+typedef struct {
 	UInt8  advType;
 	UInt8  txPowerDbm;
 	UInt8  maxTxPowerDbm;
@@ -123,6 +132,7 @@ UInt16 VmBuildGetContacts(UInt8 *out, UInt16 outSize, UInt32 since);
 UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize);
 
 /* Reply parsers: take a decoded payload (code byte first). Return true if it has the expected code and length. */
+Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out);
 Boolean VmParseSelfInfo(const UInt8 *p, UInt16 len, VmSelfInfo *out);
 Boolean VmParseContactsStart(const UInt8 *p, UInt16 len, UInt32 *count);
 Boolean VmParseContact(const UInt8 *p, UInt16 len, VmContact *out);

@@ -8,13 +8,22 @@ NOFRAME
 USABLE
 BEGIN
   TITLE "VisorMesh"
-  LABEL "MeshCore client for the Visor" AUTOID AT (5 20)
-  LABEL "Radio:" AUTOID AT (5 45) FONT 1
-  LABEL "Not connected                  " ID MainStatusLabel AT (40 45)
-  LABEL "Link:" AUTOID AT (5 65) FONT 1
-  PUSHBUTTON "Serial" ID MainSerialPush AT (40 64 40 12) GROUP MainLinkGroup
+  LABEL "Link:" AUTOID AT (5 18) FONT 1
+  PUSHBUTTON "Serial" ID MainSerialPush AT (50 17 40 12) GROUP MainLinkGroup
   PUSHBUTTON "USB" ID MainUsbPush AT (PREVRIGHT+1 PREVTOP 40 12) GROUP MainLinkGroup
-  BUTTON "Query radio" ID MainQueryButton AT (20 140 AUTO AUTO)
+
+  LABEL "Node:" AUTOID AT (5 40) FONT 1
+  LABEL "                      " ID MainNameLabel AT (50 40)
+  LABEL "Freq:" AUTOID AT (5 54) FONT 1
+  LABEL "                      " ID MainFreqLabel AT (50 54)
+  LABEL "Mode:" AUTOID AT (5 66) FONT 1
+  LABEL "                      " ID MainModeLabel AT (50 66)
+  LABEL "Power:" AUTOID AT (5 78) FONT 1
+  LABEL "                      " ID MainPowerLabel AT (50 78)
+  LABEL "Firmware:" AUTOID AT (5 90) FONT 1
+  LABEL "                      " ID MainFirmwareLabel AT (50 90)
+
+  BUTTON "Disconnect" ID MainConnectButton AT (20 140 AUTO AUTO)
   BUTTON "Ports" ID MainPortsButton AT (PREVRIGHT+10 PREVTOP AUTO AUTO)
 END
 

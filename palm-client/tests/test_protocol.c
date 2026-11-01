@@ -81,7 +81,8 @@ static void test_decode_max_frame(void)
 	CHECK(frames == 1 && d.len == VM_MAX_FRAME && d.payload[VM_MAX_FRAME - 1] == (VM_MAX_FRAME - 1));
 }
 
-/* DEVICE_INFO captured from the SB-LoRa XIAO (MeshCore v1.17.1) with firmware/tools/companion_query.py. */
+/* DEVICE_INFO captured from the SB-LoRa XIAO (MeshCore v1.17.1) with firmware/tools/companion_query.py.
+ * Generated from the capture file, not retyped (an earlier hand-typed copy had two bytes shifted). */
 static void test_decode_real_device_info(void)
 {
 	static const UInt8 in[] = {
@@ -90,7 +91,7 @@ static void test_decode_real_device_info(void)
 		0x65, 0x65, 0x65, 0x64, 0x20, 0x58, 0x69, 0x61, 0x6f, 0x2d, 0x6e, 0x72,
 		0x66, 0x35, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x76, 0x31, 0x2e, 0x31, 0x37, 0x2e, 0x31,
+		0x00, 0x00, 0x00, 0x76, 0x31, 0x2e, 0x31, 0x37, 0x2e, 0x31, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00
 	};
@@ -102,8 +103,20 @@ static void test_decode_real_device_info(void)
 	CHECK(d.payload[0] == 0x0d);
 	CHECK(memcmp(&d.payload[8], "14 Aug 2026", 11) == 0);
 	CHECK(memcmp(&d.payload[20], "Seeed Xiao-nrf52", 16) == 0);
-	CHECK(memcmp(&d.payload[62], "v1.17.1", 7) == 0);
+	CHECK(memcmp(&d.payload[60], "v1.17.1", 7) == 0);
 	CHECK(sizeof(in) == VM_HEADER_LEN + 0x52);
+
+	{
+		VmDeviceInfo info;
+
+		CHECK(VmParseDeviceInfo(d.payload, d.len, &info));
+		CHECK(info.fwVerCode == 0x0d);
+		CHECK(info.maxContacts == 350 && info.maxChannels == 40);
+		CHECK(strcmp(info.buildDate, "14 Aug 2026") == 0);
+		CHECK(strcmp(info.manufacturer, "Seeed Xiao-nrf52") == 0);
+		CHECK(strcmp(info.version, "v1.17.1") == 0);
+		CHECK(!VmParseDeviceInfo(d.payload, 79, &info));
+	}
 }
 
 /* Builders must produce exactly the frames companion_query.py sent to the real radio. */
