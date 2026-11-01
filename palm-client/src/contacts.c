@@ -2,6 +2,7 @@
 #include "protocol.h"
 #include "session.h"
 #include "contacts.h"
+#include "ui/text.h"
 
 #define DB_NAME     "VisorMeshContacts"
 #define DB_TYPE     'cont'
@@ -96,10 +97,12 @@ static Err AddContact(const VmContact *c, void *ctx)
 {
 	UInt16 index = dmMaxRecordIndex;
 	MemHandle h = DmNewRecord(gDb, &index, sizeof(VmContact));
+	VmContact copy = *c;
 
 	if (!h)
 		return DmGetLastErr();
-	DmWrite(MemHandleLock(h), 0, c, sizeof(VmContact));
+	TxtUtf8NameToPalm(copy.name, sizeof(copy.name));
+	DmWrite(MemHandleLock(h), 0, &copy, sizeof(VmContact));
 	MemHandleUnlock(h);
 	DmReleaseRecord(gDb, index, true);
 	return errNone;

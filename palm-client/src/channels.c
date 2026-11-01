@@ -2,6 +2,7 @@
 #include "protocol.h"
 #include "session.h"
 #include "channels.h"
+#include "ui/text.h"
 
 #define DB_NAME     "VisorMeshChannels"
 #define DB_TYPE     'chan'
@@ -95,6 +96,7 @@ Err ChannelsRefresh(UInt8 maxChannels)
 			goto fail;
 		if (!InUse(&c))
 			continue;
+		TxtUtf8NameToPalm(c.name, sizeof(c.name));
 		index = dmMaxRecordIndex;
 		h = DmNewRecord(gDb, &index, sizeof(VmChannel));
 		if (!h) {

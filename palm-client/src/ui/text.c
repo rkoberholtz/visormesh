@@ -174,6 +174,20 @@ UInt16 TxtUtf8ToPalm(const UInt8 *in, UInt16 inLen, Char *out, UInt16 outSize)
 	return o;
 }
 
+void TxtUtf8NameToPalm(Char *name, UInt16 size)
+{
+	Char tmp[48];
+	UInt16 len = 0;
+
+	if (size > sizeof(tmp))
+		size = sizeof(tmp);
+	while (len < size - 1 && name[len])
+		len++;
+	TxtUtf8ToPalm((const UInt8 *)name, len, tmp, size);
+	for (len = 0; len < size && (name[len] = tmp[len]) != 0; len++)
+		;
+}
+
 /* Windows-1252 0x80-0x9F to Unicode (0 = unused slot). */
 static const UInt16 kCp1252[32] = {
 	0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,

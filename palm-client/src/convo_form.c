@@ -21,7 +21,6 @@
 #define LINE_H      VM_CHIP_H /* chips need the extra 2 px */
 #define TIME_X      2
 #define TEXT_X      26
-#define PALM_EPOCH  2082844800UL
 
 #define L_DAY   0
 #define L_CHIP  1
@@ -82,9 +81,9 @@ static void SuffixOf(const VmMsgHeader *h, Char *out)
 	}
 }
 
-static UInt32 LocalDay(UInt32 unix)
+static UInt32 LocalDay(UInt32 utc)
 {
-	return (unix + PALM_EPOCH) / 86400UL;   /* the Visor's clock is local time */
+	return SessionLocalPalm(utc) / 86400UL;
 }
 
 static void AddLine(UInt8 kind, UInt16 msg, UInt16 off, UInt16 len, Boolean first, Boolean last, UInt32 day)
@@ -189,7 +188,7 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 		const Char *text = (const Char *)(h + 1) + l->off;
 
 		if (l->first) {
-			TimSecondsToDateTime(h->received + PALM_EPOCH, &dt);
+			TimSecondsToDateTime(SessionLocalPalm(h->received), &dt);
 			StrPrintF(buf, "%02u:%02u", dt.hour, dt.minute);
 			WinDrawChars(buf, StrLen(buf), x + TIME_X, y);
 		}

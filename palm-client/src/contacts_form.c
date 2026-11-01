@@ -16,7 +16,6 @@
 #include "ui/rowlist.h"
 #include "contacts_form.h"
 
-#define PALM_EPOCH_OFFSET 2082844800UL   /* seconds from 1904-01-01 (Palm) to 1970-01-01 (Unix) */
 #define NAME_X   8
 #define NAME_W   82
 #define HEARD_R  110
@@ -143,7 +142,7 @@ static void ShowDetails(UInt16 row)
 		return;
 	FormatRoute(route, c.outPathLen);
 	if (c.lastAdvert) {
-		TimSecondsToDateTime(c.lastAdvert + PALM_EPOCH_OFFSET, &dt);
+		TimSecondsToDateTime(SessionLocalPalm(c.lastAdvert), &dt);
 		StrPrintF(line, "%s, %s\nKey %02x%02x%02x%02x%02x%02x...\nHeard %u-%02u-%02u %02u:%02u",
 		          TypeName(c.type), route, c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3], c.pubKey[4],
 		          c.pubKey[5], dt.year, dt.month, dt.day, dt.hour, dt.minute);

@@ -46,6 +46,9 @@ UInt16 TxtSplitSender(const Char *text, UInt16 len);
  */
 UInt16 TxtUtf8ToPalm(const UInt8 *in, UInt16 inLen, Char *out, UInt16 outSize);
 
+/* Converts a NUL-terminated UTF-8 name in place to the Visor's charset (size <= 48). */
+void   TxtUtf8NameToPalm(Char *name, UInt16 size);
+
 /*
  * The Visor's text (Windows-1252) to UTF-8 for sending. Returns the byte count,
  * or 0 if it won't fit in outSize (so a message is never cut mid-character).

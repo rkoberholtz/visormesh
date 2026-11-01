@@ -10,6 +10,7 @@ Boolean gAppAutoConnectTried = false;
 typedef struct {
 	UInt16 version;
 	UInt32 port;       /* VM_PORT_USB or VM_PORT_SERIAL */
+	Int16  utcOffset;  /* local minus UTC, minutes */
 } AppPrefs;
 
 void AppOpenConversation(const VmConv *conv)
@@ -24,8 +25,13 @@ void AppLoadPrefs(void)
 	UInt16 size = sizeof(prefs);
 
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
-	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION)
+	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
 		TransportSetPort(prefs.port);
+		SessionSetUtcOffset(prefs.utcOffset);
+		return;
+	}
+	/* no saved offset yet: start from the system's, if it has one */
+	SessionSetUtcOffset(-(Int16)PrefGetPreference(prefMinutesWestOfGMT));
 }
 
 void AppSavePrefs(void)
@@ -34,6 +40,7 @@ void AppSavePrefs(void)
 
 	prefs.version = VM_PREFS_VERSION;
 	prefs.port = TransportGetPort();
+	prefs.utcOffset = SessionUtcOffset();
 	PrefSetAppPreferences(VM_CREATOR, VM_PREFS_ID, VM_PREFS_VERSION, &prefs, sizeof(prefs), true);
 }
 

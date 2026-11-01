@@ -9,6 +9,7 @@
 #include "presets.h"
 #include "session.h"
 #include "settings.h"
+#include "app.h"
 
 #define CUSTOM_LABEL "Custom"
 
@@ -97,6 +98,37 @@ static Int16 FindPreset(UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr)
 	return -1;
 }
 
+/* Minutes to hours: -300 -> "-5", 330 -> "5.5", 345 -> "5.75". */
+static void FormatUtcOffset(Char *out, Int16 minutes)
+{
+	UInt16 m = (UInt16)(minutes < 0 ? -minutes : minutes);
+	Char digits[8];
+
+	VmFormatDecimal(digits, (UInt32)m * 100 / 60, 2);
+	StrPrintF(out, "%s%s", minutes < 0 ? "-" : "", digits);
+}
+
+/* "-5", "+5.5", "5.75" (quarter hours) to minutes, -12..+14 h. */
+static Boolean ParseUtcOffset(const Char *s, Int16 *minutes)
+{
+	Boolean neg = false;
+	UInt32 hundredths;
+
+	if (*s == '-' || *s == '+') {
+		neg = *s == '-';
+		s++;
+	}
+	if (!VmParseDecimal(s, 2, &hundredths) || hundredths % 25 != 0 || hundredths > 1400)
+		return false;
+	*minutes = (Int16)(hundredths * 60 / 100);
+	if (neg) {
+		if (*minutes > 720)
+			return false;
+		*minutes = -*minutes;
+	}
+	return true;
+}
+
 static void InitForm(FormType *form)
 {
 	const VmSelfInfo *self = SessionSelf();
@@ -118,6 +150,8 @@ static void InitForm(FormType *form)
 	SetRadioFields(form, self->freqKHz, self->bwHz, self->sf, self->cr);
 	StrIToA(buf, self->txPowerDbm);
 	SetFieldText(form, SettingsPowerField, buf);
+	FormatUtcOffset(buf, SessionUtcOffset());
+	SetFieldText(form, SettingsUtcField, buf);
 	SelectHashSize(form, (UInt8)(dev->pathHashMode + 1));
 	if (!dev->hasPathHashMode) {
 		CtlSetEnabled(GetObject(form, SettingsHash1Push), false);
@@ -175,6 +209,7 @@ static Boolean Save(FormType *form)
 	UInt32 freq, bw;
 	Int32 sf, cr, power;
 	UInt8 hashMode = (UInt8)(SelectedHashSize(form) - 1);
+	Int16 utcOffset;
 	UInt16 len;
 	Char msg[64];
 	Boolean radioChanged = false;
@@ -207,6 +242,17 @@ static Boolean Save(FormType *form)
 		StrPrintF(msg, "TX power must be %d to %u dBm.", VM_TX_POWER_MIN, self->maxTxPowerDbm);
 		ShowError(msg);
 		return false;
+	}
+
+	if (!ParseUtcOffset(GetFieldText(form, SettingsUtcField), &utcOffset)) {
+		ShowError("UTC offset: hours from -12 to +14, e.g. -5 or 5.5.");
+		return false;
+	}
+	/* an app preference, not a radio setting: applies even if nothing else changed */
+	if (utcOffset != SessionUtcOffset()) {
+		SessionSetUtcOffset(utcOffset);
+		AppSavePrefs();
+		SessionSyncClock();
 	}
 
 	if (StrCompare(name, self->name) != 0) {

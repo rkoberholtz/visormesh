@@ -10,14 +10,17 @@
 
 #define VM_CREATOR       'VMsh'
 #define VM_PREFS_ID      0
-#define VM_PREFS_VERSION 1
+#define VM_PREFS_VERSION 2
 
 /* The conversation ConvoForm shows. */
 extern VmConv gAppConv;
 
 void AppOpenConversation(const VmConv *conv);
 
-/* Loads/saves the link choice (USB or serial) so the app reconnects the same way. */
+/*
+ * Loads/saves the link choice (USB or serial, so the app reconnects the same way)
+ * and the UTC offset (the Visor's clock has no time zone).
+ */
 void AppLoadPrefs(void);
 void AppSavePrefs(void);
 

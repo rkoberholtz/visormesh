@@ -37,6 +37,7 @@
 #define SettingsSaveButton    1213
 #define SettingsCancelButton  1214
 #define SettingsHashGroup     2
+#define SettingsUtcField      1215
 
 #define SettingsErrorAlert    2001
 #define ContactInfoAlert      2002

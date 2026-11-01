@@ -50,8 +50,15 @@ Err     SessionRefresh(void);
 typedef Err (*SessionContactFn)(const VmContact *c, void *ctx);
 Err     SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *count, UInt32 *lastMod);
 
-/* Our clock in Unix seconds (message timestamps). */
+/* Now as Unix seconds (UTC), from the Visor's local clock and the UTC offset. */
 UInt32  SessionNow(void);
+/* A UTC Unix time as the Visor's local clock reads it (for TimSecondsToDateTime). */
+UInt32  SessionLocalPalm(UInt32 utc);
+/* Local time minus UTC, in minutes (e.g. -300 for EST). */
+void    SessionSetUtcOffset(Int16 minutes);
+Int16   SessionUtcOffset(void);
+/* Sets the radio's clock to ours (UTC) if it's behind; it can only move forward. */
+void    SessionSyncClock(void);
 
 /*
  * Call regularly (the app does on nilEvent): handles pushes, pulls waiting

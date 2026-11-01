@@ -30,9 +30,30 @@ static VmSelfInfo gSelf;
 static UInt8  gRx[64];
 static UInt16 gRxPos, gRxLen;
 
+/*
+ * The Visor's clock is local time with no time zone (Palm OS 3.5), so the
+ * offset to UTC is an app preference. Everything stored and sent is UTC.
+ */
+static Int32 gUtcOffsetSecs = 0;      /* local minus UTC */
+
+void SessionSetUtcOffset(Int16 minutes)
+{
+	gUtcOffsetSecs = (Int32)minutes * 60;
+}
+
+Int16 SessionUtcOffset(void)
+{
+	return (Int16)(gUtcOffsetSecs / 60);
+}
+
 UInt32 SessionNow(void)
 {
-	return TimGetSeconds() - PALM_EPOCH_OFFSET;
+	return TimGetSeconds() - PALM_EPOCH_OFFSET - gUtcOffsetSecs;
+}
+
+UInt32 SessionLocalPalm(UInt32 utc)
+{
+	return utc + PALM_EPOCH_OFFSET + gUtcOffsetSecs;
 }
 
 /* Acts on a frame nobody asked for: pushes from the radio. */
@@ -153,11 +174,13 @@ static Err QueryRadio(UInt16 firstTries)
 	err = Request(frame, len, VM_RESP_SELF_INFO, 1);
 	if (err == errNone && !VmParseSelfInfo(gDecoder.payload, gDecoder.len, &gSelf))
 		err = vmErrBadReply;
+	if (err == errNone)
+		TxtUtf8NameToPalm(gSelf.name, sizeof(gSelf.name));
 	return err;
 }
 
 /* Sets the radio's clock from ours if it's behind (the firmware only lets it move forward). */
-static void SyncClock(void)
+void SessionSyncClock(void)
 {
 	UInt8 frame[VM_HEADER_LEN + 5];
 	UInt32 radio, now = SessionNow();
@@ -197,7 +220,7 @@ Err SessionConnect(void)
 	gConnected = true;
 
 	/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
-	SyncClock();
+	SessionSyncClock();
 	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
 		gChanged |= VM_CHANGED_MESSAGES;
 	if (ContactsRefresh(NULL) == errNone)
