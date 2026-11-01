@@ -27,7 +27,15 @@ DOCKER_RUN   = docker run --rm --platform linux/amd64 -v "$(CURDIR)":/src -w /sr
 
 ifeq ($(shell command -v $(CC) 2>/dev/null),)
 
-all test: image
+# Only start Docker when something changed: the .prc depends on the sources,
+# so an install of an up-to-date build doesn't need the toolchain at all.
+all: build/$(APP).prc
+
+build/$(APP).prc: $(SRCS) src/*.h src/ui/*.h resources/$(APP).rcp resources/smallfont.nfnt $(APP).def
+	$(MAKE) image
+	$(DOCKER_RUN) make all
+
+test: image
 	$(DOCKER_RUN) make $@
 
 image:
