@@ -30,6 +30,88 @@ static void CopyName(Char *dst, UInt16 dstSize, const UInt8 *src, UInt16 n)
 	dst[i] = 0;
 }
 
+Boolean VmParseDecimal(const Char *s, UInt16 scale, UInt32 *out)
+{
+	UInt32 v = 0;
+	UInt16 decimals = 0, digits = 0;
+	Boolean dot = 0;
+
+	for (; *s; s++) {
+		if (*s == '.') {
+			if (dot)
+				return 0;
+			dot = 1;
+			continue;
+		}
+		if (*s < '0' || *s > '9')
+			return 0;
+		if (dot && ++decimals > scale)
+			return 0;
+		if (v > 400000000UL)     /* keep v * 10 well inside 32 bits */
+			return 0;
+		v = v * 10 + (UInt32)(*s - '0');
+		digits++;
+	}
+	if (digits == 0)
+		return 0;
+	for (; decimals < scale; decimals++) {
+		if (v > 400000000UL)
+			return 0;
+		v *= 10;
+	}
+	*out = v;
+	return 1;
+}
+
+void VmFormatDecimal(Char *out, UInt32 value, UInt16 scale)
+{
+	Char tmp[12];
+	UInt16 n = 0, i, intDigits, frac;
+	Char *p = out;
+
+	do {
+		tmp[n++] = (Char)('0' + value % 10);
+		value /= 10;
+	} while (value);
+	while (n <= scale)
+		tmp[n++] = '0';             /* at least one integer digit */
+	intDigits = n - scale;
+	for (i = 0; i < intDigits; i++)
+		*p++ = tmp[n - 1 - i];
+	/* fractional part without trailing zeros */
+	frac = scale;
+	while (frac > 0 && tmp[scale - frac] == '0')
+		frac--;
+	if (frac) {
+		*p++ = '.';
+		for (i = 0; i < frac; i++)
+			*p++ = tmp[scale - 1 - i];
+	}
+	*p = 0;
+}
+
+Boolean VmParseInt(const Char *s, Int32 *out)
+{
+	Boolean neg = 0;
+	Int32 v = 0;
+	UInt16 digits = 0;
+
+	if (*s == '-') {
+		neg = 1;
+		s++;
+	}
+	for (; *s; s++) {
+		if (*s < '0' || *s > '9' || digits >= 9)
+			return 0;
+		v = v * 10 + (*s - '0');
+		digits++;
+	}
+	if (digits == 0)
+		return 0;
+	*out = neg ? -v : v;
+	return 1;
+}
+
 UInt16 VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len)
 {
 	if (len > VM_MAX_FRAME || outSize < (UInt16)(len + VM_HEADER_LEN))
@@ -132,6 +214,70 @@ UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize)
 	return VmEncodeFrame(out, outSize, p, 1);
 }
 
+static void PutLE32(UInt8 *p, UInt32 v)
+{
+	p[0] = (UInt8)v;
+	p[1] = (UInt8)(v >> 8);
+	p[2] = (UInt8)(v >> 16);
+	p[3] = (UInt8)(v >> 24);
+}
+
+/* CMD_SET_ADVERT_NAME: code, name (no terminator; the firmware keeps up to 31 chars). */
+UInt16 VmBuildSetAdvertName(UInt8 *out, UInt16 outSize, const Char *name)
+{
+	UInt8 p[1 + VM_NAME_MAX];
+	UInt16 n = 0;
+
+	p[0] = VM_CMD_SET_ADVERT_NAME;
+	while (name[n] && n < VM_NAME_MAX) {
+		p[1 + n] = (UInt8)name[n];
+		n++;
+	}
+	if (n == 0)
+		return 0;
+	return VmEncodeFrame(out, outSize, p, (UInt16)(1 + n));
+}
+
+/*
+ * CMD_SET_RADIO_PARAMS: code, freq (kHz), bw (Hz), sf, cr, [client repeat, v9+].
+ * Sending repeat = 0 turns client repeat off, so pass through what DEVICE_INFO reported.
+ */
+UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr,
+                             Boolean includeRepeat, Boolean repeat)
+{
+	UInt8 p[12];
+
+	p[0] = VM_CMD_SET_RADIO_PARAMS;
+	PutLE32(p + 1, freqKHz);
+	PutLE32(p + 5, bwHz);
+	p[9] = sf;
+	p[10] = cr;
+	if (!includeRepeat)
+		return VmEncodeFrame(out, outSize, p, 11);
+	p[11] = repeat ? 1 : 0;
+	return VmEncodeFrame(out, outSize, p, 12);
+}
+
+UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm)
+{
+	UInt8 p[2];
+
+	p[0] = VM_CMD_SET_RADIO_TX_POWER;
+	p[1] = (UInt8)dbm;
+	return VmEncodeFrame(out, outSize, p, 2);
+}
+
+/* CMD_SET_PATH_HASH_MODE: code, 0 (sub-command), mode (path hash bytes - 1). */
+UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode)
+{
+	UInt8 p[3];
+
+	p[0] = VM_CMD_SET_PATH_HASH_MODE;
+	p[1] = 0;
+	p[2] = mode;
+	return VmEncodeFrame(out, outSize, p, 3);
+}
+
 /*
  * DEVICE_INFO: code, fw_ver_code, max_contacts / 2, max_channels, ble_pin (4),
  * build_date[12], manufacturer[40], version[20], then optional newer fields.
@@ -146,6 +292,10 @@ Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out)
 	CopyName(out->buildDate, sizeof(out->buildDate), p + 8, 12);
 	CopyName(out->manufacturer, sizeof(out->manufacturer), p + 20, 40);
 	CopyName(out->version, sizeof(out->version), p + 60, 20);
+	out->hasRepeat = len > 80;
+	out->repeatEnabled = out->hasRepeat && p[80] != 0;
+	out->hasPathHashMode = len > 81;
+	out->pathHashMode = out->hasPathHashMode ? p[81] : 0;
 	return 1;
 }
 
@@ -159,7 +309,7 @@ Boolean VmParseSelfInfo(const UInt8 *p, UInt16 len, VmSelfInfo *out)
 	if (len < SELF_INFO_FIXED_LEN || p[0] != VM_RESP_SELF_INFO)
 		return 0;
 	out->advType = p[1];
-	out->txPowerDbm = p[2];
+	out->txPowerDbm = (Int8)p[2];
 	out->maxTxPowerDbm = p[3];
 	CopyBytes(out->pubKey, p + 4, VM_PUB_KEY_SIZE);
 	out->latE6 = (Int32)GetLE32(p + 36);

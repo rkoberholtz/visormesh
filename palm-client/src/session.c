@@ -10,6 +10,8 @@
 static VmFrameDecoder gDecoder;
 static Boolean gConnected = false;
 static Boolean gMsgWaiting = false;
+static VmDeviceInfo gDevice;
+static VmSelfInfo gSelf;
 
 /*
  * Reads frames until one with the wanted code arrives. Pushes are noted and
@@ -61,10 +63,29 @@ static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
 	return err == serErrTimeOut ? vmErrNoReply : err;
 }
 
-Err SessionConnect(VmDeviceInfo *device, VmSelfInfo *self)
+/* DEVICE_QUERY + APP_START into gDevice/gSelf. The first request gets extra tries (USB attach). */
+static Err QueryRadio(UInt16 firstTries)
 {
 	UInt8 frame[VM_HEADER_LEN + 8 + VM_NAME_SIZE];
 	UInt16 len;
+	Err err;
+
+	len = VmBuildDeviceQuery(frame, sizeof(frame));
+	err = Request(frame, len, VM_RESP_DEVICE_INFO, firstTries);
+	if (err == errNone && !VmParseDeviceInfo(gDecoder.payload, gDecoder.len, &gDevice))
+		err = vmErrBadReply;
+	if (err != errNone)
+		return err;
+
+	len = VmBuildAppStart(frame, sizeof(frame), VM_APP_NAME);
+	err = Request(frame, len, VM_RESP_SELF_INFO, 1);
+	if (err == errNone && !VmParseSelfInfo(gDecoder.payload, gDecoder.len, &gSelf))
+		err = vmErrBadReply;
+	return err;
+}
+
+Err SessionConnect(void)
+{
 	Err err;
 
 	SessionDisconnect();
@@ -78,26 +99,37 @@ Err SessionConnect(VmDeviceInfo *device, VmSelfInfo *self)
 	if (TransportGetPort() == VM_PORT_USB)
 		SysTaskDelay(SysTicksPerSecond());
 
-	len = VmBuildDeviceQuery(frame, sizeof(frame));
-	err = Request(frame, len, VM_RESP_DEVICE_INFO, VM_CONNECT_TRIES);
-	if (err == errNone && !VmParseDeviceInfo(gDecoder.payload, gDecoder.len, device))
-		err = vmErrBadReply;
-	if (err != errNone)
-		goto fail;
-
-	len = VmBuildAppStart(frame, sizeof(frame), VM_APP_NAME);
-	err = Request(frame, len, VM_RESP_SELF_INFO, 1);
-	if (err == errNone && !VmParseSelfInfo(gDecoder.payload, gDecoder.len, self))
-		err = vmErrBadReply;
-	if (err != errNone)
-		goto fail;
-
+	err = QueryRadio(VM_CONNECT_TRIES);
+	if (err != errNone) {
+		TransportClose();
+		return err;
+	}
 	gConnected = true;
 	return errNone;
+}
 
-fail:
-	TransportClose();
-	return err;
+Err SessionRefresh(void)
+{
+	if (!gConnected)
+		return serErrNotOpen;
+	return QueryRadio(1);
+}
+
+Err SessionCommand(const UInt8 *frame, UInt16 len)
+{
+	if (!gConnected)
+		return serErrNotOpen;
+	return Request(frame, len, VM_RESP_OK, 1);
+}
+
+const VmDeviceInfo *SessionDevice(void)
+{
+	return &gDevice;
+}
+
+const VmSelfInfo *SessionSelf(void)
+{
+	return &gSelf;
 }
 
 void SessionDisconnect(void)

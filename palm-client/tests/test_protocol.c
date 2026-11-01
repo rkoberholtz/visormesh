@@ -115,7 +115,10 @@ static void test_decode_real_device_info(void)
 		CHECK(strcmp(info.buildDate, "14 Aug 2026") == 0);
 		CHECK(strcmp(info.manufacturer, "Seeed Xiao-nrf52") == 0);
 		CHECK(strcmp(info.version, "v1.17.1") == 0);
+		CHECK(info.hasRepeat && !info.repeatEnabled);
+		CHECK(info.hasPathHashMode && info.pathHashMode == 0);
 		CHECK(!VmParseDeviceInfo(d.payload, 79, &info));
+		CHECK(VmParseDeviceInfo(d.payload, 80, &info) && !info.hasRepeat && !info.hasPathHashMode);
 	}
 }
 
@@ -143,6 +146,68 @@ static void test_builders_match_bench_frames(void)
 	CHECK(VmBuildSyncNextMessage(out, sizeof(out)) == sizeof(sync));
 	CHECK(memcmp(out, sync, sizeof(sync)) == 0);
 	CHECK(VmBuildAppStart(out, 10, "VisorMesh") == 0);
+}
+
+/* Settings commands, laid out per the MyMesh.cpp handlers (multi-byte fields little-endian). */
+static void test_settings_builders(void)
+{
+	UInt8 out[64];
+	static const UInt8 name[] = { 0x3c, 0x09, 0x00, 0x08, 'V', 'i', 's', 'o', 'r', 'N', 'e', 'o' };
+	/* USA preset: 910.525 MHz (0x000de4bd), BW 62.5 kHz (62500 = 0x0000f424), SF7, CR5, repeat off */
+	static const UInt8 radio[] = {
+		0x3c, 0x0c, 0x00, 0x0b, 0xbd, 0xe4, 0x0d, 0x00, 0x24, 0xf4, 0x00, 0x00, 0x07, 0x05, 0x00
+	};
+	static const UInt8 power[] = { 0x3c, 0x02, 0x00, 0x0c, 0xf7 };
+	static const UInt8 hash[] = { 0x3c, 0x03, 0x00, 0x3d, 0x00, 0x02 };
+
+	CHECK(VmBuildSetAdvertName(out, sizeof(out), "VisorNeo") == sizeof(name));
+	CHECK(memcmp(out, name, sizeof(name)) == 0);
+	CHECK(VmBuildSetAdvertName(out, sizeof(out), "") == 0);
+	CHECK(VmBuildSetAdvertName(out, sizeof(out), "0123456789012345678901234567890123456789") == 3 + 1 + 31);
+
+	CHECK(VmBuildSetRadioParams(out, sizeof(out), 910525UL, 62500UL, 7, 5, 1, 0) == sizeof(radio));
+	CHECK(memcmp(out, radio, sizeof(radio)) == 0);
+	CHECK(VmBuildSetRadioParams(out, sizeof(out), 910525UL, 62500UL, 7, 5, 0, 0) == sizeof(radio) - 1);
+	CHECK(out[1] == 0x0b);
+	CHECK(VmBuildSetRadioParams(out, sizeof(out), 910525UL, 62500UL, 7, 5, 1, 1) == sizeof(radio));
+	CHECK(out[sizeof(radio) - 1] == 1);
+
+	CHECK(VmBuildSetTxPower(out, sizeof(out), -9) == sizeof(power));
+	CHECK(memcmp(out, power, sizeof(power)) == 0);
+	CHECK(VmBuildSetPathHashMode(out, sizeof(out), 2) == sizeof(hash));
+	CHECK(memcmp(out, hash, sizeof(hash)) == 0);
+}
+
+static void test_decimals(void)
+{
+	UInt32 v;
+	Int32 i;
+	Char buf[16];
+
+	CHECK(VmParseDecimal("910.525", 3, &v) && v == 910525UL);
+	CHECK(VmParseDecimal("921", 3, &v) && v == 921000UL);
+	CHECK(VmParseDecimal("62.5", 3, &v) && v == 62500UL);
+	CHECK(VmParseDecimal("250", 3, &v) && v == 250000UL);
+	CHECK(VmParseDecimal("0.5", 3, &v) && v == 500UL);
+	CHECK(VmParseDecimal(".5", 3, &v) && v == 500UL);
+	CHECK(!VmParseDecimal("910.5255", 3, &v));
+	CHECK(!VmParseDecimal("9.1.0", 3, &v));
+	CHECK(!VmParseDecimal("", 3, &v));
+	CHECK(!VmParseDecimal(".", 3, &v));
+	CHECK(!VmParseDecimal("91a", 3, &v));
+	CHECK(!VmParseDecimal("99999999999", 3, &v));
+
+	VmFormatDecimal(buf, 910525UL, 3); CHECK(strcmp(buf, "910.525") == 0);
+	VmFormatDecimal(buf, 921000UL, 3); CHECK(strcmp(buf, "921") == 0);
+	VmFormatDecimal(buf, 62500UL, 3);  CHECK(strcmp(buf, "62.5") == 0);
+	VmFormatDecimal(buf, 7800UL, 3);   CHECK(strcmp(buf, "7.8") == 0);
+	VmFormatDecimal(buf, 500UL, 3);    CHECK(strcmp(buf, "0.5") == 0);
+	VmFormatDecimal(buf, 0UL, 3);      CHECK(strcmp(buf, "0") == 0);
+	VmFormatDecimal(buf, 869618UL, 3); CHECK(strcmp(buf, "869.618") == 0);
+
+	CHECK(VmParseInt("22", &i) && i == 22);
+	CHECK(VmParseInt("-9", &i) && i == -9);
+	CHECK(!VmParseInt("-", &i) && !VmParseInt("", &i) && !VmParseInt("2x", &i));
 }
 
 static void test_parse_self_info(void)
@@ -248,6 +313,8 @@ int main(void)
 	test_decode_max_frame();
 	test_decode_real_device_info();
 	test_builders_match_bench_frames();
+	test_settings_builders();
+	test_decimals();
 	test_parse_self_info();
 	test_parse_contacts();
 	test_parse_messages();

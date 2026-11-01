@@ -41,8 +41,12 @@ typedef char     Char;
 /* Commands (app -> radio) */
 #define VM_CMD_APP_START          1
 #define VM_CMD_GET_CONTACTS       4
+#define VM_CMD_SET_ADVERT_NAME    8
 #define VM_CMD_SYNC_NEXT_MESSAGE  10
+#define VM_CMD_SET_RADIO_PARAMS   11
+#define VM_CMD_SET_RADIO_TX_POWER 12
 #define VM_CMD_DEVICE_QUERY       22
+#define VM_CMD_SET_PATH_HASH_MODE 61
 
 /* Replies (radio -> app) */
 #define VM_RESP_OK                0
@@ -80,11 +84,28 @@ typedef struct {
 	Char   buildDate[13];
 	Char   manufacturer[41];
 	Char   version[21];
+	Boolean hasRepeat;       /* firmware v9+ reports client repeat */
+	Boolean repeatEnabled;
+	Boolean hasPathHashMode; /* firmware v10+ reports the path hash mode */
+	UInt8  pathHashMode;     /* path hash size in bytes = mode + 1 */
 } VmDeviceInfo;
+
+/* Limits the firmware enforces (MyMesh.cpp); checked before sending. */
+#define VM_FREQ_MIN_KHZ   150000UL
+#define VM_FREQ_MAX_KHZ   2500000UL
+#define VM_BW_MIN_HZ      7000UL
+#define VM_BW_MAX_HZ      500000UL
+#define VM_SF_MIN         5
+#define VM_SF_MAX         12
+#define VM_CR_MIN         5
+#define VM_CR_MAX         8
+#define VM_TX_POWER_MIN   (-9)
+#define VM_NAME_MAX       31
+#define VM_PATH_HASH_MODE_MAX 2
 
 typedef struct {
 	UInt8  advType;
-	UInt8  txPowerDbm;
+	Int8   txPowerDbm;      /* can be negative (down to -9) */
 	UInt8  maxTxPowerDbm;
 	UInt8  pubKey[VM_PUB_KEY_SIZE];
 	Int32  latE6;            /* degrees * 1e6 */
@@ -120,6 +141,17 @@ typedef struct {
 	UInt16       textLen;
 } VmMessage;
 
+/*
+ * Fixed-point decimals without floating point (the 68k has no FPU):
+ * VmParseDecimal("910.525", 3) = 910525, ("62.5", 3) = 62500, ("921", 3) = 921000.
+ * Returns false on anything but digits with at most one '.' and 'scale' decimals.
+ * VmFormatDecimal(910525, 3) = "910.525", (62500, 3) = "62.5", (921000, 3) = "921".
+ */
+Boolean VmParseDecimal(const Char *s, UInt16 scale, UInt32 *out);
+void    VmFormatDecimal(Char *out, UInt32 value, UInt16 scale);
+/* Optional leading '-', then digits. */
+Boolean VmParseInt(const Char *s, Int32 *out);
+
 /* Framing */
 UInt16  VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len);
 void    VmDecoderReset(VmFrameDecoder *d);
@@ -130,6 +162,11 @@ UInt16 VmBuildDeviceQuery(UInt8 *out, UInt16 outSize);
 UInt16 VmBuildAppStart(UInt8 *out, UInt16 outSize, const Char *appName);
 UInt16 VmBuildGetContacts(UInt8 *out, UInt16 outSize, UInt32 since);
 UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize);
+UInt16 VmBuildSetAdvertName(UInt8 *out, UInt16 outSize, const Char *name);
+UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr,
+                             Boolean includeRepeat, Boolean repeat);
+UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm);
+UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode);
 
 /* Reply parsers: take a decoded payload (code byte first). Return true if it has the expected code and length. */
 Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out);

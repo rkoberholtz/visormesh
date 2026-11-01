@@ -4,13 +4,10 @@
 #include "transport.h"
 #include "session.h"
 #include "ports.h"
+#include "settings.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_LABEL_CHARS     22    /* the info labels in the .rcp are padded to this width */
-
-/* Radio state shown on the main form; kept here so it survives a trip to the Ports form. */
-static VmDeviceInfo gDevice;
-static VmSelfInfo   gSelf;
 
 static Err RomVersionCompatible(UInt32 required, UInt16 launchFlags)
 {
@@ -57,6 +54,8 @@ static void FormatBandwidth(Char *out, UInt32 hz)
 
 static void ShowRadioInfo(FormType *form)
 {
+	const VmDeviceInfo *dev = SessionDevice();
+	const VmSelfInfo *self = SessionSelf();
 	Char buf[40], bw[12];
 
 	if (!SessionIsConnected()) {
@@ -68,15 +67,15 @@ static void ShowRadioInfo(FormType *form)
 		CtlSetLabel(FrmGetObjectPtr(form, FrmGetObjectIndex(form, MainConnectButton)), "Connect");
 		return;
 	}
-	SetLabel(form, MainNameLabel, gSelf.name);
-	FormatFreq(buf, gSelf.freqKHz);
+	SetLabel(form, MainNameLabel, self->name);
+	FormatFreq(buf, self->freqKHz);
 	SetLabel(form, MainFreqLabel, buf);
-	FormatBandwidth(bw, gSelf.bwHz);
-	StrPrintF(buf, "BW %s SF%u CR%u", bw, gSelf.sf, gSelf.cr);
+	FormatBandwidth(bw, self->bwHz);
+	StrPrintF(buf, "BW %s SF%u CR%u", bw, self->sf, self->cr);
 	SetLabel(form, MainModeLabel, buf);
-	StrPrintF(buf, "%u dBm (max %u)", gSelf.txPowerDbm, gSelf.maxTxPowerDbm);
+	StrPrintF(buf, "%d dBm (max %u)", (Int16)(Int8)self->txPowerDbm, self->maxTxPowerDbm);
 	SetLabel(form, MainPowerLabel, buf);
-	StrPrintF(buf, "%s (%u)", gDevice.version, gDevice.fwVerCode);
+	StrPrintF(buf, "%s (%u)", dev->version, dev->fwVerCode);
 	SetLabel(form, MainFirmwareLabel, buf);
 	CtlSetLabel(FrmGetObjectPtr(form, FrmGetObjectIndex(form, MainConnectButton)), "Disconnect");
 }
@@ -93,7 +92,7 @@ static void ConnectOrDisconnect(FormType *form)
 	}
 
 	SetLabel(form, MainNameLabel, "Connecting...");
-	err = SessionConnect(&gDevice, &gSelf);
+	err = SessionConnect();
 	if (err == errNone) {
 		ShowRadioInfo(form);
 		return;
@@ -140,6 +139,12 @@ static Boolean MainFormHandleEvent(EventType *event)
 		case MainPortsButton:
 			FrmGotoForm(PortsForm);
 			return true;
+		case MainSettingsButton:
+			if (SessionIsConnected())
+				FrmGotoForm(SettingsForm);
+			else
+				FrmCustomAlert(SettingsErrorAlert, "Connect to the radio first.", "", "");
+			return true;
 		}
 		break;
 	default:
@@ -162,6 +167,8 @@ static Boolean AppHandleEvent(EventType *event)
 		FrmSetEventHandler(form, MainFormHandleEvent);
 	else if (formId == PortsForm)
 		FrmSetEventHandler(form, PortsFormHandleEvent);
+	else if (formId == SettingsForm)
+		FrmSetEventHandler(form, SettingsFormHandleEvent);
 	return true;
 }
 
