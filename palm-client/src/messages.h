@@ -7,6 +7,7 @@
 #define VM_MESSAGES_H
 
 #include <PalmOS.h>
+#include "sections.h"   /* this module is in the second code segment */
 #include "protocol.h"
 
 #define VM_MAX_MESSAGES 500
@@ -47,27 +48,27 @@ typedef struct {
 	/* text follows, textLen bytes plus a NUL */
 } VmMsgHeader;
 
-Err     MessagesOpen(void);
-void    MessagesClose(void);
-UInt16  MessagesCount(void);
+Err     MessagesOpen(void) VM_SECT2;
+void    MessagesClose(void) VM_SECT2;
+UInt16  MessagesCount(void) VM_SECT2;
 /* Locks record i; returns its header (text right after it). Call MessagesRelease(i) when done. */
-const VmMsgHeader *MessagesLock(UInt16 i);
-void    MessagesRelease(UInt16 i);
+const VmMsgHeader *MessagesLock(UInt16 i) VM_SECT2;
+void    MessagesRelease(UInt16 i) VM_SECT2;
 
-Boolean ConvEqual(const VmConv *a, const VmConv *b);
+Boolean ConvEqual(const VmConv *a, const VmConv *b) VM_SECT2;
 
 /* Stores a received message (converting its UTF-8 text). Returns its index. */
-Err     MessagesAddIncoming(const VmMessage *m, UInt32 now);
+Err     MessagesAddIncoming(const VmMessage *m, UInt32 now) VM_SECT2;
 /* Stores an outgoing message as pending; *index is its record. */
-Err     MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16 *index);
-void    MessagesSetStatus(UInt16 index, UInt8 status, UInt32 ack, UInt32 ackDeadline);
+Err     MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16 *index) VM_SECT2;
+void    MessagesSetStatus(UInt16 index, UInt8 status, UInt32 ack, UInt32 ackDeadline) VM_SECT2;
 /* Before a retry: the radio wants a higher attempt number for the same message. */
-void    MessagesBumpAttempt(UInt16 index);
+void    MessagesBumpAttempt(UInt16 index) VM_SECT2;
 /* Marks the DM with this ack acked. Returns true if one matched. */
-Boolean MessagesAcked(UInt32 ack);
+Boolean MessagesAcked(UInt32 ack) VM_SECT2;
 /* Fails DMs whose ack deadline has passed. Returns true if any changed. */
-Boolean MessagesExpireAcks(UInt32 now);
+Boolean MessagesExpireAcks(UInt32 now) VM_SECT2;
 /* Clears the unread flag on a conversation's messages. */
-void    MessagesMarkRead(const VmConv *conv);
+void    MessagesMarkRead(const VmConv *conv) VM_SECT2;
 
 #endif

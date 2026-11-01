@@ -9,7 +9,7 @@ ARG PILRC_VER=3.2.91
 ARG PALM_SDK_COMMIT=1fa22066ca0f8b74949c14dd1d626294145d1c09
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl unzip make gcc libc6-dev \
+ && apt-get install -y --no-install-recommends ca-certificates curl unzip make gcc libc6-dev python3-minimal \
  && curl -fsSLo /tmp/prc.deb https://github.com/jichu4n/prc-tools-remix/releases/download/v${PRC_TOOLS_VER}/prc-tools-remix_${PRC_TOOLS_VER}.bookworm_amd64.deb \
  && curl -fsSLo /tmp/pilrc.deb https://github.com/jichu4n/pilrc/releases/download/${PILRC_TAG}/pilrc_${PILRC_VER}.bookworm_amd64.deb \
  && apt-get install -y --no-install-recommends /tmp/prc.deb /tmp/pilrc.deb \

@@ -1,6 +1,12 @@
 #include <PalmOS.h>
 #include "rowlist.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void GetBounds(const RowList *list, RectangleType *r) VM_SECT2;
+static UInt16 MaxTop(const RowList *list) VM_SECT2;
+static void UpdateScrollBar(const RowList *list) VM_SECT2;
+static void Scroll(RowList *list, Int16 delta) VM_SECT2;
+
 static void GetBounds(const RowList *list, RectangleType *r)
 {
 	FormType *form = FrmGetActiveForm();

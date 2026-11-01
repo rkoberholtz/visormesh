@@ -19,6 +19,7 @@
 #define GLYPH_LEFT       ((Char)0x8E)
 #define GLYPH_RIGHT      ((Char)0x8F)
 #define GLYPH_PENDING    ((Char)0x90)
+#define GLYPH_EMOJI      ((Char)0x99)
 #define GLYPH_FORWARD    ((Char)0x9B)
 
 #define VM_SMALL_FONT_HEIGHT 6

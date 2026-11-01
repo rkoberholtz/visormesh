@@ -3,6 +3,7 @@
 #include <string.h>
 #include "../src/ui/text.h"
 #include "../src/ui/fontmetrics.h"
+#include "../src/ui/glyphs.h"
 
 static int failures;
 
@@ -101,8 +102,22 @@ static void test_utf8(void)
 	static const UInt8 broken[] = { 'x', 0xC3 };
 
 	CHECK(TxtUtf8ToPalm(cafe, sizeof(cafe), out, sizeof(out)) == 4 && (unsigned char)out[3] == 0xE9);
-	CHECK(TxtUtf8ToPalm(dots, sizeof(dots), out, sizeof(out)) == 2 && (unsigned char)out[1] == 0x85);
-	CHECK(TxtUtf8ToPalm(emoji, sizeof(emoji), out, sizeof(out)) == 4 && strcmp(out, "hi ?") == 0);
+	CHECK(TxtUtf8ToPalm(dots, sizeof(dots), out, sizeof(out)) == 2 && out[1] == GLYPH_ELLIPSIS);
+	CHECK(TxtUtf8ToPalm(emoji, sizeof(emoji), out, sizeof(out)) == 4 && out[3] == GLYPH_EMOJI);
+	{
+		/* "a→b" (arrow), "“hi”" (curly quotes), "x—y" (em dash), "❤️" (heart + VS16) */
+		static const UInt8 arrow[] = { 'a', 0xE2, 0x86, 0x92, 'b' };
+		static const UInt8 quotes[] = { 0xE2, 0x80, 0x9C, 'h', 'i', 0xE2, 0x80, 0x9D };
+		static const UInt8 dash[] = { 'x', 0xE2, 0x80, 0x94, 'y' };
+		static const UInt8 heart[] = { 0xE2, 0x9D, 0xA4, 0xEF, 0xB8, 0x8F };
+		static const UInt8 check[] = { 0xE2, 0x9C, 0x93 };
+
+		CHECK(TxtUtf8ToPalm(arrow, sizeof(arrow), out, sizeof(out)) == 3 && out[1] == GLYPH_RIGHT);
+		CHECK(TxtUtf8ToPalm(quotes, sizeof(quotes), out, sizeof(out)) == 4 && strcmp(out, "\"hi\"") == 0);
+		CHECK(TxtUtf8ToPalm(dash, sizeof(dash), out, sizeof(out)) == 3 && strcmp(out, "x-y") == 0);
+		CHECK(TxtUtf8ToPalm(heart, sizeof(heart), out, sizeof(out)) == 1 && out[0] == GLYPH_EMOJI);
+		CHECK(TxtUtf8ToPalm(check, sizeof(check), out, sizeof(out)) == 1 && out[0] == GLYPH_ACKED);
+	}
 	CHECK(TxtUtf8ToPalm(broken, sizeof(broken), out, sizeof(out)) == 2 && strcmp(out, "x?") == 0);
 	CHECK(TxtUtf8ToPalm((const UInt8 *)"abcdef", 6, out, 4) == 3 && strcmp(out, "abc") == 0);
 }
@@ -117,8 +132,8 @@ static void test_to_utf8(void)
 	CHECK(TxtPalmToUtf8(cafe, 4, out, sizeof(out)) == 5 && out[3] == 0xC3 && out[4] == 0xA9);
 	CHECK(TxtPalmToUtf8(quotes, 5, out, sizeof(out)) == 11);
 	CHECK(out[0] == 0xE2 && out[1] == 0x80 && out[2] == 0x9C);          /* U+201C */
-	/* round trip back to the Visor's charset */
-	CHECK(TxtUtf8ToPalm(out, 11, back, sizeof(back)) == 5 && memcmp(back, quotes, 5) == 0);
+	/* back to the Visor's charset: the quotes as ASCII (the font has no curly ones), the ellipsis kept */
+	CHECK(TxtUtf8ToPalm(out, 11, back, sizeof(back)) == 5 && memcmp(back, "\"hi\"", 4) == 0 && back[4] == GLYPH_ELLIPSIS);
 	/* doesn't fit: nothing rather than a cut character */
 	CHECK(TxtPalmToUtf8(cafe, 4, out, 4) == 0);
 }

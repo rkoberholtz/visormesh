@@ -3,7 +3,13 @@
 #include "ui/text.h"
 #include "messages.h"
 
-#define DB_NAME     "VisorMeshMessages"
+/* In the second code segment: see sections.h for the rules. */
+static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index) VM_SECT2;
+static void WriteHeader(UInt16 i, const VmMsgHeader *hdr) VM_SECT2;
+static Boolean ReadHeader(UInt16 i, VmMsgHeader *hdr) VM_SECT2;
+
+/* a data array, not a literal: this module is in the second code segment (sections.h) */
+static Char DB_NAME[] = "VisorMeshMessages";
 #define DB_TYPE     'msgs'
 #define DB_CREATOR  'VMsh'
 #define TEXT_MAX    (VM_MAX_FRAME + 1)

@@ -7,6 +7,7 @@
 #define VM_CONVOS_H
 
 #include <PalmOS.h>
+#include "sections.h"   /* this module is in the second code segment */
 #include "messages.h"
 
 #define VM_ROW_SECTION 0
@@ -25,13 +26,13 @@ typedef struct {
 } VmConvRow;
 
 /* Fills rows (sections included); returns how many. */
-UInt16 ConvosBuild(VmConvRow *rows, UInt16 max);
+UInt16 ConvosBuild(VmConvRow *rows, UInt16 max) VM_SECT2;
 /* Total unread messages across conversations. */
-UInt16 ConvosUnread(const VmConvRow *rows, UInt16 n);
+UInt16 ConvosUnread(const VmConvRow *rows, UInt16 n) VM_SECT2;
 
 /* Display name for a conversation (channel name, contact name, or key prefix in hex). */
-void   ConvName(const VmConv *conv, Char *out, UInt16 size);
+void   ConvName(const VmConv *conv, Char *out, UInt16 size) VM_SECT2;
 /* Display name for a DM sender / contact key prefix. */
-void   ContactNameForPrefix(const UInt8 *prefix, Char *out, UInt16 size);
+void   ContactNameForPrefix(const UInt8 *prefix, Char *out, UInt16 size) VM_SECT2;
 
 #endif

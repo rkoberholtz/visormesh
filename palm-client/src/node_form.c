@@ -11,6 +11,16 @@
 #include "node_form.h"
 #include "ui/draw.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void SetLabel(FormType *form, UInt16 id, const Char *text) VM_SECT2;
+static void FormatFreq(Char *out, UInt32 kHz) VM_SECT2;
+static void FormatBandwidth(Char *out, UInt32 hz) VM_SECT2;
+static void ShowRadioInfo(FormType *form) VM_SECT2;
+static void DrawClockLine(void) VM_SECT2;
+static void ShowStatus(const Char *text) VM_SECT2;
+static void ConnectOrDisconnect(FormType *form) VM_SECT2;
+static void SendAdvert(void) VM_SECT2;
+
 #define VM_LABEL_CHARS 22    /* the info labels in the .rcp are padded to this width */
 
 /* Replaces a label's text, truncated to the width reserved for it in the .rcp. */

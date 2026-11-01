@@ -2,6 +2,9 @@
 #include "../resources.h"
 #include "draw.h"
 
+/* In the second code segment: see sections.h for the rules. */
+
+
 static MemHandle gFontH = 0;
 
 Err UiFontInit(void)

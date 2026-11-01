@@ -47,6 +47,7 @@ SYMBOLS = [
     (0x8E, 'GLYPH_LEFT', 0x2190),
     (0x8F, 'GLYPH_RIGHT', 0x2192),
     (0x90, 'GLYPH_PENDING', ['-----', '-###-', '#-#-#', '#-##-', '#---#', '-###-']),   # clock face
+    (0x99, 'GLYPH_EMOJI', ['-###-', '#-#-#', '#---#', '##-##', '-###-', '-----']),     # smiley: any emoji
     (0x9B, 'GLYPH_FORWARD', 0x203A),
 ]
 

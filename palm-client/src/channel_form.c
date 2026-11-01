@@ -14,6 +14,14 @@
 #include "ui/text.h"
 #include "channel_form.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void *GetObject(FormType *form, UInt16 id) VM_SECT2;
+static const Char *FieldText(FormType *form, UInt16 id) VM_SECT2;
+static Boolean IsPrivate(FormType *form) VM_SECT2;
+static void ShowKeyField(FormType *form) VM_SECT2;
+static void Error(const Char *msg) VM_SECT2;
+static Boolean Add(FormType *form) VM_SECT2;
+
 static void *GetObject(FormType *form, UInt16 id)
 {
 	return FrmGetObjectPtr(form, FrmGetObjectIndex(form, id));

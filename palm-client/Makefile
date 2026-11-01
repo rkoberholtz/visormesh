@@ -66,6 +66,7 @@ build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt |
 	touch $@
 
 build/$(APP).prc: build/$(APP) build/res.stamp
+	python3 tools/check_sections.py $(OBJS)
 	build-prc -o $@ $(APP).def build/$(APP) build/res/*.bin
 
 test: | build

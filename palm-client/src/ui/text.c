@@ -1,8 +1,9 @@
 #include "text.h"
 #include "fontmetrics.h"
+#include "glyphs.h"
 
 /* In the second code segment: see sections.h for the rules. */
-static Char Cp1252(UInt32 cp) VM_SECT2;
+static Char MapUnicode(UInt32 cp) VM_SECT2;
 
 Int16 TxtSmallWidth(Char c)
 {
@@ -116,20 +117,41 @@ UInt16 TxtSplitSender(const Char *text, UInt16 len)
 	return 0;
 }
 
-/* Windows-1252's 0x80-0x9F punctuation, for the Unicode characters people type. */
-static Char Cp1252(UInt32 cp)
+/*
+ * Unicode beyond Latin-1 to what the small font can show: the UI symbols it
+ * has (arrows, check marks, node-type marks), ASCII for typographic quotes and
+ * dashes, a smiley for any emoji. Returns 0 for characters to drop (variation
+ * selectors, zero-width joiners) and '?' for anything else.
+ */
+static Char MapUnicode(UInt32 cp)
 {
+	if (cp == 0xFE0F || cp == 0xFE0E || (cp >= 0x200B && cp <= 0x200F) || cp == 0x2060)
+		return 0;                                       /* invisible */
+	if ((cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF && cp != 0x2605 &&
+	     cp != 0x2713 && cp != 0x2714 && cp != 0x2717 && cp != 0x2718 && cp != 0x2705 && cp != 0x274C))
+		return GLYPH_EMOJI;
 	switch (cp) {
-	case 0x2026: return (Char)0x85;   /* ellipsis */
-	case 0x2018: return (Char)0x91;
-	case 0x2019: return (Char)0x92;
-	case 0x201C: return (Char)0x93;
-	case 0x201D: return (Char)0x94;
-	case 0x2022: return (Char)0x95;   /* bullet */
-	case 0x2013: return (Char)0x96;   /* en dash */
-	case 0x2014: return (Char)0x97;   /* em dash */
-	case 0x20AC: return (Char)0x80;   /* euro */
-	default:     return '?';
+	case 0x2018: case 0x2019: case 0x201A: case 0x2032: return '\'';
+	case 0x201C: case 0x201D: case 0x201E: case 0x2033: return '"';
+	case 0x2010: case 0x2011: case 0x2012: case 0x2013: case 0x2014: case 0x2015: case 0x2212: return '-';
+	case 0x2022: case 0x25CF: case 0x26AB: return GLYPH_COMPANION;
+	case 0x2026: return GLYPH_ELLIPSIS;
+	case 0x2190: return GLYPH_LEFT;
+	case 0x2192: case 0x27A1: return GLYPH_RIGHT;
+	case 0x2191: return GLYPH_UP;
+	case 0x2193: return GLYPH_DOWN;
+	case 0x2039: return GLYPH_BACK;
+	case 0x203A: return GLYPH_FORWARD;
+	case 0x2605: case 0x2606: case 0x2B50: return GLYPH_SELF;
+	case 0x2713: case 0x2714: case 0x2705: return GLYPH_ACKED;
+	case 0x2717: case 0x2718: case 0x274C: return GLYPH_FAILED;
+	case 0x25B2: case 0x25B3: return GLYPH_REPEATER;
+	case 0x25A0: case 0x25A1: return GLYPH_ROOM;
+	case 0x25C9: return GLYPH_SENSOR;
+	case 0x25CB: return GLYPH_UNKNOWN;
+	case 0x2500: case 0x2501: return GLYPH_RULE;
+	case 0x2502: case 0x2503: return '|';
+	default: return '?';
 	}
 }
 
@@ -168,10 +190,14 @@ UInt16 TxtUtf8ToPalm(const UInt8 *in, UInt16 inLen, Char *out, UInt16 outSize)
 			continue;
 		}
 		i += 1 + extra;
-		if (cp >= 0xA0 && cp <= 0xFF)
+		if (cp >= 0xA0 && cp <= 0xFF) {
 			out[o++] = (Char)cp;
-		else
-			out[o++] = Cp1252(cp);
+		} else {
+			Char c = MapUnicode(cp);
+
+			if (c)
+				out[o++] = c;
+		}
 	}
 	out[o] = 0;
 	return o;

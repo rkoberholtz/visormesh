@@ -16,6 +16,17 @@
 #include "ui/rowlist.h"
 #include "contacts_form.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static Char TypeGlyph(UInt8 type) VM_SECT2;
+static const Char *TypeName(UInt8 type) VM_SECT2;
+static void FormatRoute(Char *out, UInt8 pathLen) VM_SECT2;
+static UInt16 SelfRows(void) VM_SECT2;
+static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
+static void Load(Boolean draw) VM_SECT2;
+static void SetTitle(FormType *form) VM_SECT2;
+static void Refresh(FormType *form) VM_SECT2;
+static void ShowDetails(UInt16 row) VM_SECT2;
+
 #define NAME_X   8
 #define NAME_W   82
 #define HEARD_R  110

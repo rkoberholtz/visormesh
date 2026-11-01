@@ -13,6 +13,13 @@
 #include "ui/rowlist.h"
 #include "home_form.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
+static Boolean Selectable(UInt16 row, void *ctx) VM_SECT2;
+static void DrawTitleStatus(void) VM_SECT2;
+static void ShowStatus(const Char *text) VM_SECT2;
+static void Rebuild(Boolean draw) VM_SECT2;
+
 #define HOME_MAX_ROWS 64
 #define NAME_X     8
 #define NAME_W     56

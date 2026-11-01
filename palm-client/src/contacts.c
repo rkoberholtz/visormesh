@@ -4,7 +4,12 @@
 #include "contacts.h"
 #include "ui/text.h"
 
-#define DB_NAME     "VisorMeshContacts"
+/* In the second code segment: see sections.h for the rules. */
+static Int16 CompareByName(void *a, void *b, Int16 other, SortRecordInfoPtr ia, SortRecordInfoPtr ib, MemHandle appInfo) VM_SECT2;
+static Err AddContact(const VmContact *c, void *ctx) VM_SECT2;
+
+/* a data array, not a literal: this module is in the second code segment (sections.h) */
+static Char DB_NAME[] = "VisorMeshContacts";
 #define DB_TYPE     'cont'
 #define DB_CREATOR  'VMsh'
 

@@ -4,7 +4,12 @@
 #include "channels.h"
 #include "ui/text.h"
 
-#define DB_NAME     "VisorMeshChannels"
+/* In the second code segment: see sections.h for the rules. */
+static Boolean InUse(const VmChannel *c) VM_SECT2;
+
+/* data arrays, not literals: this module is in the second code segment (sections.h) */
+static Char DB_NAME[] = "VisorMeshChannels";
+static Char kEmpty[] = "";
 #define DB_TYPE     'chan'
 #define DB_CREATOR  'VMsh'
 
@@ -150,5 +155,5 @@ Err ChannelsRemove(UInt8 slot, UInt8 maxChannels)
 	UInt8 zero[VM_CHANNEL_SECRET_SIZE];
 
 	MemSet(zero, sizeof(zero), 0);
-	return ChannelsSet(slot, "", zero, maxChannels);
+	return ChannelsSet(slot, kEmpty, zero, maxChannels);
 }

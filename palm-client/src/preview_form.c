@@ -7,6 +7,10 @@
 #include "ui/draw.h"
 #include "preview_form.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void Row(Coord y, Char mark, const Char *name, const Char *badge, const Char *age, const Char *preview) VM_SECT2;
+static void DrawPreview(void) VM_SECT2;
+
 #define TOP 16
 
 static void Row(Coord y, Char mark, const Char *name, const Char *badge, const Char *age, const Char *preview)

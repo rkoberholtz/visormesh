@@ -6,6 +6,15 @@
 #include "messages.h"
 #include "convos.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static void HexPrefix(const UInt8 *p, Char *out) VM_SECT2;
+static Char ChannelMarker(const VmChannel *c) VM_SECT2;
+static void ChannelDisplayName(const VmChannel *c, Char *out, UInt16 size) VM_SECT2;
+static void AddSection(VmConvRow *rows, UInt16 *n, UInt16 max, const Char *label) VM_SECT2;
+static VmConvRow *AddConv(VmConvRow *rows, UInt16 *n, UInt16 max, const VmConv *conv, Char marker, const Char *name) VM_SECT2;
+static VmConvRow *FindRow(VmConvRow *rows, UInt16 n, const VmConv *conv) VM_SECT2;
+static void SetPreview(VmConvRow *r, const VmMsgHeader *h) VM_SECT2;
+
 static void HexPrefix(const UInt8 *p, Char *out)
 {
 	StrPrintF(out, "%02x%02x%02x%02x", p[0], p[1], p[2], p[3]);
