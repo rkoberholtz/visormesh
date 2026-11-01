@@ -73,4 +73,4 @@ The Ports screen lists the Neo's Serial Manager drivers: `A8xZ` Serial, `HaSA` U
 
 ## Testing without hardware
 
-The Visor can't be emulated on a Mac: CloudpilotEmu doesn't support Handspring devices. Use CloudpilotEmu (https://cloudpilot-emu.github.io/app) with a Palm OS 3.5 device ROM, such as a Palm IIIx or m100. The OS APIs match the Neo's. In the emulator, "Query radio" should report "No reply" or an open error, since there's no radio attached.
+The Visor can't be emulated on a Mac: CloudpilotEmu doesn't support Handspring devices. Use CloudpilotEmu (https://cloudpilot-emu.github.io/app) with a Palm OS 3.5 device ROM, such as a Palm IIIx or m100. The OS APIs match the Neo's. In the emulator, Connect should report "No reply from radio" or a port error, since there's no radio attached.
