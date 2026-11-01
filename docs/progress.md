@@ -20,8 +20,11 @@
 - [ ] Plug stack into carrier; `CMD_DEVICE_QUERY` gets a DEVICE_INFO reply
 
 ### Palm client
-- [ ] Toolchain set up (prc-tools or CodeWarrior, Palm OS 3.5 SDK, HsExt headers)
-- [ ] POSE running a 3.5.2H3 Visor ROM
+- [x] Toolchain set up: prc-tools-remix 2.3.6 + PilRC + Palm OS 3.5 SDK in Docker (`palm-client/Dockerfile`)
+- [x] Scaffold: builds `visormesh.prc` (main form + "Query radio" → CMD_DEVICE_QUERY); protocol framing with host tests
+- [ ] Pi install path: visor driver + pilot-link on the Pi, `make install` tested
+- [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
+- [ ] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them), needed for module-ROM work only
 - [ ] Port springSD bus routines; SC16IS740 driver
 - [ ] Companion protocol framing + minimal command set
 - [ ] UI: contacts, DMs, channels

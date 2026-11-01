@@ -1,0 +1,23 @@
+#include "resources.h"
+
+VERSION ID 1 "0.1"
+APPLICATIONICONNAME ID 1000 "VisorMesh"
+
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "VisorMesh"
+  LABEL "MeshCore client for the Visor" AUTOID AT (5 20)
+  LABEL "Radio:" AUTOID AT (5 45) FONT 1
+  LABEL "Not connected                  " ID MainStatusLabel AT (40 45)
+  BUTTON "Query radio" ID MainQueryButton AT (CENTER 140 AUTO AUTO)
+END
+
+ALERT ID RomIncompatibleAlert
+ERROR
+BEGIN
+  TITLE "System Incompatible"
+  MESSAGE "VisorMesh needs Palm OS 3.5 or later."
+  BUTTONS "OK"
+END
