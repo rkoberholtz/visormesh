@@ -41,8 +41,16 @@ build/%.o: src/%.c src/*.h src/ui/*.h | build
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build/$(APP): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+# Two code segments (see src/sections.h): multigen turns visormesh.def into a
+# stub and a linker script that place section vmcode2 in its own code resource.
+build/$(APP)-sections.s build/$(APP)-sections.ld: $(APP).def | build
+	m68k-palmos-multigen -b build/$(APP)-sections $(APP).def
+
+build/$(APP)-sections.o: build/$(APP)-sections.s
+	$(CC) -c $< -o $@
+
+build/$(APP): $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
+	$(CC) $(CFLAGS) -o $@ $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
 
 build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt | build
 	rm -rf build/res && mkdir -p build/res
@@ -50,7 +58,7 @@ build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt |
 	touch $@
 
 build/$(APP).prc: build/$(APP) build/res.stamp
-	build-prc --backup -o $@ -n "$(NAME)" -c $(CREATOR) build/$(APP) build/res/*.bin
+	build-prc -o $@ $(APP).def build/$(APP) build/res/*.bin
 
 test: | build
 	gcc -std=c99 -Wall -Wextra -o build/test_protocol tests/test_protocol.c src/protocol.c

@@ -1,5 +1,11 @@
 #include "protocol.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static UInt32 GetLE32(const UInt8 *p) VM_SECT2;
+static void   CopyBytes(UInt8 *dst, const UInt8 *src, UInt16 n) VM_SECT2;
+static void   CopyName(Char *dst, UInt16 dstSize, const UInt8 *src, UInt16 n) VM_SECT2;
+static void   PutLE32(UInt8 *p, UInt32 v) VM_SECT2;
+
 enum { ST_SYNC, ST_LEN_LO, ST_LEN_HI, ST_PAYLOAD };
 
 #define DEVICE_INFO_MIN_LEN  80     /* through the version string */
@@ -351,7 +357,7 @@ UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood)
 /* CMD_REBOOT: code + "reboot" (the firmware checks the word, so a stray byte can't reboot it). */
 UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize)
 {
-	static const UInt8 p[7] = { VM_CMD_REBOOT, 'r', 'e', 'b', 'o', 'o', 't' };
+	static UInt8 p[7] = { VM_CMD_REBOOT, 'r', 'e', 'b', 'o', 'o', 't' };   /* not const: sections.h */
 
 	return VmEncodeFrame(out, outSize, p, sizeof(p));
 }

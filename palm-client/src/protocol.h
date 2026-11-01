@@ -14,6 +14,8 @@
 #ifndef VM_PROTOCOL_H
 #define VM_PROTOCOL_H
 
+#include "sections.h"   /* this module is in the second code segment */
+
 #ifdef __palmos__
 #include <PalmTypes.h>
 #else
@@ -191,48 +193,48 @@ typedef struct {
  * Returns false on anything but digits with at most one '.' and 'scale' decimals.
  * VmFormatDecimal(910525, 3) = "910.525", (62500, 3) = "62.5", (921000, 3) = "921".
  */
-Boolean VmParseDecimal(const Char *s, UInt16 scale, UInt32 *out);
-void    VmFormatDecimal(Char *out, UInt32 value, UInt16 scale);
+Boolean VmParseDecimal(const Char *s, UInt16 scale, UInt32 *out) VM_SECT2;
+void    VmFormatDecimal(Char *out, UInt32 value, UInt16 scale) VM_SECT2;
 /* Optional leading '-', then digits. */
-Boolean VmParseInt(const Char *s, Int32 *out);
+Boolean VmParseInt(const Char *s, Int32 *out) VM_SECT2;
 
 /* Framing */
-UInt16  VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len);
-void    VmDecoderReset(VmFrameDecoder *d);
-Boolean VmDecoderFeed(VmFrameDecoder *d, UInt8 byte);
+UInt16  VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len) VM_SECT2;
+void    VmDecoderReset(VmFrameDecoder *d) VM_SECT2;
+Boolean VmDecoderFeed(VmFrameDecoder *d, UInt8 byte) VM_SECT2;
 
 /* Command builders: each writes a complete '<' frame and returns its length, or 0 if it won't fit. */
-UInt16 VmBuildDeviceQuery(UInt8 *out, UInt16 outSize);
-UInt16 VmBuildAppStart(UInt8 *out, UInt16 outSize, const Char *appName);
-UInt16 VmBuildGetContacts(UInt8 *out, UInt16 outSize, UInt32 since);
-UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize);
-UInt16 VmBuildSetAdvertName(UInt8 *out, UInt16 outSize, const Char *name);
+UInt16 VmBuildDeviceQuery(UInt8 *out, UInt16 outSize) VM_SECT2;
+UInt16 VmBuildAppStart(UInt8 *out, UInt16 outSize, const Char *appName) VM_SECT2;
+UInt16 VmBuildGetContacts(UInt8 *out, UInt16 outSize, UInt32 since) VM_SECT2;
+UInt16 VmBuildSyncNextMessage(UInt8 *out, UInt16 outSize) VM_SECT2;
+UInt16 VmBuildSetAdvertName(UInt8 *out, UInt16 outSize, const Char *name) VM_SECT2;
 UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr,
-                             Boolean includeRepeat, Boolean repeat);
-UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm);
-UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode);
-UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx);
+                             Boolean includeRepeat, Boolean repeat) VM_SECT2;
+UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm) VM_SECT2;
+UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode) VM_SECT2;
+UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx) VM_SECT2;
 /* Direct message: text is UTF-8 bytes, prefix the first 6 bytes of the recipient's key. */
 UInt16 VmBuildSendTxt(UInt8 *out, UInt16 outSize, const UInt8 *prefix6, UInt32 timestamp, UInt8 attempt,
-                      const UInt8 *text, UInt16 textLen);
+                      const UInt8 *text, UInt16 textLen) VM_SECT2;
 UInt16 VmBuildSendChannelTxt(UInt8 *out, UInt16 outSize, UInt8 channelIdx, UInt32 timestamp,
-                             const UInt8 *text, UInt16 textLen);
-UInt16 VmBuildGetTime(UInt8 *out, UInt16 outSize);
-UInt16 VmBuildSetTime(UInt8 *out, UInt16 outSize, UInt32 unixSeconds);
-UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood);
+                             const UInt8 *text, UInt16 textLen) VM_SECT2;
+UInt16 VmBuildGetTime(UInt8 *out, UInt16 outSize) VM_SECT2;
+UInt16 VmBuildSetTime(UInt8 *out, UInt16 outSize, UInt32 unixSeconds) VM_SECT2;
+UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood) VM_SECT2;
 /* CMD_REBOOT: the radio restarts without replying. */
-UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize);
+UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize) VM_SECT2;
 
 /* Reply parsers: take a decoded payload (code byte first). Return true if it has the expected code and length. */
-Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out);
-Boolean VmParseSelfInfo(const UInt8 *p, UInt16 len, VmSelfInfo *out);
-Boolean VmParseContactsStart(const UInt8 *p, UInt16 len, UInt32 *count);
-Boolean VmParseContact(const UInt8 *p, UInt16 len, VmContact *out);
-Boolean VmParseEndOfContacts(const UInt8 *p, UInt16 len, UInt32 *lastMod);
-Boolean VmParseMessage(const UInt8 *p, UInt16 len, VmMessage *out);
-Boolean VmParseChannelInfo(const UInt8 *p, UInt16 len, VmChannel *out);
-Boolean VmParseSent(const UInt8 *p, UInt16 len, VmSent *out);
-Boolean VmParseSendConfirmed(const UInt8 *p, UInt16 len, UInt32 *ack, UInt32 *tripMs);
-Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds);
+Boolean VmParseDeviceInfo(const UInt8 *p, UInt16 len, VmDeviceInfo *out) VM_SECT2;
+Boolean VmParseSelfInfo(const UInt8 *p, UInt16 len, VmSelfInfo *out) VM_SECT2;
+Boolean VmParseContactsStart(const UInt8 *p, UInt16 len, UInt32 *count) VM_SECT2;
+Boolean VmParseContact(const UInt8 *p, UInt16 len, VmContact *out) VM_SECT2;
+Boolean VmParseEndOfContacts(const UInt8 *p, UInt16 len, UInt32 *lastMod) VM_SECT2;
+Boolean VmParseMessage(const UInt8 *p, UInt16 len, VmMessage *out) VM_SECT2;
+Boolean VmParseChannelInfo(const UInt8 *p, UInt16 len, VmChannel *out) VM_SECT2;
+Boolean VmParseSent(const UInt8 *p, UInt16 len, VmSent *out) VM_SECT2;
+Boolean VmParseSendConfirmed(const UInt8 *p, UInt16 len, UInt32 *ack, UInt32 *tripMs) VM_SECT2;
+Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds) VM_SECT2;
 
 #endif

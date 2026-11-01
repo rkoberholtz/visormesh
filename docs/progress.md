@@ -35,7 +35,7 @@
 - [x] Contact list: GET_CONTACTS into a Palm database + contacts screen
 - [x] Messages: store, sync on PUSH_MSG_WAITING, send with ack tracking (built; to verify on the Visor)
 - [x] MeshTerm-style UI: small 4x6 font, Home (conversations), Conversation, Contacts, Node (built; to verify)
-- [ ] Split the code into segments: code resource is 28.3 KB of the ~32 KB single-segment limit
+- [x] Split the code into segments: protocol.c + ui/text.c in vmcode2 (seg 1 24.3 KB, seg 2 4.9 KB); rules in src/sections.h (to verify on the Visor)
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 

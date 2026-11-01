@@ -1,6 +1,9 @@
 #include "text.h"
 #include "fontmetrics.h"
 
+/* In the second code segment: see sections.h for the rules. */
+static Char Cp1252(UInt32 cp) VM_SECT2;
+
 Int16 TxtSmallWidth(Char c)
 {
 	return gSmallFontWidths[(UInt8)c];
@@ -189,7 +192,7 @@ void TxtUtf8NameToPalm(Char *name, UInt16 size)
 }
 
 /* Windows-1252 0x80-0x9F to Unicode (0 = unused slot). */
-static const UInt16 kCp1252[32] = {
+static UInt16 kCp1252[32] = {   /* not const: sections.h */
 	0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
 	0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
 	0, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
