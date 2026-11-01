@@ -164,6 +164,39 @@ static void Build(void)
 	FntSetFont(old);
 }
 
+/*
+ * Draws a line of message text, with each complete @[Name] mention as a chip
+ * (MeshTerm's mention chip, @ dropped). A chip is never wider than the raw
+ * "@[Name]" it replaces (2 px pads vs three 4 px characters), so the line still
+ * fits the width it was wrapped to.
+ */
+static void DrawTextWithMentions(const Char *text, UInt16 len, Coord x, Coord y)
+{
+	Char name[VM_NAME_SIZE];
+	UInt16 i = 0, start = 0, end, n;
+
+	while (i + 2 < len) {
+		if (text[i] != '@' || text[i + 1] != '[') {
+			i++;
+			continue;
+		}
+		for (end = i + 2; end < len && text[end] != ']'; end++)
+			;
+		n = end - (i + 2);
+		if (end >= len || n == 0 || n >= sizeof(name)) {
+			i++;
+			continue;
+		}
+		WinDrawChars(text + start, i - start, x, y);
+		x += FntCharsWidth(text + start, i - start);
+		MemMove(name, text + i + 2, n);
+		name[n] = 0;
+		x += DrawChip(name, x, y - 1);
+		i = start = end + 1;
+	}
+	WinDrawChars(text + start, len - start, x, y);
+}
+
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 {
 	const Line *l = &gLines[row];
@@ -192,7 +225,7 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 			StrPrintF(buf, "%02u:%02u", dt.hour, dt.minute);
 			WinDrawChars(buf, StrLen(buf), x + TIME_X, y);
 		}
-		WinDrawChars(text, l->len, x + TEXT_X, y);
+		DrawTextWithMentions(text, l->len, x + TEXT_X, y);
 		if (l->last) {
 			SuffixOf(h, buf);
 			if (buf[0])
@@ -266,18 +299,38 @@ static void Send(FormType *form)
 	}
 }
 
+/* Inserts "@[Name] " at the cursor, to reply to someone in a channel (MeshTerm's Enter on a message). */
+static void InsertMention(const Char *sender)
+{
+	FormType *form = FrmGetActiveForm();
+	FieldType *field = FrmGetObjectPtr(form, FrmGetObjectIndex(form, ConvoField));
+	Char buf[VM_NAME_SIZE + 5];
+
+	StrPrintF(buf, "@[%s] ", sender);
+	FrmSetFocus(form, FrmGetObjectIndex(form, ConvoField));
+	FldInsert(field, buf, StrLen(buf));
+	DrawCounter();
+}
+
+/* Tap a failed message of ours to retry it, or someone's channel message to reply to them. */
 static void Tapped(UInt16 row)
 {
 	const VmMsgHeader *h = MessagesLock(gLines[row].msg);
-	Boolean failed;
+	Boolean failed, reply;
+	Char sender[VM_NAME_SIZE];
 
 	if (!h)
 		return;
 	failed = h->dir == VM_DIR_OUT && h->status == VM_ST_FAILED;
+	reply = h->dir == VM_DIR_IN && h->conv.type == VM_CONV_CHANNEL && h->sender[0];
+	if (reply)
+		StrCopy(sender, h->sender);
 	MessagesRelease(gLines[row].msg);
 	if (failed && FrmAlert(RetryAlert) == 0) {
 		SessionRetry(gLines[row].msg);
 		Refresh(false);
+	} else if (reply) {
+		InsertMention(sender);
 	}
 }
 
