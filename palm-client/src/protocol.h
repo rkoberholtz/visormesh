@@ -59,6 +59,7 @@ typedef char     Char;
 #define VM_CMD_REBOOT             19
 #define VM_CMD_DEVICE_QUERY       22
 #define VM_CMD_GET_CHANNEL        31
+#define VM_CMD_SET_CHANNEL        32
 #define VM_CMD_SET_PATH_HASH_MODE 61
 
 /* Replies (radio -> app) */
@@ -197,6 +198,8 @@ Boolean VmParseDecimal(const Char *s, UInt16 scale, UInt32 *out) VM_SECT2;
 void    VmFormatDecimal(Char *out, UInt32 value, UInt16 scale) VM_SECT2;
 /* Optional leading '-', then digits. */
 Boolean VmParseInt(const Char *s, Int32 *out) VM_SECT2;
+/* Exactly 2*n hex digits (spaces ignored) into n bytes. */
+Boolean VmParseHex(const Char *s, UInt8 *out, UInt16 n) VM_SECT2;
 
 /* Framing */
 UInt16  VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len) VM_SECT2;
@@ -214,6 +217,9 @@ UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 
 UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm) VM_SECT2;
 UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode) VM_SECT2;
 UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx) VM_SECT2;
+/* CMD_SET_CHANNEL: name (UTF-8, up to 31 bytes) and 16-byte secret; empty name + zero secret deletes. */
+UInt16 VmBuildSetChannel(UInt8 *out, UInt16 outSize, UInt8 idx, const UInt8 *name, UInt16 nameLen,
+                         const UInt8 *secret) VM_SECT2;
 /* Direct message: text is UTF-8 bytes, prefix the first 6 bytes of the recipient's key. */
 UInt16 VmBuildSendTxt(UInt8 *out, UInt16 outSize, const UInt8 *prefix6, UInt32 timestamp, UInt8 attempt,
                       const UInt8 *text, UInt16 textLen) VM_SECT2;

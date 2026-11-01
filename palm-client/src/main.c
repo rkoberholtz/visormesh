@@ -12,6 +12,7 @@
 #include "settings.h"
 #include "ports.h"
 #include "preview_form.h"
+#include "channel_form.h"
 #include "ui/draw.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
@@ -40,6 +41,8 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuNode:        FrmGotoForm(MainForm);        return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
+	case MainMenuAddChannel:  FrmGotoForm(ChannelForm);     return true;
+	case MainMenuLeaveChannel: ChannelLeaveCurrent();       return true;
 	}
 	return false;
 }
@@ -64,6 +67,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case SettingsForm:    FrmSetEventHandler(form, SettingsFormHandleEvent);    break;
 	case PortsForm:       FrmSetEventHandler(form, PortsFormHandleEvent);       break;
 	case FontPreviewForm: FrmSetEventHandler(form, FontPreviewFormHandleEvent); break;
+	case ChannelForm:     FrmSetEventHandler(form, ChannelFormHandleEvent);     break;
 	}
 	return true;
 }

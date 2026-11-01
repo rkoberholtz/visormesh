@@ -17,6 +17,9 @@ BEGIN
     MENUITEM "Contacts" ID MainMenuContacts "C"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "-" AUTOID
+    MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
+    MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
+    MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
   END
@@ -200,4 +203,33 @@ USABLE
 BEGIN
   TITLE "Font Preview"
   BUTTON "Done" ID FontPreviewDoneButton AT (CENTER 147 AUTO AUTO)
+END
+
+/* Add a #hashtag channel, or join a private one with its key */
+FORM ID ChannelForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Add Channel"
+  LABEL "Name:" AUTOID AT (5 20) FONT 1
+  FIELD ID ChannelNameField AT (40 20 115 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 30
+  LABEL "Type:" AUTOID AT (5 38) FONT 1
+  PUSHBUTTON "#hashtag" ID ChannelHashtagPush AT (40 37 50 12) GROUP ChannelTypeGroup
+  PUSHBUTTON "Private" ID ChannelPrivatePush AT (PREVRIGHT+1 PREVTOP 50 12) GROUP ChannelTypeGroup
+  LABEL "Key (32 hex digits):" ID ChannelKeyLabel AT (5 58) FONT 1
+  FIELD ID ChannelKeyField AT (5 72 150 24) UNDERLINED MULTIPLELINES EDITABLE MAXCHARS 39
+  LABEL "A #hashtag channel's key comes from its name:" AUTOID AT (5 104)
+  LABEL "anyone who knows the name can read it." AUTOID AT (5 115)
+  BUTTON "Add" ID ChannelAddButton AT (5 145 AUTO AUTO)
+  BUTTON "Cancel" ID ChannelCancelButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (145 147)
+END
+
+ALERT ID LeaveChannelAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Leave Channel"
+  MESSAGE "Remove ^1 from the radio? Its messages stay on the Visor."
+  BUTTONS "Leave" "Cancel"
 END

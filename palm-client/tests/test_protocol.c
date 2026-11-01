@@ -3,6 +3,7 @@
 #include <string.h>
 #include "../src/protocol.h"
 #include "fixtures.h"
+#include "../src/sha256.h"
 
 static int failures;
 
@@ -182,6 +183,61 @@ static void test_settings_builders(void)
 		CHECK(VmBuildReboot(out, sizeof(out)) == sizeof(reboot));
 		CHECK(memcmp(out, reboot, sizeof(reboot)) == 0);
 	}
+}
+
+static void test_sha256_and_channels(void)
+{
+	UInt8 h[32], out[64];
+	static const UInt8 abc[32] = {
+		0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23,
+		0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad
+	};
+	/* companion_protocol.md: hashtag channel #test has key 9cd8fcf22a47333b591d96a2b848b73f */
+	static const UInt8 testKey[16] = {
+		0x9c, 0xd8, 0xfc, 0xf2, 0x2a, 0x47, 0x33, 0x3b, 0x59, 0x1d, 0x96, 0xa2, 0xb8, 0x48, 0xb7, 0x3f
+	};
+	UInt8 longMsg[200];
+	static const UInt8 longDigest[4] = { 0xc2, 0xa9, 0x08, 0xd9 };   /* sha256(200 x 'a') starts c2a908d9 (Python hashlib) */
+
+	VmSha256((const UInt8 *)"abc", 3, h);
+	CHECK(memcmp(h, abc, 32) == 0);
+	VmSha256((const UInt8 *)"#test", 5, h);
+	CHECK(memcmp(h, testKey, 16) == 0);
+	memset(longMsg, 'a', sizeof(longMsg));                          /* several blocks + a 2-block tail */
+	VmSha256(longMsg, sizeof(longMsg), h);
+	CHECK(memcmp(h, longDigest, 4) == 0);
+
+	{
+		/* padding boundaries: digest prefixes of n x 'x' from Python hashlib */
+		static const struct { UInt16 n; UInt8 d[4]; } v[] = {
+			{ 55, { 0xd5, 0xe2, 0x85, 0x68 } }, { 56, { 0x04, 0xc2, 0x62, 0x61 } },
+			{ 63, { 0x75, 0x22, 0x0b, 0x47 } }, { 64, { 0x7c, 0xe1, 0x00, 0x97 } },
+			{ 119, { 0x00, 0x0b, 0x48, 0xd4 } }, { 120, { 0x13, 0xf0, 0x5a, 0x0b } }
+		};
+		UInt16 k;
+
+		memset(longMsg, 'x', sizeof(longMsg));
+		for (k = 0; k < sizeof(v) / sizeof(v[0]); k++) {
+			VmSha256(longMsg, v[k].n, h);
+			CHECK(memcmp(h, v[k].d, 4) == 0);
+		}
+	}
+
+	{
+		UInt8 k[16];
+
+		CHECK(VmParseHex("9cd8fcf22a47333b591d96a2b848b73f", k, 16) && memcmp(k, testKey, 16) == 0);
+		CHECK(VmParseHex("9CD8 FCF2 2A47 333B 591D 96A2 B848 B73F", k, 16) && memcmp(k, testKey, 16) == 0);
+		CHECK(!VmParseHex("9cd8fcf22a47333b591d96a2b848b73", k, 16));      /* one digit short */
+		CHECK(!VmParseHex("9cd8fcf22a47333b591d96a2b848b73f00", k, 16));   /* too long */
+		CHECK(!VmParseHex("9cd8fcf22a47333b591d96a2b848b73g", k, 16));     /* not hex */
+	}
+
+	CHECK(VmBuildSetChannel(out, sizeof(out), 2, (const UInt8 *)"#test", 5, testKey) == 3 + 2 + 32 + 16);
+	CHECK(out[3] == 0x20 && out[4] == 2 && memcmp(out + 5, "#test", 5) == 0 && out[10] == 0);
+	CHECK(memcmp(out + 5 + 32, testKey, 16) == 0);
+	CHECK(VmBuildSetChannel(out, sizeof(out), 2, (const UInt8 *)"0123456789012345678901234567890123", 32,
+	                        testKey) == 0);
 }
 
 static void test_path_len(void)
@@ -379,6 +435,7 @@ int main(void)
 	test_settings_builders();
 	test_decimals();
 	test_path_len();
+	test_sha256_and_channels();
 	test_messaging();
 	test_parse_self_info();
 	test_parse_contacts();

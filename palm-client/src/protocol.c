@@ -118,6 +118,33 @@ Boolean VmParseInt(const Char *s, Int32 *out)
 	return 1;
 }
 
+Boolean VmParseHex(const Char *s, UInt8 *out, UInt16 n)
+{
+	UInt16 got = 0;
+	UInt8 v = 0;
+
+	for (; *s; s++) {
+		UInt8 d;
+
+		if (*s == ' ')
+			continue;
+		if (*s >= '0' && *s <= '9')
+			d = (UInt8)(*s - '0');
+		else if (*s >= 'a' && *s <= 'f')
+			d = (UInt8)(*s - 'a' + 10);
+		else if (*s >= 'A' && *s <= 'F')
+			d = (UInt8)(*s - 'A' + 10);
+		else
+			return 0;
+		if (got >= 2 * n)
+			return 0;
+		v = (UInt8)((v << 4) | d);
+		if (got++ & 1)
+			out[got / 2 - 1] = v;
+	}
+	return got == 2 * n;
+}
+
 UInt16 VmEncodeFrame(UInt8 *out, UInt16 outSize, const UInt8 *payload, UInt16 len)
 {
 	if (len > VM_MAX_FRAME || outSize < (UInt16)(len + VM_HEADER_LEN))
@@ -291,6 +318,23 @@ UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx)
 	p[0] = VM_CMD_GET_CHANNEL;
 	p[1] = idx;
 	return VmEncodeFrame(out, outSize, p, 2);
+}
+
+/* CMD_SET_CHANNEL: code, idx, name[32] (NUL-padded), secret[16]. */
+UInt16 VmBuildSetChannel(UInt8 *out, UInt16 outSize, UInt8 idx, const UInt8 *name, UInt16 nameLen,
+                         const UInt8 *secret)
+{
+	UInt8 p[2 + VM_NAME_SIZE + VM_CHANNEL_SECRET_SIZE];
+	UInt16 i;
+
+	if (nameLen > VM_NAME_SIZE - 1)
+		return 0;
+	p[0] = VM_CMD_SET_CHANNEL;
+	p[1] = idx;
+	for (i = 0; i < VM_NAME_SIZE; i++)
+		p[2 + i] = i < nameLen ? name[i] : 0;
+	CopyBytes(p + 2 + VM_NAME_SIZE, secret, VM_CHANNEL_SECRET_SIZE);
+	return VmEncodeFrame(out, outSize, p, sizeof(p));
 }
 
 /* CMD_SEND_TXT_MSG: code, txt_type, attempt, timestamp, recipient key prefix[6], text. */

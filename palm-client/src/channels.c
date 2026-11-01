@@ -116,3 +116,39 @@ fail:
 		DmRemoveRecord(gDb, i - 1);
 	return err;
 }
+
+Int16 ChannelsFreeSlot(UInt8 maxChannels)
+{
+	VmChannel c;
+	UInt8 slot;
+
+	for (slot = 0; slot < maxChannels; slot++)
+		if (!ChannelsFindSlot(slot, &c))
+			return slot;
+	return -1;
+}
+
+Err ChannelsSet(UInt8 slot, const Char *name, const UInt8 *secret, UInt8 maxChannels)
+{
+	UInt8 frame[VM_HEADER_LEN + 2 + VM_NAME_SIZE + VM_CHANNEL_SECRET_SIZE];
+	UInt8 utf8[VM_NAME_SIZE];
+	UInt16 n = TxtPalmToUtf8(name, StrLen(name), utf8, VM_NAME_SIZE - 1);
+	UInt16 len;
+	Err err;
+
+	if (*name && n == 0)
+		return vmErrTooLong;
+	len = VmBuildSetChannel(frame, sizeof(frame), slot, utf8, n, secret);
+	err = SessionCommand(frame, len);
+	if (err == errNone)
+		err = ChannelsRefresh(maxChannels);
+	return err;
+}
+
+Err ChannelsRemove(UInt8 slot, UInt8 maxChannels)
+{
+	UInt8 zero[VM_CHANNEL_SECRET_SIZE];
+
+	MemSet(zero, sizeof(zero), 0);
+	return ChannelsSet(slot, "", zero, maxChannels);
+}

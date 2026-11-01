@@ -19,6 +19,8 @@
 #define MainMenuHome       1003
 #define MainMenuContacts   1004
 #define MainMenuNode       1005
+#define MainMenuAddChannel 1006
+#define MainMenuLeaveChannel 1007
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -64,6 +66,17 @@
 
 #define AdvertAlert           2004
 #define RetryAlert            2005
+#define LeaveChannelAlert     2006
+
+#define ChannelForm           1700
+#define ChannelNameField      1701
+#define ChannelHashtagPush    1702
+#define ChannelPrivatePush    1703
+#define ChannelKeyLabel       1704
+#define ChannelKeyField       1705
+#define ChannelAddButton      1706
+#define ChannelCancelButton   1707
+#define ChannelTypeGroup      3
 
 #define PortsForm         1100
 #define PortsDoneButton   1101
