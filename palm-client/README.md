@@ -53,6 +53,24 @@ The Makefile uses `~/.local/bin/pilot-xfer` when it exists. On Linux, use the ke
 
 Verified: `pilot-xfer -p usb: -l` lists the Visor Neo's databases from macOS on Apple Silicon. The Visor is behind a USB hub, so a hub works.
 
+## Testing against a real radio over USB (before the boards arrive)
+
+`tools/visor_bridge.py` connects the app to a MeshCore companion radio through the Visor's USB cradle:
+
+```sh
+tools/visor_bridge.py /dev/cu.usbserial-XXXX    # radio's D6/D7 UART on a 3.3 V USB-TTL adapter
+tools/visor_bridge.py /dev/cu.usbmodemXXXX      # or the XIAO's own USB companion link
+```
+
+In VisorMesh, set **Link** to **USB** and tap **Query radio**. The app opens the Neo's `'HsUd'` Serial Manager driver, so the Visor appears on USB. The bridge reads the Visor's port list (vendor request `0x03`), forwards bytes to the radio, and logs every companion frame in both directions. What we found while getting it working:
+
+- `HsUd` sends on the Visor's HOTSYNC USB port (2), not GENERIC (1). The bridge listens on every port and replies on whichever one the Visor used.
+- The endpoints stall briefly around open and close, so the bridge clears them (`libusb_clear_halt`) and carries on.
+- The Visor only appears on USB after `SrmOpen`. The app waits a second, then retries sends that time out (`serErrTimeOut`, 0x0305) while the bridge attaches.
+- The bridge grabs the Visor during a HotSync too, so `make install` stops it first.
+
+The Ports screen lists the Neo's Serial Manager drivers: `A8xZ` Serial, `HaSA` USB/Serial, `HsUc` USB Console, `HsUd` USB, `HsUr` USB RemoteFS, and more.
+
 ## Testing without hardware
 
 The Visor can't be emulated on a Mac: CloudpilotEmu doesn't support Handspring devices. Use CloudpilotEmu (https://cloudpilot-emu.github.io/app) with a Palm OS 3.5 device ROM, such as a Palm IIIx or m100. The OS APIs match the Neo's. In the emulator, "Query radio" should report "No reply" or an open error, since there's no radio attached.

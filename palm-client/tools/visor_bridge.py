@@ -2,13 +2,16 @@
 """Bridge the Visor's USB data port to a MeshCore radio's serial port.
 
 For testing the Palm client before the SB-LoRa boards exist: the app opens the
-Visor's 'HsUd' Serial Manager driver (the USB GENERIC port) and this forwards
+Visor's 'HsUd' Serial Manager driver (USB) and this forwards
 bytes between it and the radio, logging each companion frame.
 
     visor_bridge.py /dev/cu.usbserial-XXXX     # radio on a USB-TTL adapter (D6/D7)
     visor_bridge.py /dev/cu.usbmodemXXXX       # radio's own USB companion link
 
 Then put the Visor in its USB cradle and tap "Query radio" with Link = USB.
+The app's 'HsUd' driver turns out to send on the Visor's HOTSYNC port (2), so
+the bridge also grabs the Visor during a HotSync: stop it before `make install`
+(the Makefile does this for you).
 Needs libusb-1.0 (brew install libusb); everything else is the standard library.
 """
 import argparse
@@ -31,6 +34,7 @@ FUNCTIONS = {0: 'GENERIC', 1: 'DEBUGGER', 2: 'HOTSYNC', 3: 'CONSOLE', 4: 'REMOTE
 
 LIBUSB_ERROR_TIMEOUT = -7
 LIBUSB_ERROR_NO_DEVICE = -4
+LIBUSB_ERROR_PIPE = -9
 
 CODES_TO_RADIO = {1: 'APP_START', 2: 'SEND_TXT_MSG', 3: 'SEND_CHANNEL_TXT_MSG', 4: 'GET_CONTACTS',
                   10: 'SYNC_NEXT_MESSAGE', 22: 'DEVICE_QUERY'}
@@ -53,6 +57,7 @@ def load_libusb():
                                             ctypes.c_uint16, ctypes.c_char_p, ctypes.c_uint16, ctypes.c_uint]
     lib.libusb_bulk_transfer.argtypes = [ctypes.c_void_p, ctypes.c_uint8, ctypes.c_char_p, ctypes.c_int,
                                          ctypes.POINTER(ctypes.c_int), ctypes.c_uint]
+    lib.libusb_clear_halt.argtypes = [ctypes.c_void_p, ctypes.c_uint8]
     lib.libusb_error_name.restype = ctypes.c_char_p
     lib.libusb_error_name.argtypes = [ctypes.c_int]
     if lib.libusb_init(None) != 0:
@@ -117,8 +122,8 @@ def wait_for_visor(lib):
         time.sleep(0.1)
 
 
-def generic_port(lib, h):
-    """Asks the Visor which USB port number carries each function; returns the GENERIC one."""
+def connection_ports(lib, h):
+    """Asks the Visor which USB port number carries each function. Returns {port: function name}."""
     buf = ctypes.create_string_buffer(0x12)
     n = lib.libusb_control_transfer(h, VISOR_REQ_TYPE_IN, VISOR_GET_CONNECTION_INFORMATION, 0, 0, buf, 0x12, 2000)
     if n < 2:
@@ -130,35 +135,63 @@ def generic_port(lib, h):
         if 2 + 2 * k + 1 >= n:
             break
         func, port = raw[2 + 2 * k], raw[3 + 2 * k]
-        ports[func] = port
-        print(f'  port {port}: {FUNCTIONS.get(func, hex(func))}', flush=True)
+        ports[port] = FUNCTIONS.get(func, hex(func))
+        print(f'  port {port}: {ports[port]}', flush=True)
     avail = ctypes.create_string_buffer(2)
     lib.libusb_control_transfer(h, VISOR_REQ_TYPE_IN, VISOR_REQUEST_BYTES_AVAILABLE, 0, 0, avail, 2, 2000)
-    if 0 not in ports:
-        raise RuntimeError('Visor did not offer a GENERIC port (is the app using the HsUd driver?)')
-    return ports[0]
+    if not ports:
+        raise RuntimeError('Visor reported no ports')
+    return ports
 
 
-def bridge(lib, h, port, serial_fd, quiet):
-    ep_in, ep_out = 0x80 | port, port
+def bridge(lib, h, ports, serial_fd, quiet):
+    """
+    Listens on every port's IN endpoint, since which one the app's driver uses
+    isn't documented. Radio replies go out on the port the Visor last sent on.
+    Stalled endpoints are cleared and retried rather than ending the session.
+    """
     to_radio = FrameLogger('visor->radio', b'<', CODES_TO_RADIO, quiet)
     to_visor = FrameLogger('radio->visor', b'>', CODES_FROM_RADIO, quiet)
     gone = threading.Event()
+    lock = threading.Lock()
+    active = {'port': None}
 
-    def usb_to_serial():
+    for port in ports:
+        lib.libusb_clear_halt(h, 0x80 | port)
+        lib.libusb_clear_halt(h, port)
+
+    def stop(where, rc):
+        with lock:
+            if not gone.is_set() and rc != LIBUSB_ERROR_NO_DEVICE:
+                print(f'{where}: {lib.libusb_error_name(rc).decode()} ({rc})', flush=True)
+            gone.set()
+
+    def usb_to_serial(port):
+        ep_in = 0x80 | port
         buf = ctypes.create_string_buffer(512)
         got = ctypes.c_int(0)
+        stalls = 0
         while not gone.is_set():
             rc = lib.libusb_bulk_transfer(h, ep_in, buf, len(buf), ctypes.byref(got), 200)
             if got.value:
+                if active['port'] != port:
+                    active['port'] = port
+                    print(f'Visor is sending on port {port} ({ports[port]})', flush=True)
                 data = buf.raw[:got.value]
                 os.write(serial_fd, data)
                 to_radio.feed(data)
-            if rc not in (0, LIBUSB_ERROR_TIMEOUT):
-                gone.set()
+            if rc == LIBUSB_ERROR_PIPE:
+                stalls += 1
+                if stalls in (10, 100):
+                    print(f'bulk read 0x{ep_in:02x} stalled ({stalls}x), clearing', flush=True)
+                lib.libusb_clear_halt(h, ep_in)
+                time.sleep(0.05)
+            elif rc not in (0, LIBUSB_ERROR_TIMEOUT):
+                stop(f'bulk read 0x{ep_in:02x}', rc)
 
-    t = threading.Thread(target=usb_to_serial, daemon=True)
-    t.start()
+    readers = [threading.Thread(target=usb_to_serial, args=(p,), daemon=True) for p in ports]
+    for t in readers:
+        t.start()
     got = ctypes.c_int(0)
     while not gone.is_set():
         r, _, _ = select.select([serial_fd], [], [], 0.2)
@@ -166,10 +199,18 @@ def bridge(lib, h, port, serial_fd, quiet):
             continue
         data = os.read(serial_fd, 512)
         to_visor.feed(data)
-        rc = lib.libusb_bulk_transfer(h, ep_out, data, len(data), ctypes.byref(got), 2000)
+        port = active['port']
+        if port is None:
+            print('radio sent data before the Visor did; dropped', flush=True)
+            continue
+        rc = lib.libusb_bulk_transfer(h, port, data, len(data), ctypes.byref(got), 2000)
+        if rc == LIBUSB_ERROR_PIPE:
+            lib.libusb_clear_halt(h, port)
+            rc = lib.libusb_bulk_transfer(h, port, data, len(data), ctypes.byref(got), 2000)
         if rc != 0:
-            gone.set()
-    t.join(1)
+            stop(f'bulk write 0x{port:02x}', rc)
+    for t in readers:
+        t.join(1)
 
 
 def main():
@@ -185,9 +226,9 @@ def main():
             h = wait_for_visor(lib)
             print('Visor connected', flush=True)
             try:
-                port = generic_port(lib, h)
-                print(f'Bridging Visor USB port {port} <-> {args.radio}', flush=True)
-                bridge(lib, h, port, serial_fd, args.quiet)
+                ports = connection_ports(lib, h)
+                print(f'Bridging Visor USB ports {sorted(ports)} <-> {args.radio}', flush=True)
+                bridge(lib, h, ports, serial_fd, args.quiet)
             except RuntimeError as e:
                 print(e, flush=True)
             finally:

@@ -61,6 +61,9 @@ build:
 endif
 
 install: all
+	@if pgrep -f tools/visor_bridge.py >/dev/null; then \
+	  echo "Stopping visor_bridge.py (it would grab the Visor during HotSync)"; \
+	  pkill -f tools/visor_bridge.py; sleep 1; fi
 	@echo "Press the HotSync button on the Visor cradle..."
 	$(PILOT_XFER) -p $(PORT) -i build/$(APP).prc
 

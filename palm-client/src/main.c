@@ -53,8 +53,18 @@ static void QueryRadio(void)
 	frameLen = VmBuildDeviceQuery(frame, sizeof(frame));
 	VmDecoderReset(&gDecoder);
 
+	/* Over USB the Visor only appears to the host after SrmOpen; give the bridge time to attach. */
+	if (TransportGetPort() == VM_PORT_USB)
+		SysTaskDelay(SysTicksPerSecond());
+
 	for (attempt = 1; attempt <= VM_QUERY_ATTEMPTS; attempt++) {
 		err = TransportSend(frame, frameLen);
+		if (err == serErrTimeOut) {
+			/* Nobody reading yet (host still attaching): try again next attempt. */
+			StrPrintF(msg, "Host not ready (%u)...", attempt);
+			SetStatus(msg);
+			continue;
+		}
 		if (err != errNone) {
 			StrPrintF(msg, "Send failed (0x%x)", err);
 			SetStatus(msg);
@@ -78,7 +88,7 @@ static void QueryRadio(void)
 			}
 		}
 	}
-	SetStatus("No reply");
+	SetStatus(err == serErrTimeOut ? "Send timed out" : "No reply");
 	TransportClose();
 }
 
