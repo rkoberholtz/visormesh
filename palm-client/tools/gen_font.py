@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Generates VisorMesh's small font from tools/fonts/4x6.bdf (X.org misc-fixed,
+public domain) plus hand-drawn UI symbols.
+
+Outputs:
+  resources/smallfont.txt  PilRC FONT source (compiled into an NFNT resource)
+  src/ui/glyphs.h          code points for the UI symbols
+  src/ui/fontmetrics.c     per-character widths, so host tests lay text out exactly
+
+Palm fonts are 8-bit: 0x20-0x7E and 0xA0-0xFF come from the BDF (ASCII and
+Latin-1); the UI symbols go in 0x80-0x9F, reusing Windows-1252's slots where it
+has the same symbol (... 0x85, < 0x8B, > 0x9B).
+"""
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BDF = os.path.join(HERE, 'fonts', '4x6.bdf')
+OUT_FONT = os.path.join(HERE, '..', 'resources', 'smallfont.txt')
+OUT_GLYPHS = os.path.join(HERE, '..', 'src', 'ui', 'glyphs.h')
+OUT_METRICS = os.path.join(HERE, '..', 'src', 'ui', 'fontmetrics.c')
+
+ASCENT, DESCENT = 5, 1
+HEIGHT = ASCENT + DESCENT
+
+# UI symbols: (code point, C name, source). Source is a Unicode code point to take
+# from the BDF, or a hand-drawn bitmap (one string per row, HEIGHT rows, '#' = on).
+SYMBOLS = [
+    (0x80, 'GLYPH_SELF', ['--#--', '#####', '-###-', '-#-#-', '#---#', '-----']),      # star: you
+    (0x81, 'GLYPH_COMPANION', ['-----', '-##-', '####', '####', '-##-', '----']),      # filled circle
+    (0x82, 'GLYPH_REPEATER', ['-----', '--#--', '-###-', '#####', '-----', '-----']),  # triangle
+    (0x83, 'GLYPH_ROOM', 0x25A0),                                                       # square
+    (0x84, 'GLYPH_SENSOR', ['-###-', '#---#', '#-#-#', '#---#', '-###-', '-----']),    # fisheye
+    (0x85, 'GLYPH_ELLIPSIS', 0x2026),
+    (0x86, 'GLYPH_UNKNOWN', ['-----', '-##-', '#--#', '#--#', '-##-', '----']),        # open circle
+    (0x87, 'GLYPH_ACKED', ['-----', '----#', '---#-', '#-#--', '-#---', '-----']),     # check mark
+    (0x88, 'GLYPH_FAILED', ['-----', '#---#', '-#-#-', '--#--', '-#-#-', '#---#']),    # ballot x
+    (0x89, 'GLYPH_UP', 0x2191),
+    (0x8A, 'GLYPH_DOWN', 0x2193),
+    (0x8B, 'GLYPH_BACK', 0x2039),
+    (0x8C, 'GLYPH_LOCK', ['-##-', '#--#', '####', '#-##', '####', '----']),            # padlock: private channel
+    (0x8D, 'GLYPH_RULE', 0x2500),
+    (0x8E, 'GLYPH_LEFT', 0x2190),
+    (0x8F, 'GLYPH_RIGHT', 0x2192),
+    (0x90, 'GLYPH_PENDING', ['-----', '-###-', '#-#-#', '#-##-', '#---#', '-###-']),   # clock face
+    (0x9B, 'GLYPH_FORWARD', 0x203A),
+]
+
+
+def parse_bdf(path):
+    """Returns {codepoint: (width, rows)} with rows as HEIGHT strings of '#'/'-'."""
+    glyphs = {}
+    with open(path) as f:
+        lines = f.read().splitlines()
+    i = 0
+    while i < len(lines):
+        if not lines[i].startswith('STARTCHAR'):
+            i += 1
+            continue
+        enc = dwidth = None
+        bbx = None
+        bitmap = []
+        i += 1
+        while not lines[i].startswith('ENDCHAR'):
+            parts = lines[i].split()
+            if parts[0] == 'ENCODING':
+                enc = int(parts[1])
+            elif parts[0] == 'DWIDTH':
+                dwidth = int(parts[1])
+            elif parts[0] == 'BBX':
+                bbx = tuple(int(x) for x in parts[1:5])
+            elif parts[0] == 'BITMAP':
+                i += 1
+                while not lines[i].startswith('ENDCHAR'):
+                    bitmap.append(int(lines[i], 16))
+                    i += 1
+                break
+            i += 1
+        w, h, xoff, yoff = bbx
+        cell = [['-'] * dwidth for _ in range(HEIGHT)]
+        top = ASCENT - (yoff + h)        # cell row of the bitmap's first row
+        nbits = ((w + 7) // 8) * 8
+        for r, bits in enumerate(bitmap):
+            for c in range(w):
+                if bits & (1 << (nbits - 1 - c)):
+                    y, x = top + r, xoff + c
+                    if 0 <= y < HEIGHT and 0 <= x < dwidth:
+                        cell[y][x] = '#'
+        glyphs[enc] = (dwidth, [''.join(row) for row in cell])
+        i += 1
+    return glyphs
+
+
+def main():
+    bdf = parse_bdf(BDF)
+    font = {}
+    for code in list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)):
+        if code in bdf:
+            font[code] = bdf[code][1]
+    for code, _name, src in SYMBOLS:
+        rows = bdf[src][1] if isinstance(src, int) else src
+        assert len(rows) == HEIGHT, (hex(code), rows)
+        width = max(len(r) for r in rows)
+        font[code] = [r.ljust(width, '-') for r in rows]
+    missing = bdf[0xFFFD][1] if 0xFFFD in bdf else ['####', '#--#', '#--#', '#--#', '####', '----']
+
+    os.makedirs(os.path.dirname(OUT_GLYPHS), exist_ok=True)
+    with open(OUT_FONT, 'w') as f:
+        f.write('fontType 36864\nascent %d\ndescent %d\n\n' % (ASCENT, DESCENT))
+        for code in sorted(font):
+            f.write('GLYPH %d\n%s\n\n' % (code, '\n'.join(font[code])))
+        f.write('GLYPH -1\n' + '\n'.join(missing) + '\n')     # PilRC wants the missing glyph last
+
+    with open(OUT_GLYPHS, 'w') as f:
+        f.write('/* GENERATED by tools/gen_font.py. UI symbols in the small font (vmSmallFont). */\n')
+        f.write('#ifndef VM_GLYPHS_H\n#define VM_GLYPHS_H\n\n')
+        for code, name, _src in SYMBOLS:
+            f.write('#define %-16s ((Char)0x%02X)\n' % (name, code))
+        f.write('\n#define VM_SMALL_FONT_HEIGHT %d\n\n#endif\n' % HEIGHT)
+
+    widths = [len(font[c][0]) if c in font else len(missing[0]) for c in range(256)]
+    with open(OUT_METRICS, 'w') as f:
+        f.write('/* GENERATED by tools/gen_font.py: small-font character widths in pixels. */\n')
+        f.write('#include "fontmetrics.h"\n\nconst UInt8 gSmallFontWidths[256] = {\n')
+        for r in range(0, 256, 16):
+            f.write('\t' + ', '.join(str(w) for w in widths[r:r + 16]) + ',\n')
+        f.write('};\n')
+    print('%d glyphs -> %s' % (len(font), os.path.relpath(OUT_FONT)))
+
+
+if __name__ == '__main__':
+    main()

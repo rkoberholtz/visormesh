@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/ports.c
+SRCS = src/main.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/preview_form.c src/ui/draw.c src/ui/fontmetrics.c src/ports.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -37,7 +37,8 @@ else
 
 all: build/$(APP).prc
 
-build/%.o: src/%.c src/*.h | build
+build/%.o: src/%.c src/*.h src/ui/*.h | build
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 build/$(APP): $(OBJS)

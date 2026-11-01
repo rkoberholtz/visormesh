@@ -14,6 +14,7 @@
 #define MainContactsButton 1011
 #define MainMenuBar        1000
 #define MainMenuPorts      1001
+#define MainMenuFontPreview 1002
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -47,5 +48,9 @@
 #define PortsDoneButton   1101
 
 #define RomIncompatibleAlert 2000
+
+#define SmallFontRes          1000
+#define FontPreviewForm       1400
+#define FontPreviewDoneButton 1401
 
 #endif

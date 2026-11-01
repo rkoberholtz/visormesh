@@ -7,6 +7,8 @@
 #include "settings.h"
 #include "contacts.h"
 #include "contacts_form.h"
+#include "preview_form.h"
+#include "ui/draw.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_LABEL_CHARS     22    /* the info labels in the .rcp are padded to this width */
@@ -154,6 +156,10 @@ static Boolean MainFormHandleEvent(EventType *event)
 			FrmGotoForm(PortsForm);
 			return true;
 		}
+		if (event->data.menu.itemID == MainMenuFontPreview) {
+			FrmGotoForm(FontPreviewForm);
+			return true;
+		}
 		break;
 	default:
 		break;
@@ -179,6 +185,8 @@ static Boolean AppHandleEvent(EventType *event)
 		FrmSetEventHandler(form, SettingsFormHandleEvent);
 	else if (formId == ContactsForm)
 		FrmSetEventHandler(form, ContactsFormHandleEvent);
+	else if (formId == FontPreviewForm)
+		FrmSetEventHandler(form, FontPreviewFormHandleEvent);
 	return true;
 }
 
@@ -206,10 +214,12 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 	if (err != errNone)
 		return err;
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
+		UiFontInit();
 		FrmGotoForm(MainForm);
 		AppEventLoop();
 		SessionDisconnect();
 		ContactsClose();
+		UiFontRelease();
 		FrmCloseAllForms();
 	}
 	return errNone;
