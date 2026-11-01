@@ -4,7 +4,7 @@ Decisions and background carried over from the original planning conversation (c
 
 ## Target device
 
-- Handspring Visor, Palm OS **3.5.2H3.0** (Handspring 3.5 build), DragonBall CPU, runs on 2x AAA.
+- Handspring **Visor Neo**, Palm OS **3.5.2H3.0** (Handspring 3.5 build), DragonBall VZ at 33 MHz, 8 MB RAM, runs on 2x AAA. USB HotSync cradle (no serial cradle).
 - No BLE or WiFi. The radio is never powered from the AAAs: an SX1262 at 22 dBm TX draws over 100 mA.
 
 ## Architecture
