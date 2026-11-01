@@ -101,7 +101,10 @@ static void DrawClockLine(void)
 	} else {
 		StrCopy(radio, "--");
 	}
-	StrPrintF(line, "radio %s UTC  sys %ld", radio, (Int32)PrefGetPreference(prefMinutesWestOfGMT));
+	if (SessionClockMismatch())
+		StrPrintF(line, "radio %s UTC  MISMATCH: check date", radio);
+	else
+		StrPrintF(line, "radio %s UTC  sys %ld", radio, (Int32)PrefGetPreference(prefMinutesWestOfGMT));
 	WinDrawChars(line, StrLen(line), 5, 113);
 	FntSetFont(old);
 }

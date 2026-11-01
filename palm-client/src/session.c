@@ -13,6 +13,8 @@
 #define VM_SYNC_MAX        50    /* messages pulled per sync, so the UI isn't blocked forever */
 #define VM_ACK_MIN_SECS    10    /* shortest wait for a DM ack, whatever the radio estimates */
 #define VM_CLOCK_SLACK     60    /* radio clock behind ours by more than this gets set forward */
+#define VM_CLOCK_MAX_STEP  (7UL * 86400UL)  /* a bigger jump means one clock is wrong: don't guess */
+#define VM_CLOCK_VALID     1735689600UL     /* 2025-01-01: a radio clock before this was never set */
 #define PALM_EPOCH_OFFSET  2082844800UL   /* 1904-01-01 (Palm) to 1970-01-01 (Unix) */
 
 static VmFrameDecoder gDecoder;
@@ -181,6 +183,7 @@ static Err QueryRadio(UInt16 firstTries)
 
 /* Sets the radio's clock from ours if it's behind (the firmware only lets it move forward). */
 static UInt32 gRadioTime = 0;       /* radio clock at gRadioTimeAt (our local seconds) */
+static Boolean gClockMismatch = false;
 static UInt32 gRadioTimeAt = 0;
 
 void SessionSyncClock(void)
@@ -195,11 +198,24 @@ void SessionSyncClock(void)
 		return;
 	gRadioTime = radio;
 	gRadioTimeAt = TimGetSeconds();
+	/*
+	 * The radio's clock can only move forward, so a wrong Visor date (a slip in
+	 * the date picker set it 11 months ahead once) can't be undone short of a
+	 * radio reboot. If the radio's clock looks set, only correct small drift.
+	 */
+	gClockMismatch = radio >= VM_CLOCK_VALID && (now > radio + VM_CLOCK_MAX_STEP || radio > now + VM_CLOCK_MAX_STEP);
+	if (gClockMismatch)
+		return;
 	if (radio + VM_CLOCK_SLACK < now) {
 		len = VmBuildSetTime(frame, sizeof(frame), now);
 		if (Request(frame, len, VM_RESP_OK, 1) == errNone)
 			gRadioTime = now;
 	}
+}
+
+Boolean SessionClockMismatch(void)
+{
+	return gClockMismatch;
 }
 
 UInt32 SessionRadioTime(void)
