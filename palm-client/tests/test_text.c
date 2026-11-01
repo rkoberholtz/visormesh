@@ -107,6 +107,22 @@ static void test_utf8(void)
 	CHECK(TxtUtf8ToPalm((const UInt8 *)"abcdef", 6, out, 4) == 3 && strcmp(out, "abc") == 0);
 }
 
+static void test_to_utf8(void)
+{
+	UInt8 out[16];
+	char back[16];
+	static const char cafe[] = { 'c', 'a', 'f', (char)0xE9 };
+	static const char quotes[] = { (char)0x93, 'h', 'i', (char)0x94, (char)0x85 };
+
+	CHECK(TxtPalmToUtf8(cafe, 4, out, sizeof(out)) == 5 && out[3] == 0xC3 && out[4] == 0xA9);
+	CHECK(TxtPalmToUtf8(quotes, 5, out, sizeof(out)) == 11);
+	CHECK(out[0] == 0xE2 && out[1] == 0x80 && out[2] == 0x9C);          /* U+201C */
+	/* round trip back to the Visor's charset */
+	CHECK(TxtUtf8ToPalm(out, 11, back, sizeof(back)) == 5 && memcmp(back, quotes, 5) == 0);
+	/* doesn't fit: nothing rather than a cut character */
+	CHECK(TxtPalmToUtf8(cafe, 4, out, 4) == 0);
+}
+
 int main(void)
 {
 	test_metrics();
@@ -114,6 +130,7 @@ int main(void)
 	test_age_and_snr();
 	test_sender_split();
 	test_utf8();
+	test_to_utf8();
 	if (failures) {
 		printf("%d failure(s)\n", failures);
 		return 1;

@@ -278,6 +278,76 @@ UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode)
 	return VmEncodeFrame(out, outSize, p, 3);
 }
 
+UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx)
+{
+	UInt8 p[2];
+
+	p[0] = VM_CMD_GET_CHANNEL;
+	p[1] = idx;
+	return VmEncodeFrame(out, outSize, p, 2);
+}
+
+/* CMD_SEND_TXT_MSG: code, txt_type, attempt, timestamp, recipient key prefix[6], text. */
+UInt16 VmBuildSendTxt(UInt8 *out, UInt16 outSize, const UInt8 *prefix6, UInt32 timestamp, UInt8 attempt,
+                      const UInt8 *text, UInt16 textLen)
+{
+	UInt8 p[13 + VM_MAX_DM_TEXT];
+
+	if (textLen == 0 || textLen > VM_MAX_DM_TEXT)
+		return 0;
+	p[0] = VM_CMD_SEND_TXT_MSG;
+	p[1] = VM_TXT_TYPE_PLAIN;
+	p[2] = attempt;
+	PutLE32(p + 3, timestamp);
+	CopyBytes(p + 7, prefix6, 6);
+	CopyBytes(p + 13, text, textLen);
+	return VmEncodeFrame(out, outSize, p, (UInt16)(13 + textLen));
+}
+
+/* CMD_SEND_CHANNEL_TXT_MSG: code, txt_type, channel_idx, timestamp, text. The radio adds "Name: ". */
+UInt16 VmBuildSendChannelTxt(UInt8 *out, UInt16 outSize, UInt8 channelIdx, UInt32 timestamp,
+                             const UInt8 *text, UInt16 textLen)
+{
+	UInt8 p[7 + VM_MAX_CHANNEL_TEXT];
+
+	if (textLen == 0 || textLen > VM_MAX_CHANNEL_TEXT)
+		return 0;
+	p[0] = VM_CMD_SEND_CHANNEL_TXT_MSG;
+	p[1] = VM_TXT_TYPE_PLAIN;
+	p[2] = channelIdx;
+	PutLE32(p + 3, timestamp);
+	CopyBytes(p + 7, text, textLen);
+	return VmEncodeFrame(out, outSize, p, (UInt16)(7 + textLen));
+}
+
+UInt16 VmBuildGetTime(UInt8 *out, UInt16 outSize)
+{
+	UInt8 p[1];
+
+	p[0] = VM_CMD_GET_DEVICE_TIME;
+	return VmEncodeFrame(out, outSize, p, 1);
+}
+
+/* CMD_SET_DEVICE_TIME: the firmware only accepts a time at or after its own clock. */
+UInt16 VmBuildSetTime(UInt8 *out, UInt16 outSize, UInt32 unixSeconds)
+{
+	UInt8 p[5];
+
+	p[0] = VM_CMD_SET_DEVICE_TIME;
+	PutLE32(p + 1, unixSeconds);
+	return VmEncodeFrame(out, outSize, p, 5);
+}
+
+/* CMD_SEND_SELF_ADVERT: 1 = flood, 0 = zero hop (neighbours only). */
+UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood)
+{
+	UInt8 p[2];
+
+	p[0] = VM_CMD_SEND_SELF_ADVERT;
+	p[1] = flood ? 1 : 0;
+	return VmEncodeFrame(out, outSize, p, 2);
+}
+
 /* CMD_REBOOT: code + "reboot" (the firmware checks the word, so a stray byte can't reboot it). */
 UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize)
 {
@@ -413,5 +483,45 @@ Boolean VmParseMessage(const UInt8 *p, UInt16 len, VmMessage *out)
 	}
 	out->text = p + i;
 	out->textLen = (UInt16)(len - i);
+	return 1;
+}
+
+/* CHANNEL_INFO: code, idx, name[32], secret[16]. */
+Boolean VmParseChannelInfo(const UInt8 *p, UInt16 len, VmChannel *out)
+{
+	if (len < 2 + VM_NAME_SIZE + VM_CHANNEL_SECRET_SIZE || p[0] != VM_RESP_CHANNEL_INFO)
+		return 0;
+	out->idx = p[1];
+	CopyName(out->name, sizeof(out->name), p + 2, VM_NAME_SIZE);
+	CopyBytes(out->secret, p + 2 + VM_NAME_SIZE, VM_CHANNEL_SECRET_SIZE);
+	return 1;
+}
+
+/* SENT: code, flood, expected_ack, est_timeout (ms). */
+Boolean VmParseSent(const UInt8 *p, UInt16 len, VmSent *out)
+{
+	if (len < 10 || p[0] != VM_RESP_SENT)
+		return 0;
+	out->flood = p[1] != 0;
+	out->expectedAck = GetLE32(p + 2);
+	out->timeoutMs = GetLE32(p + 6);
+	return 1;
+}
+
+/* PUSH_SEND_CONFIRMED: code, ack, round trip (ms). The same ack can arrive more than once. */
+Boolean VmParseSendConfirmed(const UInt8 *p, UInt16 len, UInt32 *ack, UInt32 *tripMs)
+{
+	if (len < 9 || p[0] != VM_PUSH_SEND_CONFIRMED)
+		return 0;
+	*ack = GetLE32(p + 1);
+	*tripMs = GetLE32(p + 5);
+	return 1;
+}
+
+Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds)
+{
+	if (len < 5 || p[0] != VM_RESP_CURR_TIME)
+		return 0;
+	*unixSeconds = GetLE32(p + 1);
 	return 1;
 }

@@ -46,4 +46,10 @@ UInt16 TxtSplitSender(const Char *text, UInt16 len);
  */
 UInt16 TxtUtf8ToPalm(const UInt8 *in, UInt16 inLen, Char *out, UInt16 outSize);
 
+/*
+ * The Visor's text (Windows-1252) to UTF-8 for sending. Returns the byte count,
+ * or 0 if it won't fit in outSize (so a message is never cut mid-character).
+ */
+UInt16 TxtPalmToUtf8(const Char *in, UInt16 inLen, UInt8 *out, UInt16 outSize);
+
 #endif

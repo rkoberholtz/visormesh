@@ -173,3 +173,41 @@ UInt16 TxtUtf8ToPalm(const UInt8 *in, UInt16 inLen, Char *out, UInt16 outSize)
 	out[o] = 0;
 	return o;
 }
+
+/* Windows-1252 0x80-0x9F to Unicode (0 = unused slot). */
+static const UInt16 kCp1252[32] = {
+	0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+	0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
+	0, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+	0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178
+};
+
+UInt16 TxtPalmToUtf8(const Char *in, UInt16 inLen, UInt8 *out, UInt16 outSize)
+{
+	UInt16 i, o = 0;
+
+	for (i = 0; i < inLen; i++) {
+		UInt8 c = (UInt8)in[i];
+		UInt16 cp = c;
+
+		if (c >= 0x80 && c < 0xA0)
+			cp = kCp1252[c - 0x80] ? kCp1252[c - 0x80] : '?';
+		if (cp < 0x80) {
+			if (o + 1 > outSize)
+				return 0;
+			out[o++] = (UInt8)cp;
+		} else if (cp < 0x800) {
+			if (o + 2 > outSize)
+				return 0;
+			out[o++] = (UInt8)(0xC0 | (cp >> 6));
+			out[o++] = (UInt8)(0x80 | (cp & 0x3F));
+		} else {
+			if (o + 3 > outSize)
+				return 0;
+			out[o++] = (UInt8)(0xE0 | (cp >> 12));
+			out[o++] = (UInt8)(0x80 | ((cp >> 6) & 0x3F));
+			out[o++] = (UInt8)(0x80 | (cp & 0x3F));
+		}
+	}
+	return o;
+}

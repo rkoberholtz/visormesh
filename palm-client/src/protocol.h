@@ -40,16 +40,23 @@ typedef char     Char;
 #define VM_PUB_KEY_SIZE     32
 #define VM_NAME_SIZE        32      /* contact names: 31 chars + NUL */
 #define VM_MAX_PATH_SIZE    64
+#define VM_CHANNEL_SECRET_SIZE 16
 
 /* Commands (app -> radio) */
 #define VM_CMD_APP_START          1
+#define VM_CMD_SEND_TXT_MSG       2
+#define VM_CMD_SEND_CHANNEL_TXT_MSG 3
 #define VM_CMD_GET_CONTACTS       4
+#define VM_CMD_GET_DEVICE_TIME    5
+#define VM_CMD_SET_DEVICE_TIME    6
+#define VM_CMD_SEND_SELF_ADVERT   7
 #define VM_CMD_SET_ADVERT_NAME    8
 #define VM_CMD_SYNC_NEXT_MESSAGE  10
 #define VM_CMD_SET_RADIO_PARAMS   11
 #define VM_CMD_SET_RADIO_TX_POWER 12
 #define VM_CMD_REBOOT             19
 #define VM_CMD_DEVICE_QUERY       22
+#define VM_CMD_GET_CHANNEL        31
 #define VM_CMD_SET_PATH_HASH_MODE 61
 
 /* Replies (radio -> app) */
@@ -59,10 +66,13 @@ typedef char     Char;
 #define VM_RESP_CONTACT           3
 #define VM_RESP_END_OF_CONTACTS   4
 #define VM_RESP_SELF_INFO         5
+#define VM_RESP_SENT              6
+#define VM_RESP_CURR_TIME         9
 #define VM_RESP_NO_MORE_MESSAGES  10
 #define VM_RESP_DEVICE_INFO       13
 #define VM_RESP_CONTACT_MSG_V3    16
 #define VM_RESP_CHANNEL_MSG_V3    17
+#define VM_RESP_CHANNEL_INFO      18
 
 /* Pushes (radio -> app, unsolicited) */
 #define VM_PUSH_ADVERT            0x80
@@ -108,6 +118,18 @@ typedef struct {
 	UInt8  pathHashMode;     /* path hash size in bytes = mode + 1 */
 } VmDeviceInfo;
 
+typedef struct {
+	UInt8  idx;
+	Char   name[VM_NAME_SIZE + 1];
+	UInt8  secret[VM_CHANNEL_SECRET_SIZE];
+} VmChannel;
+
+typedef struct {
+	Boolean flood;           /* sent as a flood (no known path) */
+	UInt32  expectedAck;     /* matches a later PUSH_SEND_CONFIRMED; 0 = none expected */
+	UInt32  timeoutMs;       /* the radio's estimate of how long the ack may take */
+} VmSent;
+
 /* Limits the firmware enforces (MyMesh.cpp); checked before sending. */
 #define VM_FREQ_MIN_KHZ   150000UL
 #define VM_FREQ_MAX_KHZ   2500000UL
@@ -119,6 +141,8 @@ typedef struct {
 #define VM_CR_MAX         8
 #define VM_TX_POWER_MIN   (-9)
 #define VM_NAME_MAX       31
+#define VM_MAX_DM_TEXT       150   /* UTF-8 bytes, as MeshTerm limits them */
+#define VM_MAX_CHANNEL_TEXT  130   /* channel text also carries "Name: " */
 #define VM_PATH_HASH_MODE_MAX 2
 
 typedef struct {
@@ -185,6 +209,15 @@ UInt16 VmBuildSetRadioParams(UInt8 *out, UInt16 outSize, UInt32 freqKHz, UInt32 
                              Boolean includeRepeat, Boolean repeat);
 UInt16 VmBuildSetTxPower(UInt8 *out, UInt16 outSize, Int8 dbm);
 UInt16 VmBuildSetPathHashMode(UInt8 *out, UInt16 outSize, UInt8 mode);
+UInt16 VmBuildGetChannel(UInt8 *out, UInt16 outSize, UInt8 idx);
+/* Direct message: text is UTF-8 bytes, prefix the first 6 bytes of the recipient's key. */
+UInt16 VmBuildSendTxt(UInt8 *out, UInt16 outSize, const UInt8 *prefix6, UInt32 timestamp, UInt8 attempt,
+                      const UInt8 *text, UInt16 textLen);
+UInt16 VmBuildSendChannelTxt(UInt8 *out, UInt16 outSize, UInt8 channelIdx, UInt32 timestamp,
+                             const UInt8 *text, UInt16 textLen);
+UInt16 VmBuildGetTime(UInt8 *out, UInt16 outSize);
+UInt16 VmBuildSetTime(UInt8 *out, UInt16 outSize, UInt32 unixSeconds);
+UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood);
 /* CMD_REBOOT: the radio restarts without replying. */
 UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize);
 
@@ -195,5 +228,9 @@ Boolean VmParseContactsStart(const UInt8 *p, UInt16 len, UInt32 *count);
 Boolean VmParseContact(const UInt8 *p, UInt16 len, VmContact *out);
 Boolean VmParseEndOfContacts(const UInt8 *p, UInt16 len, UInt32 *lastMod);
 Boolean VmParseMessage(const UInt8 *p, UInt16 len, VmMessage *out);
+Boolean VmParseChannelInfo(const UInt8 *p, UInt16 len, VmChannel *out);
+Boolean VmParseSent(const UInt8 *p, UInt16 len, VmSent *out);
+Boolean VmParseSendConfirmed(const UInt8 *p, UInt16 len, UInt32 *ack, UInt32 *tripMs);
+Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds);
 
 #endif

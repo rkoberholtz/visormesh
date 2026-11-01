@@ -224,6 +224,55 @@ static void test_decimals(void)
 	CHECK(!VmParseInt("-", &i) && !VmParseInt("", &i) && !VmParseInt("2x", &i));
 }
 
+/* Messaging, laid out per the MyMesh.cpp handlers (CMD_SEND_TXT_MSG etc.). */
+static void test_messaging(void)
+{
+	UInt8 out[200];
+	static const UInt8 prefix[6] = { 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5 };
+	static const UInt8 dm[] = {
+		0x3c, 0x0f, 0x00, 0x02, 0x00, 0x01, 0x28, 0x5a, 0xd6, 0x6a,
+		0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 'h', 'i'
+	};
+	static const UInt8 chan[] = { 0x3c, 0x09, 0x00, 0x03, 0x00, 0x01, 0x28, 0x5a, 0xd6, 0x6a, 'h', 'i' };
+	static const UInt8 setTime[] = { 0x3c, 0x05, 0x00, 0x06, 0x28, 0x5a, 0xd6, 0x6a };
+	static const UInt8 advert[] = { 0x3c, 0x02, 0x00, 0x07, 0x01 };
+	static const UInt8 getChan[] = { 0x3c, 0x02, 0x00, 0x1f, 0x02 };
+	UInt8 longText[VM_MAX_CHANNEL_TEXT + 1];
+	VmFrameDecoder d;
+	VmChannel ch;
+	VmSent sent;
+	UInt32 ack, trip, t;
+
+	/* timestamp 1792432680 = 0x6ad65a28 */
+	CHECK(VmBuildSendTxt(out, sizeof(out), prefix, 1792432680UL, 1, (const UInt8 *)"hi", 2) == sizeof(dm));
+	CHECK(memcmp(out, dm, sizeof(dm)) == 0);
+	CHECK(VmBuildSendChannelTxt(out, sizeof(out), 1, 1792432680UL, (const UInt8 *)"hi", 2) == sizeof(chan));
+	CHECK(memcmp(out, chan, sizeof(chan)) == 0);
+	memset(longText, 'x', sizeof(longText));
+	CHECK(VmBuildSendChannelTxt(out, sizeof(out), 0, 0, longText, VM_MAX_CHANNEL_TEXT) != 0);
+	CHECK(VmBuildSendChannelTxt(out, sizeof(out), 0, 0, longText, VM_MAX_CHANNEL_TEXT + 1) == 0);
+	CHECK(VmBuildSendTxt(out, sizeof(out), prefix, 0, 0, longText, 0) == 0);
+	CHECK(VmBuildSetTime(out, sizeof(out), 1792432680UL) == sizeof(setTime));
+	CHECK(memcmp(out, setTime, sizeof(setTime)) == 0);
+	CHECK(VmBuildSendAdvert(out, sizeof(out), 1) == sizeof(advert) && memcmp(out, advert, sizeof(advert)) == 0);
+	CHECK(VmBuildGetChannel(out, sizeof(out), 2) == sizeof(getChan) && memcmp(out, getChan, sizeof(getChan)) == 0);
+
+	decode_one(&d, kChannelInfo, sizeof(kChannelInfo));
+	CHECK(VmParseChannelInfo(d.payload, d.len, &ch));
+	CHECK(ch.idx == 1 && strcmp(ch.name, "#phillymesh") == 0 && ch.secret[0] == 0x11 && ch.secret[15] == 0x20);
+	CHECK(!VmParseChannelInfo(d.payload, 49, &ch));
+
+	decode_one(&d, kSent, sizeof(kSent));
+	CHECK(VmParseSent(d.payload, d.len, &sent));
+	CHECK(sent.flood && sent.expectedAck == 0xdeadbeefUL && sent.timeoutMs == 12000UL);
+
+	decode_one(&d, kSendConfirmed, sizeof(kSendConfirmed));
+	CHECK(VmParseSendConfirmed(d.payload, d.len, &ack, &trip) && ack == 0xdeadbeefUL && trip == 850UL);
+
+	decode_one(&d, kCurrTime, sizeof(kCurrTime));
+	CHECK(VmParseCurrTime(d.payload, d.len, &t) && t == 1792432680UL);
+}
+
 static void test_parse_self_info(void)
 {
 	VmFrameDecoder d;
@@ -330,6 +379,7 @@ int main(void)
 	test_settings_builders();
 	test_decimals();
 	test_path_len();
+	test_messaging();
 	test_parse_self_info();
 	test_parse_contacts();
 	test_parse_messages();
