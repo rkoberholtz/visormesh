@@ -76,8 +76,10 @@ typedef char     Char;
 
 /* Pushes (radio -> app, unsolicited) */
 #define VM_PUSH_ADVERT            0x80
+#define VM_PUSH_PATH_UPDATED      0x81
 #define VM_PUSH_SEND_CONFIRMED    0x82
 #define VM_PUSH_MSG_WAITING       0x83
+#define VM_PUSH_NEW_ADVERT        0x8A
 #define VM_IS_PUSH(code)          ((code) >= 0x80)
 
 /* Advert types (contact.type) */

@@ -83,7 +83,7 @@ static Err AddContact(const VmContact *c, void *ctx)
 Err ContactsRefresh(UInt32 *count)
 {
 	UInt16 oldCount, i;
-	UInt32 lastMod;
+	UInt32 lastMod, total;
 	Err err;
 
 	err = ContactsOpen();
@@ -91,7 +91,9 @@ Err ContactsRefresh(UInt32 *count)
 		return err;
 	oldCount = DmNumRecords(gDb);
 
-	err = SessionGetContacts(0, AddContact, NULL, count, &lastMod);
+	err = SessionGetContacts(0, AddContact, NULL, &total, &lastMod);
+	if (count)
+		*count = total;
 
 	if (err != errNone) {
 		/* drop what this attempt added; keep the previous list */

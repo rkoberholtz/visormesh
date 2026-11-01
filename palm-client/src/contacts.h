@@ -16,7 +16,7 @@ Boolean ContactsGet(UInt16 index, VmContact *out);
 /*
  * Downloads the radio's whole contact list and replaces the stored one. The
  * old records are only removed once the download succeeds, so a failed
- * refresh leaves the previous list intact.
+ * refresh leaves the previous list intact. count (may be NULL) gets the radio's total.
  */
 Err     ContactsRefresh(UInt32 *count);
 

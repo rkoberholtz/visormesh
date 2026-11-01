@@ -8,10 +8,17 @@
 
 #include <PalmOS.h>
 #include "protocol.h"
+#include "messages.h"
 
 #define vmErrNoReply   (appErrorClass | 1)   /* radio didn't answer in time */
 #define vmErrRadio     (appErrorClass | 2)   /* radio replied RESP_ERR */
 #define vmErrBadReply  (appErrorClass | 3)   /* reply had the right code but didn't parse */
+#define vmErrTooLong   (appErrorClass | 4)   /* message text over the byte limit */
+
+/* What SessionPoll found changed, so the screen on show can redraw. */
+#define VM_CHANGED_MESSAGES  0x0001
+#define VM_CHANGED_CONTACTS  0x0002
+
 
 /* Opens the link and runs DEVICE_QUERY + APP_START. On error the link is closed. */
 Err     SessionConnect(void);
@@ -42,5 +49,26 @@ Err     SessionRefresh(void);
  */
 typedef Err (*SessionContactFn)(const VmContact *c, void *ctx);
 Err     SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *count, UInt32 *lastMod);
+
+/* Our clock in Unix seconds (message timestamps). */
+UInt32  SessionNow(void);
+
+/*
+ * Call regularly (the app does on nilEvent): handles pushes, pulls waiting
+ * messages and times out unacked DMs. Returns VM_CHANGED_* flags.
+ */
+UInt16  SessionPoll(void);
+/* Pulls queued messages into the message store (SYNC_NEXT_MESSAGE until none are left). */
+Err     SessionSyncMessages(void);
+Err     SessionGetChannel(UInt8 slot, VmChannel *out);
+
+/*
+ * Stores an outgoing message and sends it; *index is its record. Status goes
+ * pending -> sent (channel: final) -> acked / failed. Never retried by itself.
+ */
+Err     SessionSend(const VmConv *conv, const Char *text, UInt16 *index);
+/* Sends a failed message again (next attempt number). */
+Err     SessionRetry(UInt16 index);
+Err     SessionSendAdvert(Boolean flood);
 
 #endif

@@ -1,15 +1,24 @@
 #include <PalmOS.h>
 #include "protocol.h"
 #include "transport.h"
+#include "messages.h"
+#include "channels.h"
+#include "contacts.h"
+#include "ui/text.h"
 #include "session.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
 #define VM_CONNECT_TRIES   3     /* over USB the host bridge needs a moment to attach */
+#define VM_SYNC_MAX        50    /* messages pulled per sync, so the UI isn't blocked forever */
+#define VM_ACK_MIN_SECS    10    /* shortest wait for a DM ack, whatever the radio estimates */
+#define VM_CLOCK_SLACK     60    /* radio clock behind ours by more than this gets set forward */
+#define PALM_EPOCH_OFFSET  2082844800UL   /* 1904-01-01 (Palm) to 1970-01-01 (Unix) */
 
 static VmFrameDecoder gDecoder;
 static Boolean gConnected = false;
 static Boolean gMsgWaiting = false;
+static UInt16  gChanged = 0;
 static VmDeviceInfo gDevice;
 static VmSelfInfo gSelf;
 
@@ -21,14 +30,35 @@ static VmSelfInfo gSelf;
 static UInt8  gRx[64];
 static UInt16 gRxPos, gRxLen;
 
+UInt32 SessionNow(void)
+{
+	return TimGetSeconds() - PALM_EPOCH_OFFSET;
+}
+
+/* Acts on a frame nobody asked for: pushes from the radio. */
+static void HandlePush(void)
+{
+	UInt8 code = gDecoder.payload[0];
+	UInt32 ack, trip;
+
+	if (code == VM_PUSH_MSG_WAITING) {
+		gMsgWaiting = true;
+	} else if (code == VM_PUSH_SEND_CONFIRMED) {
+		if (VmParseSendConfirmed(gDecoder.payload, gDecoder.len, &ack, &trip) && MessagesAcked(ack))
+			gChanged |= VM_CHANGED_MESSAGES;
+	} else if (code == VM_PUSH_ADVERT || code == VM_PUSH_NEW_ADVERT || code == VM_PUSH_PATH_UPDATED) {
+		gChanged |= VM_CHANGED_CONTACTS;
+	}
+}
+
 /*
- * Reads frames until one whose code is code1 or code2 arrives (pass the same
- * code twice to wait for one). Pushes are noted and skipped; RESP_ERR ends the
- * wait. The reply is left in gDecoder.payload.
+ * Reads frames until one whose code is in codes[] arrives; pushes on the way
+ * are acted on, RESP_ERR ends the wait. The reply is left in gDecoder.payload.
  */
-static Err WaitForEither(UInt8 code1, UInt8 code2, Int32 timeout)
+static Err WaitForAny(const UInt8 *codes, UInt16 n, Int32 timeout)
 {
 	UInt32 deadline = TimGetTicks() + timeout;
+	UInt16 i;
 	Err err;
 
 	for (;;) {
@@ -38,13 +68,14 @@ static Err WaitForEither(UInt8 code1, UInt8 code2, Int32 timeout)
 			if (!VmDecoderFeed(&gDecoder, gRx[gRxPos++]) || gDecoder.len == 0)
 				continue;
 			got = gDecoder.payload[0];
-			if (got == code1 || got == code2)
-				return errNone;
-			if (got == VM_PUSH_MSG_WAITING)
-				gMsgWaiting = true;
-			else if (got == VM_RESP_ERR)
+			for (i = 0; i < n; i++)
+				if (got == codes[i])
+					return errNone;
+			if (got == VM_RESP_ERR)
 				return vmErrRadio;
-			/* other pushes and stray replies are ignored */
+			if (VM_IS_PUSH(got))
+				HandlePush();
+			/* stray replies are ignored */
 		}
 		if (TimGetTicks() >= deadline)
 			return vmErrNoReply;
@@ -53,14 +84,10 @@ static Err WaitForEither(UInt8 code1, UInt8 code2, Int32 timeout)
 	}
 }
 
-static Err WaitFor(UInt8 code, Int32 timeout)
-{
-	return WaitForEither(code, code, timeout);
-}
-
 /*
- * Discards anything already received before a new request, so a late reply to
- * an earlier request can't be taken as this one's. Pushes in it are still noted.
+ * Handles everything already received without waiting: pushes are acted on,
+ * anything else is a late reply to an earlier request and is dropped, so it
+ * can't be taken as the next request's.
  */
 static void DrainInput(void)
 {
@@ -68,9 +95,8 @@ static void DrainInput(void)
 
 	for (;;) {
 		while (gRxPos < gRxLen) {
-			if (VmDecoderFeed(&gDecoder, gRx[gRxPos++]) && gDecoder.len &&
-			    gDecoder.payload[0] == VM_PUSH_MSG_WAITING)
-				gMsgWaiting = true;
+			if (VmDecoderFeed(&gDecoder, gRx[gRxPos++]) && gDecoder.len && VM_IS_PUSH(gDecoder.payload[0]))
+				HandlePush();
 		}
 		gRxPos = 0;
 		gRxLen = TransportRecv(gRx, sizeof(gRx), 0, &err);
@@ -81,11 +107,11 @@ static void DrainInput(void)
 }
 
 /*
- * Sends a request frame and waits for the reply code. A try is repeated if
- * the frame couldn't be sent or no reply came, so only use tries > 1 for
- * commands that are safe to repeat.
+ * Sends a request frame and waits for one of the reply codes. A try is
+ * repeated if the frame couldn't be sent or no reply came, so only use
+ * tries > 1 for commands that are safe to repeat.
  */
-static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
+static Err RequestAny(const UInt8 *frame, UInt16 len, const UInt8 *codes, UInt16 n, UInt16 tries)
 {
 	Err err = vmErrNoReply;
 	UInt16 t;
@@ -97,11 +123,16 @@ static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
 			continue;
 		if (err != errNone)
 			return err;
-		err = WaitFor(code, VM_REPLY_TIMEOUT);
+		err = WaitForAny(codes, n, VM_REPLY_TIMEOUT);
 		if (err != vmErrNoReply)
 			return err;
 	}
 	return err == serErrTimeOut ? vmErrNoReply : err;
+}
+
+static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
+{
+	return RequestAny(frame, len, &code, 1, tries);
 }
 
 /* DEVICE_QUERY + APP_START into gDevice/gSelf. The first request gets extra tries (USB attach). */
@@ -123,6 +154,23 @@ static Err QueryRadio(UInt16 firstTries)
 	if (err == errNone && !VmParseSelfInfo(gDecoder.payload, gDecoder.len, &gSelf))
 		err = vmErrBadReply;
 	return err;
+}
+
+/* Sets the radio's clock from ours if it's behind (the firmware only lets it move forward). */
+static void SyncClock(void)
+{
+	UInt8 frame[VM_HEADER_LEN + 5];
+	UInt32 radio, now = SessionNow();
+	UInt16 len;
+
+	len = VmBuildGetTime(frame, sizeof(frame));
+	if (Request(frame, len, VM_RESP_CURR_TIME, 1) != errNone ||
+	    !VmParseCurrTime(gDecoder.payload, gDecoder.len, &radio))
+		return;
+	if (radio + VM_CLOCK_SLACK < now) {
+		len = VmBuildSetTime(frame, sizeof(frame), now);
+		Request(frame, len, VM_RESP_OK, 1);
+	}
 }
 
 Err SessionConnect(void)
@@ -147,6 +195,14 @@ Err SessionConnect(void)
 		return err;
 	}
 	gConnected = true;
+
+	/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
+	SyncClock();
+	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
+		gChanged |= VM_CHANGED_MESSAGES;
+	if (ContactsRefresh(NULL) == errNone)
+		gChanged |= VM_CHANGED_CONTACTS;
+	SessionSyncMessages();
 	return errNone;
 }
 
@@ -170,6 +226,7 @@ Err SessionCommand(const UInt8 *frame, UInt16 len)
 
 Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *count, UInt32 *lastMod)
 {
+	static const UInt8 codes[] = { VM_RESP_CONTACT, VM_RESP_END_OF_CONTACTS };
 	UInt8 frame[VM_HEADER_LEN + 5];
 	UInt16 len;
 	VmContact c;
@@ -185,7 +242,7 @@ Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *cou
 		return vmErrBadReply;
 
 	for (;;) {
-		err = WaitForEither(VM_RESP_CONTACT, VM_RESP_END_OF_CONTACTS, VM_REPLY_TIMEOUT);
+		err = WaitForAny(codes, 2, VM_REPLY_TIMEOUT);
 		if (err != errNone)
 			return err;
 		if (gDecoder.payload[0] == VM_RESP_END_OF_CONTACTS)
@@ -196,6 +253,153 @@ Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *cou
 		if (err != errNone)
 			return err;
 	}
+}
+
+Err SessionGetChannel(UInt8 slot, VmChannel *out)
+{
+	UInt8 frame[VM_HEADER_LEN + 2];
+	UInt16 len = VmBuildGetChannel(frame, sizeof(frame), slot);
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	err = Request(frame, len, VM_RESP_CHANNEL_INFO, 2);
+	if (err == errNone && !VmParseChannelInfo(gDecoder.payload, gDecoder.len, out))
+		err = vmErrBadReply;
+	return err;
+}
+
+Err SessionSyncMessages(void)
+{
+	static const UInt8 codes[] = { VM_RESP_CONTACT_MSG_V3, VM_RESP_CHANNEL_MSG_V3, VM_RESP_NO_MORE_MESSAGES };
+	UInt8 frame[VM_HEADER_LEN + 1];
+	UInt16 len = VmBuildSyncNextMessage(frame, sizeof(frame));
+	UInt16 n;
+	VmMessage m;
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	gMsgWaiting = false;
+	for (n = 0; n < VM_SYNC_MAX; n++) {
+		/* one try: a repeated SYNC_NEXT_MESSAGE would skip a message */
+		err = RequestAny(frame, len, codes, 3, 1);
+		if (err != errNone)
+			return err;
+		if (gDecoder.payload[0] == VM_RESP_NO_MORE_MESSAGES)
+			return errNone;
+		if (VmParseMessage(gDecoder.payload, gDecoder.len, &m) && MessagesAddIncoming(&m, SessionNow()) == errNone)
+			gChanged |= VM_CHANGED_MESSAGES;
+	}
+	gMsgWaiting = true;     /* more left: carry on at the next poll */
+	return errNone;
+}
+
+/* Sends message record 'index' (new or a retry) and records the outcome on it. */
+static Err SendRecord(UInt16 index)
+{
+	static const UInt8 dmCodes[] = { VM_RESP_SENT };
+	UInt8 frame[VM_HEADER_LEN + 13 + VM_MAX_DM_TEXT];
+	UInt8 utf8[VM_MAX_DM_TEXT];
+	const VmMsgHeader *hdr;
+	VmMsgHeader h;
+	UInt16 len = 0, n;
+	VmSent sent;
+	UInt32 now = SessionNow(), wait;
+	Err err;
+
+	hdr = MessagesLock(index);
+	if (!hdr)
+		return dmErrIndexOutOfRange;
+	h = *hdr;
+	n = TxtPalmToUtf8((const Char *)(hdr + 1), hdr->textLen, utf8,
+	                  h.conv.type == VM_CONV_CHANNEL ? VM_MAX_CHANNEL_TEXT : VM_MAX_DM_TEXT);
+	MessagesRelease(index);
+	if (n == 0) {
+		MessagesSetStatus(index, VM_ST_FAILED, 0, 0);
+		return vmErrTooLong;
+	}
+	if (h.conv.type == VM_CONV_CHANNEL)
+		len = VmBuildSendChannelTxt(frame, sizeof(frame), h.conv.channel, h.timestamp, utf8, n);
+	else
+		len = VmBuildSendTxt(frame, sizeof(frame), h.conv.key, h.timestamp, h.attempt, utf8, n);
+
+	MessagesSetStatus(index, VM_ST_PENDING, 0, 0);
+	gChanged |= VM_CHANGED_MESSAGES;
+	/* one try: a repeated send would go out twice */
+	if (h.conv.type == VM_CONV_CHANNEL) {
+		err = Request(frame, len, VM_RESP_OK, 1);
+		MessagesSetStatus(index, err == errNone ? VM_ST_SENT : VM_ST_FAILED, 0, 0);
+		return err;
+	}
+	err = RequestAny(frame, len, dmCodes, 1, 1);
+	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, &sent))
+		err = vmErrBadReply;
+	if (err != errNone) {
+		MessagesSetStatus(index, VM_ST_FAILED, 0, 0);
+		return err;
+	}
+	wait = sent.timeoutMs / 1000 * 3 / 2;
+	if (wait < VM_ACK_MIN_SECS)
+		wait = VM_ACK_MIN_SECS;
+	MessagesSetStatus(index, sent.expectedAck ? VM_ST_SENT : VM_ST_ACKED, sent.expectedAck, now + wait);
+	return errNone;
+}
+
+Err SessionSend(const VmConv *conv, const Char *text, UInt16 *index)
+{
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	err = MessagesAddOutgoing(conv, text, SessionNow(), index);
+	if (err != errNone)
+		return err;
+	return SendRecord(*index);
+}
+
+Err SessionRetry(UInt16 index)
+{
+	VmMsgHeader h;
+	const VmMsgHeader *hdr;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	hdr = MessagesLock(index);
+	if (!hdr)
+		return dmErrIndexOutOfRange;
+	h = *hdr;
+	MessagesRelease(index);
+	if (h.dir != VM_DIR_OUT || h.status != VM_ST_FAILED)
+		return errNone;
+	MessagesBumpAttempt(index);
+	return SendRecord(index);
+}
+
+UInt16 SessionPoll(void)
+{
+	UInt16 changed;
+
+	if (gConnected) {
+		DrainInput();
+		if (gMsgWaiting)
+			SessionSyncMessages();
+		if (MessagesExpireAcks(SessionNow()))
+			gChanged |= VM_CHANGED_MESSAGES;
+	}
+	changed = gChanged;
+	gChanged = 0;
+	return changed;
+}
+
+Err SessionSendAdvert(Boolean flood)
+{
+	UInt8 frame[VM_HEADER_LEN + 2];
+	UInt16 len = VmBuildSendAdvert(frame, sizeof(frame), flood);
+
+	if (!gConnected)
+		return serErrNotOpen;
+	return Request(frame, len, VM_RESP_OK, 1);
 }
 
 #define VM_REBOOT_WAIT  (4 * SysTicksPerSecond())   /* XIAO restart until it answers again */
