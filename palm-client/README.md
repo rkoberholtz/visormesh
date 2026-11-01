@@ -40,7 +40,7 @@ pilot-link isn't in Homebrew any more, so build https://github.com/desrod/pilot-
 brew install autoconf automake libtool pkg-config libpng readline popt
 git clone https://github.com/desrod/pilot-link.git ~/src/pilot-link
 cd ~/src/pilot-link
-./autogen.sh --prefix=$HOME/.local && make -j"$(sysctl -n hw.ncpu)" && make install
+./autogen.sh --prefix=$HOME/.local --enable-conduits && make -j"$(sysctl -n hw.ncpu)" && make install
 ```
 
 The Makefile uses `~/.local/bin/pilot-xfer` when it exists. On Linux, use the kernel `visor` driver and `make install PORT=/dev/ttyUSB1`.
