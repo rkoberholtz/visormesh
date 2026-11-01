@@ -13,3 +13,5 @@ palm-client/build/
 *.o
 # OS
 .DS_Store
+# MeshCore build checkout (firmware/Makefile)
+firmware/meshcore/
