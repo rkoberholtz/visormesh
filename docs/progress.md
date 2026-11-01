@@ -17,7 +17,7 @@
 ### Firmware
 - [x] Apply `firmware/meshcore-xiao-nrf52-uart-companion.patch` to MeshCore, build `Xiao_nrf52_companion_radio_uart` (`firmware/Makefile`, MeshCore a366955c, GCC 14 on Apple Silicon)
 - [x] Flashed to the XIAO; answers `CMD_DEVICE_QUERY` over USB with DEVICE_INFO (v1.17.1)
-- [ ] Bench-test the D6/D7 UART over a 3.3 V USB-TTL adapter (`firmware/tools/companion_query.py`)
+- [x] Bench-test the D6/D7 UART: FT232R at 3.3 V, 115200 8N1, DEVICE_INFO identical to the USB reply
 - [ ] Plug stack into carrier; `CMD_DEVICE_QUERY` gets a DEVICE_INFO reply
 
 ### Palm client
@@ -56,3 +56,4 @@
 - macOS USB sync to the Visor works with pilot-link from desrod's repo. Fixed a race where macOS holds the Visor briefly when it appears, so pilot-link's single open attempt failed with exclusive access. The retry patch is saved in `palm-client/tools/`.
 - First on-device run: VisorMesh v0.1 installed with `make install` and launches on the Visor Neo.
 - Firmware builds and runs. Fixed the patch's I2C override (`-U` flags broke Wire under PlatformIO; now `build_unflags`). Pinned native GCC 14 on Apple Silicon. Enabled the USB companion link alongside the UART. The XIAO answers DEVICE_QUERY over USB, and that real frame is now a Palm host test.
+- UART path verified: FT232R on D6/D7 at 115200 8N1 gets the same DEVICE_INFO as USB. The radio side of SB-LoRa is proven; what remains is the carrier board (SC16IS740 + bus) and the Palm transport for it.

@@ -20,7 +20,7 @@ On Apple Silicon without Rosetta, the nRF52 platform's default GCC 7.2.1 (x86_64
 
 Verified: builds cleanly (RAM 60.8%, flash 54.0%); the compile flags show `PIN_WIRE_SCL=16`, `PIN_WIRE_SDA=17`, `SERIAL_TX=D6`, `SERIAL_RX=D7`.
 
-Verified on hardware (2026-11-01): flashed to the SB-LoRa XIAO (serial `87F2365FB1415308`). Over USB it answers `CMD_DEVICE_QUERY` with DEVICE_INFO: MeshCore v1.17.1, "Seeed Xiao-nrf52". The D6/D7 UART path still needs a 3.3 V USB-TTL adapter to test.
+Verified on hardware (2026-11-01): flashed to the SB-LoRa XIAO (serial `87F2365FB1415308`). Over USB it answers `CMD_DEVICE_QUERY` with DEVICE_INFO: MeshCore v1.17.1, "Seeed Xiao-nrf52". Over an FT232R USB-TTL adapter on D6 (TX) / D7 (RX) at 115200 8N1 it returns the identical DEVICE_INFO frame.
 
 ## tools/companion_query.py
 
