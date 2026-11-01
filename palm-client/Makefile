@@ -2,7 +2,7 @@
 #
 #   make           build build/visormesh.prc (in Docker if the toolchain isn't installed)
 #   make test      run the host-side protocol tests
-#   make install   copy the .prc to the Pi and install it over the USB cradle
+#   make install   copy the .prc to the sync host and install it over the USB cradle
 #   make clean
 
 APP     = visormesh
@@ -16,9 +16,9 @@ CC      = m68k-palmos-gcc
 CFLAGS  = -palmos3.5 -O2 -Wall -Isrc
 PILRC   = pilrc
 
-# Pi with the Visor cradle attached (see tools/pi-install.sh).
-PI      ?= visormesh-pi
-PI_PORT ?= /dev/ttyUSB1
+# Linux host with the Visor USB cradle attached (see tools/cradle-install.sh).
+SYNC_HOST ?= roberholtzer@10.3.0.150
+SYNC_PORT ?= /dev/ttyUSB1
 
 DOCKER_IMAGE = visormesh-palm
 DOCKER_RUN   = docker run --rm --platform linux/amd64 -v "$(CURDIR)":/src -w /src $(DOCKER_IMAGE)
@@ -58,9 +58,9 @@ build:
 
 endif
 
-install: build/$(APP).prc
-	scp -q build/$(APP).prc $(PI):/tmp/$(APP).prc
-	ssh -t $(PI) "bash -s -- /tmp/$(APP).prc $(PI_PORT)" < tools/pi-install.sh
+install: all
+	scp -q build/$(APP).prc $(SYNC_HOST):/tmp/$(APP).prc
+	ssh $(SYNC_HOST) "bash -s -- /tmp/$(APP).prc $(SYNC_PORT)" < tools/cradle-install.sh
 
 clean:
 	rm -rf build

@@ -1,11 +1,14 @@
 #!/bin/bash
-# Runs on the Pi (piped over ssh by `make install`): installs a .prc onto the
+# Runs on the sync host (piped over ssh by `make install`): installs a .prc onto the
 # Visor through its USB cradle using pilot-link.
 #
-# Usage: pi-install.sh FILE.prc [PORT]
+# Usage: cradle-install.sh FILE.prc [PORT]
 #   PORT defaults to /dev/ttyUSB1 (the kernel visor driver's HotSync port).
 #   Use "usb:" instead if pilot-link was built with libusb.
 set -euo pipefail
+
+# pilot-link is built from source into ~/.local (not packaged in Debian 13).
+export PATH="$HOME/.local/bin:$PATH"
 
 prc="$1"
 port="${2:-/dev/ttyUSB1}"

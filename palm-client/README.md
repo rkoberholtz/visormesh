@@ -32,19 +32,26 @@ Creator ID is `VMsh`. The database has the backup bit set, so HotSync keeps a co
 
 ## Install on the Visor
 
-The Visor's USB cradle is plugged into a Raspberry Pi. `make install` copies the `.prc` to the Pi and runs `tools/pi-install.sh` there, which waits for you to press the HotSync button and then runs `pilot-xfer -i`.
+The Visor's USB cradle is plugged into a Linux sync host: the Mac mini running Debian 13 at `roberholtzer@10.3.0.150`. `make install` builds the `.prc`, copies it there, and runs `tools/cradle-install.sh`. That script waits for you to press the HotSync button and then runs `pilot-xfer -i`.
 
 ```sh
-make install PI=user@pi-hostname          # default PI is visormesh-pi
-make install PI=... PI_PORT=usb:          # if pilot-link uses libusb
+make install                                   # default SYNC_HOST is the Mac mini
+make install SYNC_HOST=user@host SYNC_PORT=usb:   # another host, or pilot-link via libusb
 ```
 
-The Pi needs:
-- the kernel `visor` USB-serial driver (`modprobe visor`; the Visor appears as `/dev/ttyUSB1` during HotSync)
-- `pilot-link` (`pilot-xfer`)
+The sync host needs:
+- the kernel `visor` USB-serial driver. Debian 13 ships it as a module that loads when the Visor connects, and the Visor appears as `/dev/ttyUSB1` during HotSync.
+- membership in the `dialout` group to open the tty
+- `pilot-xfer`, from pilot-link. Debian 13 no longer packages it, so build https://github.com/desrod/pilot-link (maintained by pilot-link's original author) into `~/.local`:
+
+  ```sh
+  git clone https://github.com/desrod/pilot-link.git ~/src/pilot-link
+  cd ~/src/pilot-link
+  ./autogen.sh --prefix=$HOME/.local && make -j"$(nproc)" && make install
+  ```
 - SSH key login from your dev machine
 
-**The Pi setup isn't done or tested yet.**
+**Not tested end to end yet.**
 
 ## Testing without hardware
 
