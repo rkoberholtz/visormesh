@@ -366,8 +366,16 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		return false;
 
 	case frmUpdateEvent:
-		if (gLines)
-			Refresh(gList.top + RowListVisibleRows(&gList) >= gCount);   /* follow new messages if at the end */
+		if (!gLines)
+			return false;
+		if (event->data.frmUpdate.updateCode == frmRedrawUpdateCode) {
+			/* e.g. after the on-screen keyboard: redraw everything, not just the transcript */
+			FrmDrawForm(form);
+			RowListDraw(&gList);
+			DrawCounter();
+			return true;
+		}
+		Refresh(gList.top + RowListVisibleRows(&gList) >= gCount);   /* follow new messages if at the end */
 		return true;
 
 	case fldChangedEvent:

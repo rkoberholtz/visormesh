@@ -130,8 +130,15 @@ Boolean HomeFormHandleEvent(EventType *event)
 		return false;
 
 	case frmUpdateEvent:
-		if (gRows)
-			Rebuild(true);
+		if (!gRows)
+			return false;
+		if (event->data.frmUpdate.updateCode == frmRedrawUpdateCode) {
+			FrmDrawForm(FrmGetActiveForm());
+			RowListDraw(&gList);
+			DrawTitleStatus();
+			return true;
+		}
+		Rebuild(true);
 		return true;
 
 	case ctlSelectEvent:

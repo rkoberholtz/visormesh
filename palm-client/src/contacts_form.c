@@ -174,6 +174,8 @@ Boolean ContactsFormHandleEvent(EventType *event)
 
 	case frmUpdateEvent:
 		SetTitle(form);
+		if (event->data.frmUpdate.updateCode == frmRedrawUpdateCode)
+			FrmDrawForm(form);
 		Load(true);
 		return true;
 

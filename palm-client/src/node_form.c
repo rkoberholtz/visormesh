@@ -172,6 +172,8 @@ Boolean NodeFormHandleEvent(EventType *event)
 	}
 	case frmUpdateEvent:
 		ShowRadioInfo(form);
+		if (event->data.frmUpdate.updateCode == frmRedrawUpdateCode)
+			FrmDrawForm(form);
 		DrawClockLine();
 		return true;
 
