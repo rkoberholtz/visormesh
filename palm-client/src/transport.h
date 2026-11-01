@@ -1,13 +1,20 @@
 /*
  * Byte-stream link to the companion radio. One implementation per transport:
- *   transport_srm.c  Serial Manager (cradle serial port, or an emulator's
- *                    serial port bridged to a radio on the host)
+ *   transport_srm.c  Serial Manager: the cradle serial port, or the Visor's
+ *                    USB data port bridged to a radio by tools/visor_bridge.py
  *   (later)          SB-LoRa Springboard module via the SC16IS740
  */
 #ifndef VM_TRANSPORT_H
 #define VM_TRANSPORT_H
 
 #include <PalmOS.h>
+
+/* Serial Manager ports (see the Ports screen for what a device has). */
+#define VM_PORT_SERIAL  serPortCradlePort
+#define VM_PORT_USB     'HsUd'      /* Handspring "USB" driver: the Visor's GENERIC USB port */
+
+void   TransportSetPort(UInt32 port);   /* takes effect on the next TransportOpen */
+UInt32 TransportGetPort(void);
 
 Err    TransportOpen(void);
 void   TransportClose(void);

@@ -5,6 +5,17 @@
 
 static UInt16  gPortId;
 static Boolean gPortOpen = false;
+static UInt32  gPort = VM_PORT_USB;
+
+void TransportSetPort(UInt32 port)
+{
+	gPort = port;
+}
+
+UInt32 TransportGetPort(void)
+{
+	return gPort;
+}
 
 Err TransportOpen(void)
 {
@@ -12,7 +23,7 @@ Err TransportOpen(void)
 
 	if (gPortOpen)
 		return errNone;
-	err = SrmOpen(serPortCradlePort, VM_BAUD, &gPortId);
+	err = SrmOpen(gPort, VM_BAUD, &gPortId);
 	if (err == errNone)
 		gPortOpen = true;
 	return err;
@@ -32,9 +43,8 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 
 	if (!gPortOpen)
 		return serErrNotOpen;
+	/* No SrmSendWait: over USB it can block indefinitely if no host is reading. */
 	SrmSend(gPortId, (void *)buf, len, &err);
-	if (err == errNone)
-		err = SrmSendWait(gPortId);
 	return err;
 }
 

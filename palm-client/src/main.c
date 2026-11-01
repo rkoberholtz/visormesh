@@ -6,6 +6,7 @@
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_QUERY_TIMEOUT   (2 * SysTicksPerSecond())
+#define VM_QUERY_ATTEMPTS  3     /* over USB the host bridge needs a moment to attach after SrmOpen */
 
 static VmFrameDecoder gDecoder;
 
@@ -36,7 +37,7 @@ static void QueryRadio(void)
 {
 	UInt8 frame[VM_HEADER_LEN + 2];
 	UInt8 rx[32];
-	UInt16 frameLen, n, i;
+	UInt16 frameLen, n, i, attempt;
 	UInt32 deadline;
 	Char msg[32];
 	Err err;
@@ -52,25 +53,28 @@ static void QueryRadio(void)
 	frameLen = VmBuildDeviceQuery(frame, sizeof(frame));
 	VmDecoderReset(&gDecoder);
 
-	err = TransportSend(frame, frameLen);
-	if (err != errNone) {
-		StrPrintF(msg, "Send failed (0x%x)", err);
-		SetStatus(msg);
-		TransportClose();
-		return;
-	}
+	for (attempt = 1; attempt <= VM_QUERY_ATTEMPTS; attempt++) {
+		err = TransportSend(frame, frameLen);
+		if (err != errNone) {
+			StrPrintF(msg, "Send failed (0x%x)", err);
+			SetStatus(msg);
+			TransportClose();
+			return;
+		}
 
-	SetStatus("Waiting for reply...");
-	deadline = TimGetTicks() + VM_QUERY_TIMEOUT;
-	while (TimGetTicks() < deadline) {
-		n = TransportRecv(rx, sizeof(rx), deadline - TimGetTicks(), &err);
-		for (i = 0; i < n; i++) {
-			if (VmDecoderFeed(&gDecoder, rx[i])) {
-				StrPrintF(msg, "Reply 0x%x, %u bytes",
-				          gDecoder.len ? gDecoder.payload[0] : 0, gDecoder.len);
-				SetStatus(msg);
-				TransportClose();
-				return;
+		StrPrintF(msg, "Waiting for reply (%u)...", attempt);
+		SetStatus(msg);
+		deadline = TimGetTicks() + VM_QUERY_TIMEOUT;
+		while (TimGetTicks() < deadline) {
+			n = TransportRecv(rx, sizeof(rx), deadline - TimGetTicks(), &err);
+			for (i = 0; i < n; i++) {
+				if (VmDecoderFeed(&gDecoder, rx[i])) {
+					StrPrintF(msg, "Reply 0x%x, %u bytes",
+					          gDecoder.len ? gDecoder.payload[0] : 0, gDecoder.len);
+					SetStatus(msg);
+					TransportClose();
+					return;
+				}
 			}
 		}
 	}
@@ -81,10 +85,23 @@ static void QueryRadio(void)
 static Boolean MainFormHandleEvent(EventType *event)
 {
 	switch (event->eType) {
-	case frmOpenEvent:
-		FrmDrawForm(FrmGetActiveForm());
+	case frmOpenEvent: {
+		FormType *form = FrmGetActiveForm();
+		UInt16 link = (TransportGetPort() == VM_PORT_USB) ? MainUsbPush : MainSerialPush;
+
+		FrmSetControlGroupSelection(form, MainLinkGroup, link);
+		FrmDrawForm(form);
 		return true;
+	}
 	case ctlSelectEvent:
+		if (event->data.ctlSelect.controlID == MainSerialPush) {
+			TransportSetPort(VM_PORT_SERIAL);
+			return true;
+		}
+		if (event->data.ctlSelect.controlID == MainUsbPush) {
+			TransportSetPort(VM_PORT_USB);
+			return true;
+		}
 		if (event->data.ctlSelect.controlID == MainQueryButton) {
 			QueryRadio();
 			return true;

@@ -11,6 +11,9 @@ BEGIN
   LABEL "MeshCore client for the Visor" AUTOID AT (5 20)
   LABEL "Radio:" AUTOID AT (5 45) FONT 1
   LABEL "Not connected                  " ID MainStatusLabel AT (40 45)
+  LABEL "Link:" AUTOID AT (5 65) FONT 1
+  PUSHBUTTON "Serial" ID MainSerialPush AT (40 64 40 12) GROUP MainLinkGroup
+  PUSHBUTTON "USB" ID MainUsbPush AT (PREVRIGHT+1 PREVTOP 40 12) GROUP MainLinkGroup
   BUTTON "Query radio" ID MainQueryButton AT (20 140 AUTO AUTO)
   BUTTON "Ports" ID MainPortsButton AT (PREVRIGHT+10 PREVTOP AUTO AUTO)
 END

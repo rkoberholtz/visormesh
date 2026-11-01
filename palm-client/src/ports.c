@@ -8,7 +8,7 @@
 
 #define LINE_H     11
 #define FIRST_Y    18
-#define MAX_LINES  11
+#define MAX_LINES  11      /* header + 10 devices */
 
 static void DrawLine(UInt16 line, const Char *text)
 {
@@ -32,7 +32,7 @@ static void DrawPorts(void)
 	StrPrintF(buf, "%u serial device(s):", count);
 	DrawLine(line++, buf);
 
-	for (i = 0; i < count && line + 1 < MAX_LINES; i++) {
+	for (i = 0; i < count && line < MAX_LINES; i++) {
 		MemSet(&info, sizeof(info), 0);
 		err = SrmGetDeviceInfo(i, &info);
 		if (err != errNone) {
@@ -42,13 +42,10 @@ static void DrawPorts(void)
 		}
 		MemMove(crid, &info.serDevCreator, 4);
 		crid[4] = 0;
-		StrPrintF(buf, "%u '%s' ftr %lx max %lu", i, crid, info.serDevFtrInfo, info.serDevMaxBaudRate);
-		DrawLine(line++, buf);
-		if (info.serDevPortInfoStr) {
-			StrNCopy(buf, "   ", sizeof(buf));
+		StrPrintF(buf, "%u %s %lx ", i, crid, info.serDevFtrInfo);
+		if (info.serDevPortInfoStr)
 			StrNCat(buf, info.serDevPortInfoStr, sizeof(buf));
-			DrawLine(line++, buf);
-		}
+		DrawLine(line++, buf);
 	}
 }
 
