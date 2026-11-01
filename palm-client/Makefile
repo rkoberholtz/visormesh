@@ -44,7 +44,7 @@ build/%.o: src/%.c src/*.h src/ui/*.h | build
 build/$(APP): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
-build/res.stamp: resources/$(APP).rcp src/resources.h | build
+build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt | build
 	rm -rf build/res && mkdir -p build/res
 	$(PILRC) -q -I src $< build/res
 	touch $@
