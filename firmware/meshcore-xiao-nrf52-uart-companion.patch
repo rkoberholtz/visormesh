@@ -16,10 +16,10 @@ index 89f0e6cb..c4a38045 100644
  
  // platform file system
 diff --git a/variants/xiao_nrf52/platformio.ini b/variants/xiao_nrf52/platformio.ini
-index 1076bd8d..6df3c80d 100644
+index 1076bd8d..e484d00a 100644
 --- a/variants/xiao_nrf52/platformio.ini
 +++ b/variants/xiao_nrf52/platformio.ini
-@@ -119,3 +119,30 @@ build_src_filter = ${Xiao_nrf52.build_src_filter}
+@@ -119,3 +119,31 @@ build_src_filter = ${Xiao_nrf52.build_src_filter}
    +<../examples/kiss_modem/*.cpp>
  lib_deps =
    ${Xiao_nrf52.lib_deps}
@@ -44,6 +44,7 @@ index 1076bd8d..6df3c80d 100644
 +  -D QSPIFLASH=1
 +  -D SERIAL_TX=D6
 +  -D SERIAL_RX=D7
++  -D ENABLE_USB_INTERFACE=1   ; companion over USB too, for bench testing and setup
 +build_src_filter = ${Xiao_nrf52.build_src_filter}
 +  +<../examples/companion_radio/*.cpp>
 +  +<../examples/companion_radio/ui-orig/*.cpp>

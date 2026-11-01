@@ -1,7 +1,8 @@
 # MeshCore companion firmware for the SB-LoRa XIAO nRF52840 + Wio-SX1262 stack.
 #
 #   make             clone MeshCore at MESHCORE_REF into meshcore/, apply the patch, build
-#   make upload      build and flash the XIAO over USB (double-tap reset if it isn't found)
+#   make upload      build and flash the XIAO over USB (UPLOAD_PORT=/dev/cu.usbmodemXXXX to pick one;
+#                    double-tap reset for the bootloader if it isn't found)
 #   make monitor     serial monitor on the XIAO's USB port
 #   make clean       remove the meshcore/ checkout
 #
@@ -37,7 +38,7 @@ build: meshcore/.patched
 	cd meshcore && $(PIO) run -e $(ENV)
 
 upload: meshcore/.patched
-	cd meshcore && $(PIO) run -e $(ENV) -t upload
+	cd meshcore && $(PIO) run -e $(ENV) -t upload $(if $(UPLOAD_PORT),--upload-port $(UPLOAD_PORT))
 
 monitor:
 	cd meshcore && $(PIO) device monitor -b 115200
