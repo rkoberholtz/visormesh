@@ -6,6 +6,7 @@ Uses only the standard library (termios), so it runs anywhere with Python 3.
     companion_query.py /dev/cu.usbmodemXXXX                 # CMD_DEVICE_QUERY
     companion_query.py /dev/cu.usbmodemXXXX 16 03           # same, payload given as hex bytes
     companion_query.py /dev/cu.usbserial-XXXX --baud 115200 # via a USB-TTL adapter on D6/D7
+    companion_query.py PORT 01 00 00 00 00 00 00 00 --text VisorMesh   # CMD_APP_START
 
 Frames: app -> radio '<' len_lo len_hi payload; radio -> app '>' len_lo len_hi payload.
 """
@@ -61,11 +62,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('port')
     ap.add_argument('payload', nargs='*', default=['16', '03'], help='payload bytes in hex (default: 16 03)')
+    ap.add_argument('--text', default='', help='ASCII text appended to the payload')
     ap.add_argument('--baud', type=int, default=115200, choices=sorted(BAUDS))
     ap.add_argument('--timeout', type=float, default=2.0, help='seconds of silence before stopping')
     args = ap.parse_args()
 
-    payload = bytes(int(b, 16) for b in args.payload)
+    payload = bytes(int(b, 16) for b in args.payload) + args.text.encode('ascii')
     frame = b'<' + len(payload).to_bytes(2, 'little') + payload
     fd = open_port(args.port, args.baud)
     try:

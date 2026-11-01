@@ -33,7 +33,6 @@ static void SetStatus(const Char *text)
 /* Sends CMD_DEVICE_QUERY and waits for any '>' frame in reply. */
 static void QueryRadio(void)
 {
-	UInt8 payload[2];
 	UInt8 frame[VM_HEADER_LEN + 2];
 	UInt8 rx[32];
 	UInt16 frameLen, n, i;
@@ -49,9 +48,7 @@ static void QueryRadio(void)
 		return;
 	}
 
-	payload[0] = VM_CMD_DEVICE_QUERY;
-	payload[1] = VM_APP_TARGET_VER;
-	frameLen = VmEncodeFrame(frame, sizeof(frame), payload, sizeof(payload));
+	frameLen = VmBuildDeviceQuery(frame, sizeof(frame));
 	VmDecoderReset(&gDecoder);
 
 	err = TransportSend(frame, frameLen);

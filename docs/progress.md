@@ -28,7 +28,8 @@
 - [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
 - [ ] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them), needed for module-ROM work only
 - [ ] Port springSD bus routines; SC16IS740 driver
-- [ ] Companion protocol framing + minimal command set
+- [x] Companion protocol: framing, builders (DEVICE_QUERY, APP_START, GET_CONTACTS, SYNC_NEXT_MESSAGE), parsers (SELF_INFO, contacts, v3 contact/channel messages); host tests from real captures + MeshCore layouts
+- [ ] Wire the protocol into the app: connect sequence, contact list, message sync on PUSH_MSG_WAITING
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 
@@ -57,3 +58,4 @@
 - First on-device run: VisorMesh v0.1 installed with `make install` and launches on the Visor Neo.
 - Firmware builds and runs. Fixed the patch's I2C override (`-U` flags broke Wire under PlatformIO; now `build_unflags`). Pinned native GCC 14 on Apple Silicon. Enabled the USB companion link alongside the UART. The XIAO answers DEVICE_QUERY over USB, and that real frame is now a Palm host test.
 - UART path verified: FT232R on D6/D7 at 115200 8N1 gets the same DEVICE_INFO as USB. The radio side of SB-LoRa is proven; what remains is the carrier board (SC16IS740 + bus) and the Palm transport for it.
+- Protocol layer for the read-only commands, built against MeshCore's MyMesh.cpp and captured replies (DEVICE_QUERY, APP_START → SELF_INFO, GET_CONTACTS with 0 contacts, SYNC → NO_MORE_MESSAGES). LE fields are assembled byte by byte for the big-endian 68k. The radio is on MeshCore factory defaults (869.618 MHz / 62.5 kHz / SF8, 22 dBm, no name).

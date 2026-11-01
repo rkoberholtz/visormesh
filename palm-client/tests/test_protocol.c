@@ -1,7 +1,8 @@
-/* Host-side tests for the companion framing. Run with `make test`. */
+/* Host-side tests for the companion protocol. Run with `make test`. */
 #include <stdio.h>
 #include <string.h>
 #include "../src/protocol.h"
+#include "fixtures.h"
 
 static int failures;
 
@@ -15,6 +16,13 @@ static int feed(VmFrameDecoder *d, const UInt8 *bytes, int n)
 	for (i = 0; i < n; i++)
 		frames += VmDecoderFeed(d, bytes[i]);
 	return frames;
+}
+
+/* Decodes a single complete frame into d; fails the test if it isn't exactly one frame. */
+static void decode_one(VmFrameDecoder *d, const UInt8 *bytes, int n)
+{
+	VmDecoderReset(d);
+	CHECK(feed(d, bytes, n) == 1);
 }
 
 static void test_encode_device_query(void)
@@ -98,6 +106,126 @@ static void test_decode_real_device_info(void)
 	CHECK(sizeof(in) == VM_HEADER_LEN + 0x52);
 }
 
+/* Builders must produce exactly the frames companion_query.py sent to the real radio. */
+static void test_builders_match_bench_frames(void)
+{
+	UInt8 out[64];
+	static const UInt8 query[] = { 0x3c, 0x02, 0x00, 0x16, 0x03 };
+	static const UInt8 appStart[] = {
+		0x3c, 0x11, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		'V', 'i', 's', 'o', 'r', 'M', 'e', 's', 'h'
+	};
+	static const UInt8 contacts[] = { 0x3c, 0x01, 0x00, 0x04 };
+	static const UInt8 contactsSince[] = { 0x3c, 0x05, 0x00, 0x04, 0x78, 0x56, 0x34, 0x12 };
+	static const UInt8 sync[] = { 0x3c, 0x01, 0x00, 0x0a };
+
+	CHECK(VmBuildDeviceQuery(out, sizeof(out)) == sizeof(query));
+	CHECK(memcmp(out, query, sizeof(query)) == 0);
+	CHECK(VmBuildAppStart(out, sizeof(out), "VisorMesh") == sizeof(appStart));
+	CHECK(memcmp(out, appStart, sizeof(appStart)) == 0);
+	CHECK(VmBuildGetContacts(out, sizeof(out), 0) == sizeof(contacts));
+	CHECK(memcmp(out, contacts, sizeof(contacts)) == 0);
+	CHECK(VmBuildGetContacts(out, sizeof(out), 0x12345678UL) == sizeof(contactsSince));
+	CHECK(memcmp(out, contactsSince, sizeof(contactsSince)) == 0);
+	CHECK(VmBuildSyncNextMessage(out, sizeof(out)) == sizeof(sync));
+	CHECK(memcmp(out, sync, sizeof(sync)) == 0);
+	CHECK(VmBuildAppStart(out, 10, "VisorMesh") == 0);
+}
+
+static void test_parse_self_info(void)
+{
+	VmFrameDecoder d;
+	VmSelfInfo s;
+
+	decode_one(&d, kSelfInfo, sizeof(kSelfInfo));
+	CHECK(VmParseSelfInfo(d.payload, d.len, &s));
+	CHECK(s.advType == 1);
+	CHECK(s.txPowerDbm == 22 && s.maxTxPowerDbm == 22);
+	CHECK(s.pubKey[0] == 0x10 && s.pubKey[31] == 0x2f);
+	CHECK(s.latE6 == 0 && s.lonE6 == 0);
+	CHECK(s.freqKHz == 869618UL);
+	CHECK(s.bwHz == 62500UL);
+	CHECK(s.sf == 8 && s.cr == 5);
+	CHECK(strcmp(s.name, "TestNode") == 0);
+	CHECK(!VmParseSelfInfo(d.payload, 57, &s));
+	CHECK(!VmParseContact(d.payload, d.len, (VmContact *)0));
+}
+
+static void test_parse_contacts(void)
+{
+	VmFrameDecoder d;
+	VmContact c;
+	UInt32 n;
+	int frames = 0, i;
+
+	decode_one(&d, kContactsStart, sizeof(kContactsStart));
+	CHECK(VmParseContactsStart(d.payload, d.len, &n) && n == 1);
+
+	decode_one(&d, kContact, sizeof(kContact));
+	CHECK(d.len == 148);
+	CHECK(VmParseContact(d.payload, d.len, &c));
+	CHECK(c.pubKey[0] == 0xa0 && c.pubKey[31] == 0xbf);
+	CHECK(c.type == 2 && c.flags == 0 && c.outPathLen == 2);
+	CHECK(strcmp(c.name, "Hilltop Repeater") == 0);
+	CHECK(c.lastAdvert == 1793000000UL);
+	CHECK(c.latE6 == 40712345L && c.lonE6 == -74006789L);
+	CHECK(c.lastMod == 1793000123UL);
+	CHECK(!VmParseContact(d.payload, 147, &c));
+
+	decode_one(&d, kEndOfContacts, sizeof(kEndOfContacts));
+	CHECK(VmParseEndOfContacts(d.payload, d.len, &n) && n == 1793000123UL);
+
+	/* Real empty-list reply: two back-to-back frames. */
+	VmDecoderReset(&d);
+	for (i = 0; i < (int)sizeof(kContactsEmpty); i++) {
+		if (!VmDecoderFeed(&d, kContactsEmpty[i]))
+			continue;
+		frames++;
+		if (frames == 1)
+			CHECK(VmParseContactsStart(d.payload, d.len, &n) && n == 0);
+		else
+			CHECK(VmParseEndOfContacts(d.payload, d.len, &n) && n == 0);
+	}
+	CHECK(frames == 2);
+}
+
+static void test_parse_messages(void)
+{
+	VmFrameDecoder d;
+	VmMessage m;
+	static const UInt8 sender[6] = { 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5 };
+
+	decode_one(&d, kContactMsg, sizeof(kContactMsg));
+	CHECK(VmParseMessage(d.payload, d.len, &m));
+	CHECK(!m.isChannel);
+	CHECK(m.snrQuarterDb == -10);
+	CHECK(memcmp(m.senderPrefix, sender, 6) == 0);
+	CHECK(m.pathLen == 0xff && m.txtType == VM_TXT_TYPE_PLAIN);
+	CHECK(m.timestamp == 1793001000UL);
+	CHECK(m.textLen == 11 && memcmp(m.text, "hello visor", 11) == 0);
+
+	decode_one(&d, kSignedMsg, sizeof(kSignedMsg));
+	CHECK(VmParseMessage(d.payload, d.len, &m));
+	CHECK(m.txtType == VM_TXT_TYPE_SIGNED_PLAIN && m.snrQuarterDb == 20);
+	CHECK(m.textLen == 9 && memcmp(m.text, "signed hi", 9) == 0);
+
+	decode_one(&d, kChannelMsg, sizeof(kChannelMsg));
+	CHECK(VmParseMessage(d.payload, d.len, &m));
+	CHECK(m.isChannel && m.channelIdx == 0 && m.pathLen == 3);
+	CHECK(m.timestamp == 1793001002UL);
+	CHECK(m.textLen == 13 && memcmp(m.text, "Alice: hi all", 13) == 0);
+
+	decode_one(&d, kNoMoreMessages, sizeof(kNoMoreMessages));
+	CHECK(d.len == 1 && d.payload[0] == VM_RESP_NO_MORE_MESSAGES);
+	CHECK(!VmParseMessage(d.payload, d.len, &m));
+
+	/* Truncated frames are rejected, not over-read. */
+	decode_one(&d, kChannelMsg, sizeof(kChannelMsg));
+	CHECK(!VmParseMessage(d.payload, 10, &m));
+	decode_one(&d, kSignedMsg, sizeof(kSignedMsg));
+	CHECK(!VmParseMessage(d.payload, 17, &m));
+}
+
 int main(void)
 {
 	test_encode_device_query();
@@ -106,6 +234,10 @@ int main(void)
 	test_decode_oversize_resyncs();
 	test_decode_max_frame();
 	test_decode_real_device_info();
+	test_builders_match_bench_frames();
+	test_parse_self_info();
+	test_parse_contacts();
+	test_parse_messages();
 	if (failures) {
 		printf("%d failure(s)\n", failures);
 		return 1;
