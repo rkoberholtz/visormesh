@@ -1,7 +1,8 @@
 #include <PalmOS.h>
 #include "transport.h"
 
-#define VM_BAUD 115200
+#define VM_BAUD       115200
+#define VM_SEND_TRIES 5      /* SrmSend attempts for one buffer (USB re-attach) */
 
 static UInt16  gPortId;
 static Boolean gPortOpen = false;
@@ -40,12 +41,26 @@ void TransportClose(void)
 Err TransportSend(const UInt8 *buf, UInt16 len)
 {
 	Err err = errNone;
+	UInt32 sent = 0;
+	UInt16 tries;
 
 	if (!gPortOpen)
 		return serErrNotOpen;
-	/* No SrmSendWait: over USB it can block indefinitely if no host is reading. */
-	SrmSend(gPortId, (void *)buf, len, &err);
-	return err;
+	/*
+	 * Over USB, SrmSend can time out while the host re-attaches and still
+	 * deliver the bytes it accepted, so only ever resend the remainder;
+	 * resending the whole frame duplicated commands. No SrmSendWait: it can
+	 * block indefinitely if no host is reading.
+	 */
+	for (tries = 0; tries < VM_SEND_TRIES; tries++) {
+		sent += SrmSend(gPortId, (void *)(buf + sent), len - sent, &err);
+		if (sent >= len)
+			return errNone;
+		if (err != serErrTimeOut)
+			return err;
+		SrmClearErr(gPortId);
+	}
+	return serErrTimeOut;
 }
 
 UInt16 TransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP)

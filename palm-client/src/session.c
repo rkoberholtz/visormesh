@@ -58,13 +58,40 @@ static Err WaitFor(UInt8 code, Int32 timeout)
 	return WaitForEither(code, code, timeout);
 }
 
-/* Sends a request frame and waits for the reply code, retrying sends the host isn't reading yet. */
+/*
+ * Discards anything already received before a new request, so a late reply to
+ * an earlier request can't be taken as this one's. Pushes in it are still noted.
+ */
+static void DrainInput(void)
+{
+	Err err;
+
+	for (;;) {
+		while (gRxPos < gRxLen) {
+			if (VmDecoderFeed(&gDecoder, gRx[gRxPos++]) && gDecoder.len &&
+			    gDecoder.payload[0] == VM_PUSH_MSG_WAITING)
+				gMsgWaiting = true;
+		}
+		gRxPos = 0;
+		gRxLen = TransportRecv(gRx, sizeof(gRx), 0, &err);
+		if (gRxLen == 0)
+			break;
+	}
+	VmDecoderReset(&gDecoder);
+}
+
+/*
+ * Sends a request frame and waits for the reply code. A try is repeated if
+ * the frame couldn't be sent or no reply came, so only use tries > 1 for
+ * commands that are safe to repeat.
+ */
 static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
 {
 	Err err = vmErrNoReply;
 	UInt16 t;
 
 	for (t = 0; t < tries; t++) {
+		DrainInput();
 		err = TransportSend(frame, len);
 		if (err == serErrTimeOut)
 			continue;
