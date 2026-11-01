@@ -73,15 +73,15 @@ static void ShowRadioInfo(FormType *form)
 
 /*
  * Clock check, small font, under the radio details:
- *   Visor 17:02  UTC 22:02 (-5h)
- *   radio 11:57 UTC  sys -300
+ *   Visor 11/1 17:02 UTC 11/1 22:02 (-5:00)
+ *   radio 11/1 11:57 UTC  sys 300
  * "sys" is Palm OS's own minutes-west-of-GMT preference (the offset's default).
  */
 static void DrawClockLine(void)
 {
 	DateTimeType dt;
 	RectangleType r;
-	Char line[48], utc[8], radio[8];
+	Char line[56], utc[16], radio[16];
 	UInt32 now = TimGetSeconds();
 	Int16 off = SessionUtcOffset();
 	UInt32 rt = SessionRadioTime();
@@ -90,16 +90,16 @@ static void DrawClockLine(void)
 	RctSetRectangle(&r, 0, 104, 160, 20);
 	WinEraseRectangle(&r, 0);
 	TimSecondsToDateTime(SessionNow() + 2082844800UL, &dt);
-	StrPrintF(utc, "%02u:%02u", dt.hour, dt.minute);
+	StrPrintF(utc, "%u/%u %02u:%02u", dt.month, dt.day, dt.hour, dt.minute);
 	TimSecondsToDateTime(now, &dt);
-	StrPrintF(line, "Visor %02u:%02u  UTC %s (%s%d:%02dh)", dt.hour, dt.minute, utc,
+	StrPrintF(line, "Visor %u/%u %02u:%02u UTC %s (%s%d:%02d)", dt.month, dt.day, dt.hour, dt.minute, utc,
 	          off < 0 ? "-" : "+", (off < 0 ? -off : off) / 60, (off < 0 ? -off : off) % 60);
 	WinDrawChars(line, StrLen(line), 5, 105);
 	if (rt) {
 		TimSecondsToDateTime(rt + 2082844800UL, &dt);
-		StrPrintF(radio, "%02u:%02u", dt.hour, dt.minute);
+		StrPrintF(radio, "%u/%u %02u:%02u", dt.month, dt.day, dt.hour, dt.minute);
 	} else {
-		StrCopy(radio, "--:--");
+		StrCopy(radio, "--");
 	}
 	StrPrintF(line, "radio %s UTC  sys %ld", radio, (Int32)PrefGetPreference(prefMinutesWestOfGMT));
 	WinDrawChars(line, StrLen(line), 5, 113);

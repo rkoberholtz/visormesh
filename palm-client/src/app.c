@@ -23,6 +23,7 @@ void AppLoadPrefs(void)
 {
 	AppPrefs prefs;
 	UInt16 size = sizeof(prefs);
+	Int32 west;
 
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
@@ -30,8 +31,12 @@ void AppLoadPrefs(void)
 		SessionSetUtcOffset(prefs.utcOffset);
 		return;
 	}
-	/* no saved offset yet: start from the system's, if it has one */
-	SessionSetUtcOffset(-(Int16)PrefGetPreference(prefMinutesWestOfGMT));
+	/*
+	 * No saved offset yet: start from the system's, if it's a real zone. The
+	 * Neo's held 1140 (19 h), which made times 19 h off; ignore anything past +-14 h.
+	 */
+	west = (Int32)PrefGetPreference(prefMinutesWestOfGMT);
+	SessionSetUtcOffset(west >= -840 && west <= 720 ? (Int16)-west : 0);
 }
 
 void AppSavePrefs(void)
