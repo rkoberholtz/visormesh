@@ -3,9 +3,18 @@
 VERSION ID 1 "0.1"
 APPLICATIONICONNAME ID 1000 "VisorMesh"
 
+MENU ID MainMenuBar
+BEGIN
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+  END
+END
+
 FORM ID MainForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID MainMenuBar
 BEGIN
   TITLE "VisorMesh"
   LABEL "Link:" AUTOID AT (5 18) FONT 1
@@ -24,8 +33,27 @@ BEGIN
   LABEL "                      " ID MainFirmwareLabel AT (50 90)
 
   BUTTON "Disconnect" ID MainConnectButton AT (5 140 AUTO AUTO)
+  BUTTON "Contacts" ID MainContactsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
   BUTTON "Settings" ID MainSettingsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
-  BUTTON "Ports" ID MainPortsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+END
+
+FORM ID ContactsForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Contacts"
+  LIST "" ID ContactsList AT (0 16 160 121) VISIBLEITEMS 11
+  LABEL "                              " ID ContactsStatusLabel AT (5 129)
+  BUTTON "Refresh" ID ContactsRefreshButton AT (5 145 AUTO AUTO)
+  BUTTON "Done" ID ContactsDoneButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+END
+
+ALERT ID ContactInfoAlert
+INFORMATION
+BEGIN
+  TITLE "Contact"
+  MESSAGE "^1\n^2"
+  BUTTONS "OK"
 END
 
 FORM ID SettingsForm AT (0 0 160 160)

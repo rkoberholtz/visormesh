@@ -178,6 +178,14 @@ static void test_settings_builders(void)
 	CHECK(memcmp(out, hash, sizeof(hash)) == 0);
 }
 
+static void test_path_len(void)
+{
+	CHECK(VM_PATH_HOPS(0x00) == 0 && VM_PATH_HASH_BYTES(0x00) == 1);
+	CHECK(VM_PATH_HOPS(0x02) == 2 && VM_PATH_HASH_BYTES(0x02) == 1);
+	CHECK(VM_PATH_HOPS(0x43) == 3 && VM_PATH_HASH_BYTES(0x43) == 2);   /* PhillyMesh: 2-byte hashes */
+	CHECK(VM_PATH_HOPS(0x81) == 1 && VM_PATH_HASH_BYTES(0x81) == 3);
+}
+
 static void test_decimals(void)
 {
 	UInt32 v;
@@ -315,6 +323,7 @@ int main(void)
 	test_builders_match_bench_frames();
 	test_settings_builders();
 	test_decimals();
+	test_path_len();
 	test_parse_self_info();
 	test_parse_contacts();
 	test_parse_messages();

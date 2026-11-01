@@ -28,4 +28,13 @@ Err     SessionCommand(const UInt8 *frame, UInt16 len);
 /* Re-reads DEVICE_INFO and SELF_INFO, e.g. after changing settings. */
 Err     SessionRefresh(void);
 
+/*
+ * GET_CONTACTS: calls fn for each contact changed since 'since' (0 = all).
+ * count is the radio's total (not the filtered number); lastMod is the newest
+ * lastmod, to pass as 'since' next time. A non-zero return from fn stops the
+ * download (the rest of the list is left in the radio's output).
+ */
+typedef Err (*SessionContactFn)(const VmContact *c, void *ctx);
+Err     SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *count, UInt32 *lastMod);
+
 #endif

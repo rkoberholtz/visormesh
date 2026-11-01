@@ -14,25 +14,31 @@ static VmDeviceInfo gDevice;
 static VmSelfInfo gSelf;
 
 /*
- * Reads frames until one with the wanted code arrives. Pushes are noted and
- * skipped; RESP_ERR ends the wait. The reply is left in gDecoder.payload.
+ * Received bytes not yet fed to the decoder. Kept across calls because one
+ * read can hold the end of one frame and the start of the next (the contact
+ * list arrives as back-to-back frames).
  */
-static Err WaitFor(UInt8 code, Int32 timeout)
+static UInt8  gRx[64];
+static UInt16 gRxPos, gRxLen;
+
+/*
+ * Reads frames until one whose code is code1 or code2 arrives (pass the same
+ * code twice to wait for one). Pushes are noted and skipped; RESP_ERR ends the
+ * wait. The reply is left in gDecoder.payload.
+ */
+static Err WaitForEither(UInt8 code1, UInt8 code2, Int32 timeout)
 {
-	UInt8 rx[32];
-	UInt16 n, i;
 	UInt32 deadline = TimGetTicks() + timeout;
 	Err err;
 
-	while (TimGetTicks() < deadline) {
-		n = TransportRecv(rx, sizeof(rx), deadline - TimGetTicks(), &err);
-		for (i = 0; i < n; i++) {
+	for (;;) {
+		while (gRxPos < gRxLen) {
 			UInt8 got;
 
-			if (!VmDecoderFeed(&gDecoder, rx[i]) || gDecoder.len == 0)
+			if (!VmDecoderFeed(&gDecoder, gRx[gRxPos++]) || gDecoder.len == 0)
 				continue;
 			got = gDecoder.payload[0];
-			if (got == code)
+			if (got == code1 || got == code2)
 				return errNone;
 			if (got == VM_PUSH_MSG_WAITING)
 				gMsgWaiting = true;
@@ -40,8 +46,16 @@ static Err WaitFor(UInt8 code, Int32 timeout)
 				return vmErrRadio;
 			/* other pushes and stray replies are ignored */
 		}
+		if (TimGetTicks() >= deadline)
+			return vmErrNoReply;
+		gRxPos = 0;
+		gRxLen = TransportRecv(gRx, sizeof(gRx), deadline - TimGetTicks(), &err);
 	}
-	return vmErrNoReply;
+}
+
+static Err WaitFor(UInt8 code, Int32 timeout)
+{
+	return WaitForEither(code, code, timeout);
 }
 
 /* Sends a request frame and waits for the reply code, retrying sends the host isn't reading yet. */
@@ -93,6 +107,7 @@ Err SessionConnect(void)
 	if (err != errNone)
 		return err;
 	VmDecoderReset(&gDecoder);
+	gRxPos = gRxLen = 0;
 	gMsgWaiting = false;
 
 	/* Over USB the Visor only appears to the host after SrmOpen; give the bridge time to attach. */
@@ -115,11 +130,45 @@ Err SessionRefresh(void)
 	return QueryRadio(1);
 }
 
+/*
+ * Two tries: the Visor's USB link can drop while idle and re-attach on the
+ * next send, and the settings commands are safe to repeat.
+ */
 Err SessionCommand(const UInt8 *frame, UInt16 len)
 {
 	if (!gConnected)
 		return serErrNotOpen;
-	return Request(frame, len, VM_RESP_OK, 1);
+	return Request(frame, len, VM_RESP_OK, 2);
+}
+
+Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *count, UInt32 *lastMod)
+{
+	UInt8 frame[VM_HEADER_LEN + 5];
+	UInt16 len;
+	VmContact c;
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	len = VmBuildGetContacts(frame, sizeof(frame), since);
+	err = Request(frame, len, VM_RESP_CONTACTS_START, 2);
+	if (err != errNone)
+		return err;
+	if (!VmParseContactsStart(gDecoder.payload, gDecoder.len, count))
+		return vmErrBadReply;
+
+	for (;;) {
+		err = WaitForEither(VM_RESP_CONTACT, VM_RESP_END_OF_CONTACTS, VM_REPLY_TIMEOUT);
+		if (err != errNone)
+			return err;
+		if (gDecoder.payload[0] == VM_RESP_END_OF_CONTACTS)
+			return VmParseEndOfContacts(gDecoder.payload, gDecoder.len, lastMod) ? errNone : vmErrBadReply;
+		if (!VmParseContact(gDecoder.payload, gDecoder.len, &c))
+			return vmErrBadReply;
+		err = fn(&c, ctx);
+		if (err != errNone)
+			return err;
+	}
 }
 
 const VmDeviceInfo *SessionDevice(void)

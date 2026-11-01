@@ -66,6 +66,20 @@ typedef char     Char;
 #define VM_PUSH_MSG_WAITING       0x83
 #define VM_IS_PUSH(code)          ((code) >= 0x80)
 
+/* Advert types (contact.type) */
+#define VM_ADV_TYPE_CHAT          1
+#define VM_ADV_TYPE_REPEATER      2
+#define VM_ADV_TYPE_ROOM          3
+#define VM_ADV_TYPE_SENSOR        4
+
+/*
+ * Path length bytes (contact out_path_len, message path_len): bits 7-6 are
+ * the path hash size - 1, bits 5-0 the hop count; 0xFF = no known path.
+ */
+#define VM_PATH_UNKNOWN           0xFF
+#define VM_PATH_HOPS(len)         ((UInt8)((len) & 0x3F))
+#define VM_PATH_HASH_BYTES(len)   ((UInt8)(((len) >> 6) + 1))
+
 #define VM_TXT_TYPE_PLAIN         0
 #define VM_TXT_TYPE_CLI_DATA      1
 #define VM_TXT_TYPE_SIGNED_PLAIN  2

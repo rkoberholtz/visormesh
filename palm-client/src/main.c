@@ -5,6 +5,8 @@
 #include "session.h"
 #include "ports.h"
 #include "settings.h"
+#include "contacts.h"
+#include "contacts_form.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_LABEL_CHARS     22    /* the info labels in the .rcp are padded to this width */
@@ -136,14 +138,20 @@ static Boolean MainFormHandleEvent(EventType *event)
 		case MainConnectButton:
 			ConnectOrDisconnect(form);
 			return true;
-		case MainPortsButton:
-			FrmGotoForm(PortsForm);
+		case MainContactsButton:
+			FrmGotoForm(ContactsForm);
 			return true;
 		case MainSettingsButton:
 			if (SessionIsConnected())
 				FrmGotoForm(SettingsForm);
 			else
 				FrmCustomAlert(SettingsErrorAlert, "Connect to the radio first.", "", "");
+			return true;
+		}
+		break;
+	case menuEvent:
+		if (event->data.menu.itemID == MainMenuPorts) {
+			FrmGotoForm(PortsForm);
 			return true;
 		}
 		break;
@@ -169,6 +177,8 @@ static Boolean AppHandleEvent(EventType *event)
 		FrmSetEventHandler(form, PortsFormHandleEvent);
 	else if (formId == SettingsForm)
 		FrmSetEventHandler(form, SettingsFormHandleEvent);
+	else if (formId == ContactsForm)
+		FrmSetEventHandler(form, ContactsFormHandleEvent);
 	return true;
 }
 
@@ -199,6 +209,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		FrmGotoForm(MainForm);
 		AppEventLoop();
 		SessionDisconnect();
+		ContactsClose();
 		FrmCloseAllForms();
 	}
 	return errNone;

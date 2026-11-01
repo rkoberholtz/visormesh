@@ -4,7 +4,6 @@
 #define MainForm          1000
 #define MainNameLabel     1001
 #define MainConnectButton 1002
-#define MainPortsButton   1003
 #define MainSerialPush    1004
 #define MainUsbPush       1005
 #define MainFreqLabel     1006
@@ -12,6 +11,9 @@
 #define MainPowerLabel    1008
 #define MainFirmwareLabel 1009
 #define MainSettingsButton 1010
+#define MainContactsButton 1011
+#define MainMenuBar        1000
+#define MainMenuPorts      1001
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -32,6 +34,13 @@
 #define SettingsHashGroup     2
 
 #define SettingsErrorAlert    2001
+#define ContactInfoAlert      2002
+
+#define ContactsForm          1300
+#define ContactsList          1301
+#define ContactsStatusLabel   1302
+#define ContactsRefreshButton 1303
+#define ContactsDoneButton    1304
 
 #define PortsForm         1100
 #define PortsDoneButton   1101
