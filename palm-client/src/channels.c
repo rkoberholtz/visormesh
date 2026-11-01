@@ -66,17 +66,14 @@ Boolean ChannelsFindSlot(UInt8 slot, VmChannel *out)
 	return false;
 }
 
-/* A slot with no name and an all-zero secret is unused. */
+/*
+ * A slot with an empty name is unused. The secret can't be used to tell: the
+ * firmware fills unused slots' replies from a reused buffer, so the bytes after
+ * the empty name are left over from the previous reply.
+ */
 static Boolean InUse(const VmChannel *c)
 {
-	UInt16 i;
-
-	if (c->name[0])
-		return true;
-	for (i = 0; i < VM_CHANNEL_SECRET_SIZE; i++)
-		if (c->secret[i])
-			return true;
-	return false;
+	return c->name[0] != 0;
 }
 
 Err ChannelsRefresh(UInt8 maxChannels)
