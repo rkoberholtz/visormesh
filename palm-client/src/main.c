@@ -68,6 +68,39 @@ static Boolean AppHandleEvent(EventType *event)
 	return true;
 }
 
+/*
+ * Sleep detection: the tick counter stops while the Visor sleeps but the
+ * clock keeps going, so a clock jump well past the ticks means we slept.
+ * The serial/USB link doesn't survive sleep, so reconnect then; the radio
+ * queued anything that arrived meanwhile and the connect syncs it.
+ */
+#define VM_SLEEP_GAP_SECS 5
+
+static UInt32  gLastSecs = 0, gLastTicks = 0;
+static Boolean gWantConnection = false;   /* we were connected when the Visor slept */
+
+static void CheckWake(void)
+{
+	UInt32 secs = TimGetSeconds(), ticks = TimGetTicks();
+	Int32 wall, run;
+
+	if (gLastSecs) {
+		wall = (Int32)(secs - gLastSecs);
+		run = (Int32)((ticks - gLastTicks) / SysTicksPerSecond());
+		if (wall - run > VM_SLEEP_GAP_SECS && (SessionIsConnected() || gWantConnection)) {
+			gWantConnection = true;
+			SessionDisconnect();
+			if (AppConnect(NULL, true) == errNone)
+				gWantConnection = false;
+			FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
+			secs = TimGetSeconds();
+			ticks = TimGetTicks();
+		}
+	}
+	gLastSecs = secs;
+	gLastTicks = ticks;
+}
+
 /* While connected, wake regularly to handle what the radio sends and refresh the screen on show. */
 static void Poll(void)
 {
@@ -86,6 +119,7 @@ static void AppEventLoop(void)
 
 	do {
 		EvtGetEvent(&event, SessionIsConnected() ? VM_POLL_TICKS : evtWaitForever);
+		CheckWake();
 		if (event.eType == nilEvent) {
 			Poll();
 			continue;
