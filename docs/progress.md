@@ -23,13 +23,13 @@
 - [x] Toolchain set up: prc-tools-remix 2.3.6 + PilRC + Palm OS 3.5 SDK in Docker (`palm-client/Dockerfile`)
 - [x] Scaffold: builds `visormesh.prc` (main form + "Query radio" → CMD_DEVICE_QUERY); protocol framing with host tests
 - [x] USB link from the dev Mac: pilot-link (desrod @6d696653 + `tools/pilot-link-darwin-usb-open-retry.patch`) lists the Visor's databases
-- [ ] `make install` puts VisorMesh on the Visor
+- [x] `make install` puts VisorMesh on the Visor; app launches and shows the main form on the Visor Neo
 - [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
 - [ ] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them), needed for module-ROM work only
 - [ ] Port springSD bus routines; SC16IS740 driver
 - [ ] Companion protocol framing + minimal command set
 - [ ] UI: contacts, DMs, channels
-- [ ] Install method confirmed (HotSync or CF adapter)
+- [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 
 ## Open questions
 - Which CF adapter is it, and does its ROM include an app installer?
@@ -53,3 +53,4 @@
 - Removed the unverified XKB/LCSC substitute from the hardware README (it's a vertical SMD socket, not a straddle).
 - Starting Palm client development.
 - macOS USB sync to the Visor works with pilot-link from desrod's repo. Fixed a race where macOS holds the Visor briefly when it appears, so pilot-link's single open attempt failed with exclusive access. The retry patch is saved in `palm-client/tools/`.
+- First on-device run: VisorMesh v0.1 installed with `make install` and launches on the Visor Neo.
