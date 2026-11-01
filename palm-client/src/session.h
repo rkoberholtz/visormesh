@@ -59,6 +59,8 @@ void    SessionSetUtcOffset(Int16 minutes);
 Int16   SessionUtcOffset(void);
 /* Sets the radio's clock to ours (UTC) if it's behind; it can only move forward. */
 void    SessionSyncClock(void);
+/* The radio's clock (UTC) as last read, advanced by the time since; 0 if never read. */
+UInt32  SessionRadioTime(void);
 
 /*
  * Call regularly (the app does on nilEvent): handles pushes, pulls waiting

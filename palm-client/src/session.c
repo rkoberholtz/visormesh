@@ -180,6 +180,9 @@ static Err QueryRadio(UInt16 firstTries)
 }
 
 /* Sets the radio's clock from ours if it's behind (the firmware only lets it move forward). */
+static UInt32 gRadioTime = 0;       /* radio clock at gRadioTimeAt (our local seconds) */
+static UInt32 gRadioTimeAt = 0;
+
 void SessionSyncClock(void)
 {
 	UInt8 frame[VM_HEADER_LEN + 5];
@@ -190,10 +193,18 @@ void SessionSyncClock(void)
 	if (Request(frame, len, VM_RESP_CURR_TIME, 1) != errNone ||
 	    !VmParseCurrTime(gDecoder.payload, gDecoder.len, &radio))
 		return;
+	gRadioTime = radio;
+	gRadioTimeAt = TimGetSeconds();
 	if (radio + VM_CLOCK_SLACK < now) {
 		len = VmBuildSetTime(frame, sizeof(frame), now);
-		Request(frame, len, VM_RESP_OK, 1);
+		if (Request(frame, len, VM_RESP_OK, 1) == errNone)
+			gRadioTime = now;
 	}
+}
+
+UInt32 SessionRadioTime(void)
+{
+	return gRadioTime ? gRadioTime + (TimGetSeconds() - gRadioTimeAt) : 0;
 }
 
 Err SessionConnect(void)
