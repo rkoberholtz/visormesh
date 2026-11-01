@@ -60,6 +60,31 @@ Boolean ContactsGet(UInt16 index, VmContact *out)
 	return true;
 }
 
+Boolean ContactsFindByPrefix(const UInt8 *prefix6, VmContact *out)
+{
+	UInt16 i, n;
+	MemHandle h;
+	Boolean found = false;
+
+	if (ContactsOpen() != errNone)
+		return false;
+	n = DmNumRecords(gDb);
+	for (i = 0; i < n && !found; i++) {
+		const VmContact *c;
+
+		h = DmQueryRecord(gDb, i);
+		if (!h)
+			continue;
+		c = MemHandleLock(h);
+		if (MemCmp(c->pubKey, prefix6, 6) == 0) {
+			MemMove(out, c, sizeof(VmContact));
+			found = true;
+		}
+		MemHandleUnlock(h);
+	}
+	return found;
+}
+
 static Int16 CompareByName(void *a, void *b, Int16 other, SortRecordInfoPtr ia, SortRecordInfoPtr ib,
                            MemHandle appInfo)
 {

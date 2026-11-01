@@ -1,28 +1,52 @@
 /*
- * Contacts screen: the stored list (works offline), Refresh to download it
- * from the radio, tap a contact for its details.
+ * Contacts, MeshTerm style: our node pinned first (star), then the stored
+ * contacts by name, each with its type mark, name, when it was last heard and
+ * its route. Refresh downloads the list; tap a contact for its details and
+ * Message to open a direct conversation.
  */
 #include <PalmOS.h>
 #include "resources.h"
 #include "protocol.h"
 #include "session.h"
 #include "contacts.h"
+#include "convos.h"
+#include "app.h"
+#include "ui/draw.h"
+#include "ui/text.h"
+#include "ui/rowlist.h"
 #include "contacts_form.h"
 
 #define PALM_EPOCH_OFFSET 2082844800UL   /* seconds from 1904-01-01 (Palm) to 1970-01-01 (Unix) */
+#define NAME_X   8
+#define NAME_W   82
+#define HEARD_R  110
+
+static RowList gList;
+
+static Char TypeGlyph(UInt8 type)
+{
+	switch (type) {
+	case VM_ADV_TYPE_CHAT:     return GLYPH_COMPANION;
+	case VM_ADV_TYPE_REPEATER: return GLYPH_REPEATER;
+	case VM_ADV_TYPE_ROOM:     return GLYPH_ROOM;
+	case VM_ADV_TYPE_SENSOR:   return GLYPH_SENSOR;
+	default:                   return GLYPH_UNKNOWN;
+	}
+}
 
 static const Char *TypeName(UInt8 type)
 {
 	switch (type) {
-	case VM_ADV_TYPE_CHAT:     return "Chat";
+	case VM_ADV_TYPE_CHAT:     return "Companion";
 	case VM_ADV_TYPE_REPEATER: return "Repeater";
-	case VM_ADV_TYPE_ROOM:     return "Room";
+	case VM_ADV_TYPE_ROOM:     return "Room server";
 	case VM_ADV_TYPE_SENSOR:   return "Sensor";
-	default:                   return "?";
+	default:                   return "Unknown";
 	}
 }
 
-static void FormatHops(Char *out, UInt8 pathLen)
+/* "direct", "2 hops", or "flood" (no known path). */
+static void FormatRoute(Char *out, UInt8 pathLen)
 {
 	UInt8 hops = VM_PATH_HOPS(pathLen);
 
@@ -34,131 +58,145 @@ static void FormatHops(Char *out, UInt8 pathLen)
 		StrPrintF(out, "%u hop%s", hops, hops == 1 ? "" : "s");
 }
 
-/* List draw callback: name on the left, type and route on the right. */
-static void DrawContact(Int16 itemNum, RectangleType *bounds, Char **itemsText)
+/* Row 0 is our own node when connected; the stored contacts follow. */
+static UInt16 SelfRows(void)
 {
+	return SessionIsConnected() ? 1 : 0;
+}
+
+static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
+{
+	FontID old = FntSetFont(vmSmallFont);
+	Coord x = b->topLeft.x, y = b->topLeft.y, right = x + b->extent.x;
+	Char mark, buf[16];
 	VmContact c;
-	Char right[24], hops[12];
-	Int16 rightW, nameW;
-	UInt16 nameLen;
-	Boolean fits;
 
-	if (!ContactsGet((UInt16)itemNum, &c))
+	if (row < SelfRows()) {
+		mark = GLYPH_SELF;
+		WinDrawChars(&mark, 1, x + 1, y);
+		DrawCut(SessionSelf()->name, x + NAME_X, y, NAME_W);
+		DrawRight("you", right - 1, y);
+		FntSetFont(old);
 		return;
-	FormatHops(hops, c.outPathLen);
-	StrPrintF(right, "%s, %s", TypeName(c.type), hops);
-	rightW = FntCharsWidth(right, StrLen(right));
-	WinDrawChars(right, StrLen(right), bounds->topLeft.x + bounds->extent.x - rightW - 2, bounds->topLeft.y);
-
-	nameLen = StrLen(c.name);
-	nameW = bounds->extent.x - rightW - 8;
-	FntCharsInWidth(c.name, &nameW, &nameLen, &fits);
-	WinDrawChars(c.name, nameLen, bounds->topLeft.x + 1, bounds->topLeft.y);
-}
-
-static void SetStatus(FormType *form, const Char *text)
-{
-	UInt16 index = FrmGetObjectIndex(form, ContactsStatusLabel);
-
-	FrmHideObject(form, index);
-	FrmCopyLabel(form, ContactsStatusLabel, text);
-	FrmShowObject(form, index);
-}
-
-static void LoadList(FormType *form, Boolean redraw)
-{
-	ListType *list = FrmGetObjectPtr(form, FrmGetObjectIndex(form, ContactsList));
-	Char status[32];
-	UInt16 n = ContactsCount();
-
-	LstSetListChoices(list, NULL, n);
-	LstSetDrawFunction(list, DrawContact);
-	LstSetSelection(list, noListSelection);
-	if (n == 0)
-		StrCopy(status, SessionIsConnected() ? "No contacts. Tap Refresh." : "No contacts stored.");
-	else
-		StrPrintF(status, "%u contact%s", n, n == 1 ? "" : "s");
-	if (redraw) {
-		LstDrawList(list);
-		SetStatus(form, status);
-	} else {
-		FrmCopyLabel(form, ContactsStatusLabel, status);
 	}
+	if (!ContactsGet(row - SelfRows(), &c)) {
+		FntSetFont(old);
+		return;
+	}
+	mark = TypeGlyph(c.type);
+	WinDrawChars(&mark, 1, x + 1, y);
+	DrawCut(c.name, x + NAME_X, y, NAME_W);
+	if (c.lastAdvert) {
+		UInt32 now = SessionNow();
+
+		TxtFormatAge(buf, now > c.lastAdvert ? now - c.lastAdvert : 0);
+		DrawRight(buf, x + HEARD_R, y);
+	}
+	FormatRoute(buf, c.outPathLen);
+	DrawRight(buf, right - 1, y);
+	FntSetFont(old);
+}
+
+static void Load(Boolean draw)
+{
+	ContactsOpen();
+	RowListSetCount(&gList, (UInt16)(ContactsCount() + SelfRows()));
+	if (draw)
+		RowListDraw(&gList);
+}
+
+/* Title: "Contacts (n)". */
+static void SetTitle(FormType *form)
+{
+	static Char title[20];
+
+	StrPrintF(title, "Contacts (%u)", ContactsCount());
+	FrmCopyTitle(form, title);
 }
 
 static void Refresh(FormType *form)
 {
-	UInt32 total = 0;
-	Char msg[40];
+	Char msg[48];
 	Err err;
 
 	if (!SessionIsConnected()) {
-		FrmCustomAlert(SettingsErrorAlert, "Connect to the radio first.", "", "");
+		FrmCustomAlert(SettingsErrorAlert, "Connect to the radio first (Node).", "", "");
 		return;
 	}
-	SetStatus(form, "Downloading...");
-	err = ContactsRefresh(&total);
-	LoadList(form, true);
-	if (err == errNone)
-		return;
-	if (err == vmErrNoReply)
-		StrCopy(msg, "No reply from the radio.");
-	else if (err == vmErrRadio)
-		StrCopy(msg, "The radio returned an error.");
-	else
-		StrPrintF(msg, "Refresh failed (0x%x).", err);
-	FrmCustomAlert(SettingsErrorAlert, msg, "", "");
+	err = ContactsRefresh(NULL);
+	SetTitle(form);
+	Load(true);
+	if (err != errNone) {
+		AppErrorText(err, msg);
+		FrmCustomAlert(SettingsErrorAlert, msg, "", "");
+	}
 }
 
-static void ShowDetails(UInt16 index)
+static void ShowDetails(UInt16 row)
 {
 	VmContact c;
 	DateTimeType dt;
-	Char line[96], hops[12], key[16];
+	VmConv conv;
+	Char line[96], route[12];
 
-	if (!ContactsGet(index, &c))
+	if (row < SelfRows() || !ContactsGet(row - SelfRows(), &c))
 		return;
-	FormatHops(hops, c.outPathLen);
-	StrPrintF(key, "%02x%02x%02x%02x%02x%02x", c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3],
-	          c.pubKey[4], c.pubKey[5]);
+	FormatRoute(route, c.outPathLen);
 	if (c.lastAdvert) {
 		TimSecondsToDateTime(c.lastAdvert + PALM_EPOCH_OFFSET, &dt);
-		StrPrintF(line, "%s, %s\nKey %s...\nLast advert %u-%02u-%02u %02u:%02u", TypeName(c.type), hops, key,
-		          dt.year, dt.month, dt.day, dt.hour, dt.minute);
+		StrPrintF(line, "%s, %s\nKey %02x%02x%02x%02x%02x%02x...\nHeard %u-%02u-%02u %02u:%02u",
+		          TypeName(c.type), route, c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3], c.pubKey[4],
+		          c.pubKey[5], dt.year, dt.month, dt.day, dt.hour, dt.minute);
 	} else {
-		StrPrintF(line, "%s, %s\nKey %s...", TypeName(c.type), hops, key);
+		StrPrintF(line, "%s, %s\nKey %02x%02x%02x%02x%02x%02x...", TypeName(c.type), route,
+		          c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3], c.pubKey[4], c.pubKey[5]);
 	}
-	FrmCustomAlert(ContactInfoAlert, c.name, line, "");
+	if (FrmCustomAlert(ContactInfoAlert, c.name, line, "") == 1) {     /* Message */
+		MemSet(&conv, sizeof(conv), 0);
+		conv.type = VM_CONV_DIRECT;
+		MemMove(conv.key, c.pubKey, 6);
+		AppOpenConversation(&conv);
+	}
 }
 
 Boolean ContactsFormHandleEvent(EventType *event)
 {
 	FormType *form = FrmGetActiveForm();
+	Int16 tapped = -1;
 
 	switch (event->eType) {
 	case frmOpenEvent:
-		ContactsOpen();
-		LoadList(form, false);
+		RowListInit(&gList, ContactsGadget, ContactsScroll, VM_ROW_H, DrawRow, NULL, NULL);
+		Load(false);
+		SetTitle(form);
 		FrmDrawForm(form);
+		RowListDraw(&gList);
 		return true;
-	case lstSelectEvent:
-		if (event->data.lstSelect.listID == ContactsList) {
-			ShowDetails((UInt16)event->data.lstSelect.selection);
-			return true;
-		}
-		break;
+
+	case frmUpdateEvent:
+		SetTitle(form);
+		Load(true);
+		return true;
+
 	case ctlSelectEvent:
 		switch (event->data.ctlSelect.controlID) {
 		case ContactsRefreshButton:
 			Refresh(form);
 			return true;
 		case ContactsDoneButton:
-			FrmGotoForm(MainForm);
+			FrmGotoForm(HomeForm);
 			return true;
 		}
 		break;
+
 	default:
 		break;
+	}
+
+	if (RowListHandleEvent(&gList, event, &tapped)) {
+		if (tapped >= 0)
+			ShowDetails((UInt16)tapped);
+		return true;
 	}
 	return false;
 }

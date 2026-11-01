@@ -1,0 +1,158 @@
+/*
+ * Home: the conversation list, MeshTerm's chat picker. Channels in slot
+ * order, then direct conversations (most recent first). Each row: marker,
+ * name, unread badge or failed mark, age, preview. Tap to open.
+ */
+#include <PalmOS.h>
+#include "resources.h"
+#include "session.h"
+#include "convos.h"
+#include "app.h"
+#include "ui/draw.h"
+#include "ui/text.h"
+#include "ui/rowlist.h"
+#include "home_form.h"
+
+#define HOME_MAX_ROWS 64
+#define NAME_X     8
+#define NAME_W     56
+#define BADGE_R    84
+#define AGE_R      100
+#define PREVIEW_X  103
+
+static VmConvRow *gRows = NULL;
+static UInt16     gCount = 0;
+static RowList    gList;
+
+static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
+{
+	const VmConvRow *r = &gRows[row];
+	FontID old = FntSetFont(vmSmallFont);
+	Coord x = b->topLeft.x, y = b->topLeft.y, right = x + b->extent.x;
+	Char buf[12];
+
+	if (r->kind == VM_ROW_SECTION) {
+		FntSetFont(old);
+		DrawSection(r->name, x, y, b->extent.x);
+		return;
+	}
+	WinDrawChars(&r->marker, 1, x + 1, y);
+	DrawCut(r->name, x + NAME_X, y, NAME_W);
+	if (r->failed) {
+		buf[0] = GLYPH_FAILED;
+		buf[1] = 0;
+		DrawRight(buf, x + BADGE_R, y);
+	} else if (r->unread) {
+		StrPrintF(buf, "%c%u", GLYPH_COMPANION, r->unread);
+		DrawRight(buf, x + BADGE_R, y);
+	}
+	if (r->last) {
+		UInt32 now = SessionNow();
+
+		TxtFormatAge(buf, now > r->last ? now - r->last : 0);
+		DrawRight(buf, x + AGE_R, y);
+		DrawCut(r->preview, x + PREVIEW_X, y, right - (x + PREVIEW_X));
+	}
+	FntSetFont(old);
+}
+
+static Boolean Selectable(UInt16 row, void *ctx)
+{
+	return gRows[row].kind == VM_ROW_CONV;
+}
+
+/* Right end of the title bar: unread total and connection state. */
+static void DrawTitleStatus(void)
+{
+	RectangleType r;
+	Char buf[24];
+	FontID old = FntSetFont(vmSmallFont);
+	UInt16 unread = ConvosUnread(gRows, gCount);
+
+	RctSetRectangle(&r, 100, 2, 60, 9);
+	WinEraseRectangle(&r, 0);
+	if (unread)
+		StrPrintF(buf, "%c%u %s", GLYPH_COMPANION, unread, SessionIsConnected() ? "online" : "offline");
+	else
+		StrCopy(buf, SessionIsConnected() ? "online" : "offline");
+	DrawRight(buf, 158, 4);
+	FntSetFont(old);
+}
+
+static void ShowStatus(const Char *text)
+{
+	RectangleType r;
+	FontID old = FntSetFont(vmSmallFont);
+
+	RctSetRectangle(&r, 100, 2, 60, 9);
+	WinEraseRectangle(&r, 0);
+	DrawRight(text, 158, 4);
+	FntSetFont(old);
+}
+
+static void Rebuild(Boolean draw)
+{
+	gCount = ConvosBuild(gRows, HOME_MAX_ROWS);
+	RowListSetCount(&gList, gCount);
+	if (draw) {
+		RowListDraw(&gList);
+		DrawTitleStatus();
+	}
+}
+
+Boolean HomeFormHandleEvent(EventType *event)
+{
+	Int16 tapped = -1;
+
+	switch (event->eType) {
+	case frmOpenEvent:
+		if (!gRows)
+			gRows = MemPtrNew(sizeof(VmConvRow) * HOME_MAX_ROWS);
+		if (!gRows)
+			return false;
+		RowListInit(&gList, HomeGadget, HomeScroll, VM_ROW_H, DrawRow, Selectable, NULL);
+		Rebuild(false);
+		FrmDrawForm(FrmGetActiveForm());
+		RowListDraw(&gList);
+		DrawTitleStatus();
+		if (!gAppAutoConnectTried && !SessionIsConnected()) {
+			gAppAutoConnectTried = true;
+			AppConnect(ShowStatus, true);
+			Rebuild(true);
+		}
+		return true;
+
+	case frmCloseEvent:
+		if (gRows) {
+			MemPtrFree(gRows);
+			gRows = NULL;
+		}
+		return false;
+
+	case frmUpdateEvent:
+		if (gRows)
+			Rebuild(true);
+		return true;
+
+	case ctlSelectEvent:
+		switch (event->data.ctlSelect.controlID) {
+		case HomeContactsButton:
+			FrmGotoForm(ContactsForm);
+			return true;
+		case HomeNodeButton:
+			FrmGotoForm(MainForm);
+			return true;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	if (gRows && RowListHandleEvent(&gList, event, &tapped)) {
+		if (tapped >= 0)
+			AppOpenConversation(&gRows[tapped].conv);
+		return true;
+	}
+	return false;
+}

@@ -30,18 +30,18 @@ static void DrawPreview(void)
 	Coord y = TOP;
 	FontID old = FntSetFont(vmSmallFont);
 
-	DrawSection("Channels", y);                                     y += VM_ROW_H;
+	DrawSection("Channels", 0, y, 160);                                     y += VM_ROW_H;
 	StrPrintF(line, "%c2", GLYPH_COMPANION);
 	Row(y, '@', "Public", line, "5m", "Steve: spare antenna?"); y += VM_ROW_H;
 	Row(y, '#', "phillymesh", NULL, "1h", "ok see you there");       y += VM_ROW_H;
-	DrawSection("Direct", y);                                       y += VM_ROW_H;
+	DrawSection("Direct", 0, y, 160);                                       y += VM_ROW_H;
 	StrPrintF(line, "%c", GLYPH_FAILED);
 	Row(y, GLYPH_COMPANION, "Rich K.", line, "23h", "test from the visor"); y += VM_ROW_H;
 	Row(y, GLYPH_REPEATER, "Hilltop Repeater", NULL, "2d", NULL);   y += VM_ROW_H;
 	Row(y, GLYPH_ROOM, "Rittenhouse Room", NULL, "3d", NULL);       y += VM_ROW_H;
 	Row(y, GLYPH_SENSOR, "Weather Sensor", NULL, NULL, NULL);       y += VM_ROW_H;
 
-	DrawSection("Thu Nov 1", y);                                    y += VM_ROW_H + 1;
+	DrawSection("Thu Nov 1", 0, y, 160);                                    y += VM_ROW_H + 1;
 	DrawChip("Steve K.", 1, y);                                     y += VM_CHIP_H + 1;
 	WinDrawChars("11:30", 5, 4, y);
 	WinDrawChars("I'll bring a spare antenna", 26, 26, y);         y += VM_ROW_H;

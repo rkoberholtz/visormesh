@@ -32,8 +32,10 @@
 - [x] USB bench link: app (`HsUd`) → Visor USB cradle → `tools/visor_bridge.py` → FTDI → XIAO D6/D7. Query radio shows `Reply 0x000D, 82 bytes` on the Visor
 - [x] Connect screen: DEVICE_QUERY + APP_START via session.c; shows node, freq, BW/SF/CR, TX power, firmware (verified on the Neo over the USB bridge)
 - [x] Node Settings screen: name, preset/radio params, TX power, path hash. Verified on the Neo: SET_RADIO_PARAMS + SET_PATH_HASH_MODE both got RESP_OK and a read-back over the XIAO's USB matches
-- [ ] Contact list: GET_CONTACTS into a Palm database + contacts screen
-- [ ] Messages: sync on PUSH_MSG_WAITING, store, per-contact/channel views
+- [x] Contact list: GET_CONTACTS into a Palm database + contacts screen
+- [x] Messages: store, sync on PUSH_MSG_WAITING, send with ack tracking (built; to verify on the Visor)
+- [x] MeshTerm-style UI: small 4x6 font, Home (conversations), Conversation, Contacts, Node (built; to verify)
+- [ ] Split the code into segments: code resource is 28.3 KB of the ~32 KB single-segment limit
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 
@@ -67,3 +69,4 @@
 - Connect screen verified on the Neo: shows the radio's real SELF_INFO/DEVICE_INFO (9B1E4F92, 869.618 MHz, BW 62.5 SF8 CR5, 22 dBm, v1.17.1). Fixed a hand-typed DEVICE_INFO fixture that had two bytes shifted.
 - Node Settings verified from the Visor: radio now 919.500 MHz / BW 500 / SF10 / CR5, 2-byte path hash (confirmed independently over the XIAO's USB). Seen in the bridge log: the Visor's USB link dropped while the Settings form was open and re-attached on the next send; it worked, but commands only try once, so this needs a closer look.
 - Reception was dead until the XIAO rebooted: SET_RADIO_PARAMS saves and reports the new settings, but the receiver only retunes on a restart. Settings now offers to reboot the radio (CMD_REBOOT) after a radio change and reconnects. The radio then heard the user's contact.
+- MeshTerm-style UI built: generated 4x6 font (PilRC's FONT compiler writes a corrupt NFNT, so gen_font.py writes it), rowlist, text layout (host-tested), message store and sync, Home/Conversation/Contacts/Node screens. Font verified readable on the Neo.

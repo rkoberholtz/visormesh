@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/convos.c src/protocol.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc

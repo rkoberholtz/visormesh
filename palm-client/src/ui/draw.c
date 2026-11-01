@@ -23,20 +23,20 @@ void UiFontRelease(void)
 	}
 }
 
-void DrawSection(const Char *label, Coord y)
+void DrawSection(const Char *label, Coord x0, Coord y, Coord width)
 {
 	Char rule = GLYPH_RULE;
 	FontID old = FntSetFont(vmSmallFont);
 	Coord ruleW = FntCharWidth(rule);
 	Coord labelW = FntCharsWidth(label, StrLen(label));
-	Coord x = 0;
+	Coord x = x0;
 	UInt16 i;
 
 	for (i = 0; i < 2; i++, x += ruleW)
 		WinDrawChars(&rule, 1, x, y);
 	x += 2;
 	WinDrawChars(label, StrLen(label), x, y);
-	for (x += labelW + 2; x + ruleW <= 160; x += ruleW)
+	for (x += labelW + 2; x + ruleW <= x0 + width; x += ruleW)
 		WinDrawChars(&rule, 1, x, y);
 	FntSetFont(old);
 }

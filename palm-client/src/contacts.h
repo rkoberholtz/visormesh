@@ -12,6 +12,8 @@ Err     ContactsOpen(void);
 void    ContactsClose(void);
 UInt16  ContactsCount(void);
 Boolean ContactsGet(UInt16 index, VmContact *out);
+/* Finds a contact by the first 6 bytes of its key (how DMs name their sender). */
+Boolean ContactsFindByPrefix(const UInt8 *prefix6, VmContact *out);
 
 /*
  * Downloads the radio's whole contact list and replaces the stored one. The

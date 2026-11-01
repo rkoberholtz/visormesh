@@ -15,8 +15,8 @@
 Err  UiFontInit(void);
 void UiFontRelease(void);
 
-/* "── Label ──" across the full width at y, in the small font. */
-void DrawSection(const Char *label, Coord y);
+/* "── Label ──" from x to x + width at y, in the small font. */
+void DrawSection(const Char *label, Coord x, Coord y, Coord width);
 
 /* A name chip: text inverted (white on black), VM_CHIP_H tall. Returns its width. */
 #define VM_CHIP_H        (VM_SMALL_FONT_HEIGHT + 2)

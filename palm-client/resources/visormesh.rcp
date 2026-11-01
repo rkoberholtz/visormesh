@@ -13,17 +13,50 @@ MENU ID MainMenuBar
 BEGIN
   PULLDOWN "Options"
   BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
   END
 END
 
-FORM ID MainForm AT (0 0 160 160)
+/* Home: the conversation list (channels, then direct) */
+FORM ID HomeForm AT (0 0 160 160)
 NOFRAME
 USABLE
 MENUID MainMenuBar
 BEGIN
   TITLE "VisorMesh"
+  GADGET ID HomeGadget AT (0 16 153 128)
+  SCROLLBAR ID HomeScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  BUTTON "Contacts" ID HomeContactsButton AT (1 147 AUTO AUTO)
+  BUTTON "Node" ID HomeNodeButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+END
+
+/* One conversation: transcript, compose field, send */
+FORM ID ConvoForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "                                "
+  GADGET ID ConvoGadget AT (0 16 153 112)
+  SCROLLBAR ID ConvoScroll AT (153 16 7 112) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  FIELD ID ConvoField AT (1 131 158 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 150
+  BUTTON "Send" ID ConvoSendButton AT (1 147 AUTO AUTO)
+  BUTTON "Back" ID ConvoBackButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (150 148)
+END
+
+/* Node: this radio's details, connection and settings */
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "Node"
   LABEL "Link:" AUTOID AT (5 18) FONT 1
   PUSHBUTTON "Serial" ID MainSerialPush AT (50 17 40 12) GROUP MainLinkGroup
   PUSHBUTTON "USB" ID MainUsbPush AT (PREVRIGHT+1 PREVTOP 40 12) GROUP MainLinkGroup
@@ -39,20 +72,21 @@ BEGIN
   LABEL "Firmware:" AUTOID AT (5 90) FONT 1
   LABEL "                      " ID MainFirmwareLabel AT (50 90)
 
-  BUTTON "Disconnect" ID MainConnectButton AT (5 140 AUTO AUTO)
-  BUTTON "Contacts" ID MainContactsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
-  BUTTON "Settings" ID MainSettingsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  BUTTON "Settings" ID MainSettingsButton AT (5 127 AUTO AUTO)
+  BUTTON "Advert" ID MainAdvertButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  BUTTON "Disconnect" ID MainConnectButton AT (5 145 AUTO AUTO)
+  BUTTON "Done" ID MainDoneButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
 END
 
 FORM ID ContactsForm AT (0 0 160 160)
 NOFRAME
 USABLE
 BEGIN
-  TITLE "Contacts"
-  LIST "" ID ContactsList AT (0 16 160 121) VISIBLEITEMS 11
-  LABEL "                              " ID ContactsStatusLabel AT (5 129)
-  BUTTON "Refresh" ID ContactsRefreshButton AT (5 145 AUTO AUTO)
-  BUTTON "Done" ID ContactsDoneButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  TITLE "Contacts            "
+  GADGET ID ContactsGadget AT (0 16 153 128)
+  SCROLLBAR ID ContactsScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  BUTTON "Refresh" ID ContactsRefreshButton AT (1 147 AUTO AUTO)
+  BUTTON "Done" ID ContactsDoneButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
 END
 
 ALERT ID ContactInfoAlert
@@ -60,7 +94,25 @@ INFORMATION
 BEGIN
   TITLE "Contact"
   MESSAGE "^1\n^2"
-  BUTTONS "OK"
+  BUTTONS "OK" "Message"
+END
+
+ALERT ID AdvertAlert
+CONFIRMATION
+DEFAULTBUTTON 2
+BEGIN
+  TITLE "Send Advert"
+  MESSAGE "Let other nodes add you. Zero-hop reaches only nodes that hear you directly; flood goes through repeaters."
+  BUTTONS "Zero-hop" "Flood" "Cancel"
+END
+
+ALERT ID RetryAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Not Delivered"
+  MESSAGE "This message wasn't confirmed. Send it again?"
+  BUTTONS "Retry" "Cancel"
 END
 
 FORM ID SettingsForm AT (0 0 160 160)
