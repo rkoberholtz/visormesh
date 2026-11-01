@@ -30,3 +30,20 @@ Sends a companion frame and prints the reply frames. Uses only the Python standa
 tools/companion_query.py /dev/cu.usbmodemXXXX            # CMD_DEVICE_QUERY over the XIAO's USB
 tools/companion_query.py /dev/cu.usbserial-XXXX 16 03    # over a USB-TTL adapter on D6/D7
 ```
+
+## tools/fake_radio.py
+
+A fake companion radio on a pseudo-terminal, for testing clients without transmitting. It answers the protocol with:
+- device and self info, and the clock
+- channels (Public, `#test`; unused slots carry stale bytes like the real firmware)
+- one contact of each type, plus one with a UTF-8 name
+- queued messages announced with `PUSH_MSG_WAITING`
+- DM sends: `SENT`, then `PUSH_SEND_CONFIRMED` after about 2 s (never if the text contains "noack"), then an echo reply
+- a channel message from "Bob" every `--chat` seconds
+
+```sh
+tools/fake_radio.py                                  # prints its pty, e.g. /dev/ttys004
+../palm-client/tools/visor_bridge.py /dev/ttys004    # bridge the Visor to it
+```
+
+Type `c <text>` or `d <text>` at its prompt to inject a channel message or a DM. Note that the Visor stores what it receives from the fake radio in its real message database.
