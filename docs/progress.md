@@ -76,3 +76,4 @@
 - Mentions draw as chips and tap-to-reply works on the Neo. Two code segments verified on the device.
 - Channel management verified on the Neo: Add Channel "#test" put key 9cd8fcf22a47333b591d96a2b848b73f in slot 1 (matches companion_protocol.md). Reconnect after sleep verified: power off ~15 s, the app reconnected and synced on wake by itself.
 - Docker Desktop's amd64 emulation hung once (containers never started); make install now only uses Docker when sources changed.
+- Verified on the Neo: two-line compose field (scrolls, redraws after the on-screen keyboard), Unicode symbols/emoji smiley, line breaks in messages, beep for DMs/mentions, "new" divider. Segments: 1 = 7.8 KB, 2 = 27.1 KB (the next big feature should go in a third segment); tools/check_sections.py guards the rules on every build.
