@@ -37,7 +37,7 @@ static void Tapped(UInt16 row) VM_SECT2;
 #define MAX_LINES   200
 #define LINE_H      VM_CHIP_H /* chips need the extra 2 px */
 #define TIME_X      2
-#define TEXT_X      26
+#define TEXT_X      (gTxtLarge ? 30 : 26)   /* clear of "HH:MM" in either font */
 
 #define L_DAY   0
 #define L_CHIP  1

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Generates VisorMesh's small font from tools/fonts/4x6.bdf (X.org misc-fixed,
-public domain) plus hand-drawn UI symbols.
+"""Generates VisorMesh's UI fonts from X.org misc-fixed (public domain) plus
+hand-drawn UI symbols: the small font from tools/fonts/4x6.bdf and the larger
+one (the Text size option) from tools/fonts/5x8.bdf.
 
 Outputs:
   resources/smallfont.nfnt the NFNT resource, written here directly (the bundled
                            PilRC's FONT compiler emits a corrupt header) and
                            included by PilRC as a DATA resource
+  resources/largefont.nfnt the same for the larger font (and largefont.txt)
   resources/smallfont.txt  the same glyphs as text, for reading and diffs
   src/ui/glyphs.h          code points for the UI symbols
-  src/ui/fontmetrics.c     per-character widths, so host tests lay text out exactly
+  src/ui/fontmetrics.c     per-character widths of both, for text layout
 
 Palm fonts are 8-bit: 0x20-0x7E and 0xA0-0xFF come from the BDF (ASCII and
 Latin-1); the UI symbols go in 0x80-0x9F, reusing Windows-1252's slots where it
@@ -18,17 +20,20 @@ import os
 import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BDF = os.path.join(HERE, 'fonts', '4x6.bdf')
-OUT_FONT = os.path.join(HERE, '..', 'resources', 'smallfont.txt')
-OUT_NFNT = os.path.join(HERE, '..', 'resources', 'smallfont.nfnt')
+RES = os.path.join(HERE, '..', 'resources')
 OUT_GLYPHS = os.path.join(HERE, '..', 'src', 'ui', 'glyphs.h')
 OUT_METRICS = os.path.join(HERE, '..', 'src', 'ui', 'fontmetrics.c')
 
-ASCENT, DESCENT = 5, 1
-HEIGHT = ASCENT + DESCENT
+# (name, BDF, ascent, descent): the hand-drawn symbols below are drawn for the
+# small font's 5 + 1 and are padded to the larger cell, sitting on the baseline.
+FONTS = [
+    ('small', os.path.join(HERE, 'fonts', '4x6.bdf'), 5, 1),
+    ('large', os.path.join(HERE, 'fonts', '5x8.bdf'), 7, 1),
+]
+SYMBOL_ASCENT, SYMBOL_DESCENT = 5, 1
 
 # UI symbols: (code point, C name, source). Source is a Unicode code point to take
-# from the BDF, or a hand-drawn bitmap (one string per row, HEIGHT rows, '#' = on).
+# from the BDF, or a hand-drawn bitmap (one string per row, 6 rows, '#' = on).
 SYMBOLS = [
     (0x80, 'GLYPH_SELF', ['--#--', '#####', '-###-', '-#-#-', '#---#', '-----']),      # star: you
     (0x81, 'GLYPH_COMPANION', ['-----', '-##-', '####', '####', '-##-', '----']),      # filled circle
@@ -52,8 +57,9 @@ SYMBOLS = [
 ]
 
 
-def parse_bdf(path):
-    """Returns {codepoint: (width, rows)} with rows as HEIGHT strings of '#'/'-'."""
+def parse_bdf(path, ascent, descent):
+    """Returns {codepoint: (width, rows)} with rows as ascent + descent strings of '#'/'-'."""
+    height = ascent + descent
     glyphs = {}
     with open(path) as f:
         lines = f.read().splitlines()
@@ -82,21 +88,21 @@ def parse_bdf(path):
                 break
             i += 1
         w, h, xoff, yoff = bbx
-        cell = [['-'] * dwidth for _ in range(HEIGHT)]
-        top = ASCENT - (yoff + h)        # cell row of the bitmap's first row
+        cell = [['-'] * dwidth for _ in range(height)]
+        top = ascent - (yoff + h)        # cell row of the bitmap's first row
         nbits = ((w + 7) // 8) * 8
         for r, bits in enumerate(bitmap):
             for c in range(w):
                 if bits & (1 << (nbits - 1 - c)):
                     y, x = top + r, xoff + c
-                    if 0 <= y < HEIGHT and 0 <= x < dwidth:
+                    if 0 <= y < height and 0 <= x < dwidth:
                         cell[y][x] = '#'
         glyphs[enc] = (dwidth, [''.join(row) for row in cell])
         i += 1
     return glyphs
 
 
-def build_nfnt(font, missing):
+def build_nfnt(font, missing, ascent, descent):
     """
     Palm OS FontType (Mac FONT layout, big-endian words):
       fontType, firstChar, lastChar, maxWidth, kernMax, nDescent, fRectWidth,
@@ -107,6 +113,7 @@ def build_nfnt(font, missing):
     where n = lastChar - firstChar + 1 and entry n is the missing-char glyph.
     owTLoc is the distance in words from the owTLoc field to owTable.
     """
+    height = ascent + descent
     first, last = min(font), max(font)
     n = last - first + 1
     order = [font.get(c) for c in range(first, last + 1)] + [missing]
@@ -117,7 +124,7 @@ def build_nfnt(font, missing):
     locs.append(x)
     strip_w = x
     row_words = (strip_w + 15) // 16
-    bitmap = bytearray(row_words * 2 * HEIGHT)
+    bitmap = bytearray(row_words * 2 * height)
     for rows, x0 in zip(order, locs):
         if not rows:
             continue
@@ -129,9 +136,9 @@ def build_nfnt(font, missing):
     ow = [(0 << 8 | len(rows[0])) if rows else 0xFFFF for rows in order] + [0xFFFF]
     max_w = max(len(r[0]) for r in order if r)
     header_words, ow_t_loc_index = 13, 8
-    ow_t_loc = header_words + row_words * HEIGHT + len(locs) - ow_t_loc_index
-    header = struct.pack('>13h', -28672, first, last, max_w, 0, 0, max_w, HEIGHT,
-                         ow_t_loc, ASCENT, DESCENT, 0, row_words)
+    ow_t_loc = header_words + row_words * height + len(locs) - ow_t_loc_index
+    header = struct.pack('>13h', -28672, first, last, max_w, 0, 0, max_w, height,
+                         ow_t_loc, ascent, descent, 0, row_words)
     return header + bytes(bitmap) + struct.pack('>%dH' % len(locs), *locs) + struct.pack('>%dH' % len(ow), *ow)
 
 
@@ -161,51 +168,73 @@ def decode_nfnt(data):
     return out
 
 
-def main():
-    bdf = parse_bdf(BDF)
+def pad_symbol(rows, ascent, descent):
+    """Fits a 5 + 1 hand-drawn symbol into a taller cell, keeping it on the baseline."""
+    width = len(rows[0])
+    blank = '-' * width
+    return [blank] * (ascent - SYMBOL_ASCENT) + rows + [blank] * (descent - SYMBOL_DESCENT)
+
+
+def make_font(name, path, ascent, descent):
+    """Builds one font, writes resources/<name>font.nfnt and .txt; returns its 256 widths."""
+    height = ascent + descent
+    bdf = parse_bdf(path, ascent, descent)
     font = {}
     for code in list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)):
         if code in bdf:
             font[code] = bdf[code][1]
     for code, _name, src in SYMBOLS:
-        rows = bdf[src][1] if isinstance(src, int) else src
-        assert len(rows) == HEIGHT, (hex(code), rows)
-        width = max(len(r) for r in rows)
-        font[code] = [r.ljust(width, '-') for r in rows]
-    missing = bdf[0xFFFD][1] if 0xFFFD in bdf else ['####', '#--#', '#--#', '#--#', '####', '----']
+        if isinstance(src, int):
+            rows = bdf[src][1]
+        else:
+            assert len(src) == SYMBOL_ASCENT + SYMBOL_DESCENT, (hex(code), src)
+            width = max(len(r) for r in src)
+            rows = pad_symbol([r.ljust(width, '-') for r in src], ascent, descent)
+        assert len(rows) == height, (name, hex(code), rows)
+        font[code] = rows
+    missing = bdf[0xFFFD][1]
 
-    os.makedirs(os.path.dirname(OUT_GLYPHS), exist_ok=True)
-    nfnt = build_nfnt(font, missing)
+    nfnt = build_nfnt(font, missing, ascent, descent)
     back = decode_nfnt(nfnt)
     for code, rows in font.items():
-        assert back.get(code) == rows, 'NFNT round trip failed for 0x%02X' % code
+        assert back.get(code) == rows, 'NFNT round trip failed for %s 0x%02X' % (name, code)
     assert back['missing'] == missing
-    with open(OUT_NFNT, 'wb') as f:
+    out_nfnt = os.path.join(RES, name + 'font.nfnt')
+    with open(out_nfnt, 'wb') as f:
         f.write(nfnt)
-
-    with open(OUT_FONT, 'w') as f:
-        f.write('fontType 36864\nascent %d\ndescent %d\n\n' % (ASCENT, DESCENT))
+    with open(os.path.join(RES, name + 'font.txt'), 'w') as f:
+        f.write('fontType 36864\nascent %d\ndescent %d\n\n' % (ascent, descent))
         for code in sorted(font):
             f.write('GLYPH %d\n%s\n\n' % (code, '\n'.join(font[code])))
         f.write('GLYPH -1\n' + '\n'.join(missing) + '\n')     # PilRC wants the missing glyph last
+    print('%d glyphs -> %s (%d bytes, round trip OK)' % (len(font), os.path.relpath(out_nfnt), len(nfnt)))
+    return [len(font[c][0]) if c in font else len(missing[0]) for c in range(256)]
 
+
+def main():
+    widths, heights = {}, {}
+    for name, path, ascent, descent in FONTS:
+        widths[name] = make_font(name, path, ascent, descent)
+        heights[name] = ascent + descent
+
+    os.makedirs(os.path.dirname(OUT_GLYPHS), exist_ok=True)
     with open(OUT_GLYPHS, 'w') as f:
-        f.write('/* GENERATED by tools/gen_font.py. UI symbols in the small font (vmSmallFont). */\n')
+        f.write('/* GENERATED by tools/gen_font.py. UI symbols in the UI fonts (vmSmallFont). */\n')
         f.write('#ifndef VM_GLYPHS_H\n#define VM_GLYPHS_H\n\n')
         for code, name, _src in SYMBOLS:
             f.write('#define %-16s ((Char)0x%02X)\n' % (name, code))
-        f.write('\n#define VM_SMALL_FONT_HEIGHT %d\n\n#endif\n' % HEIGHT)
+        f.write('\n#define VM_SMALL_FONT_HEIGHT %d\n#define VM_LARGE_FONT_HEIGHT %d\n\n#endif\n'
+                % (heights['small'], heights['large']))
 
-    widths = [len(font[c][0]) if c in font else len(missing[0]) for c in range(256)]
     with open(OUT_METRICS, 'w') as f:
-        f.write('/* GENERATED by tools/gen_font.py: small-font character widths in pixels. */\n')
+        f.write('/* GENERATED by tools/gen_font.py: UI font character widths in pixels. */\n')
         f.write('#include "fontmetrics.h"\n\n')
         f.write('/* Not const: prc-tools puts const data in the code section, but other files reach an\n * extern table A5-relative as if it were data, so a const table reads as garbage on the Visor. */\n')
-        f.write('UInt8 gSmallFontWidths[256] = {\n')
-        for r in range(0, 256, 16):
-            f.write('\t' + ', '.join(str(w) for w in widths[r:r + 16]) + ',\n')
-        f.write('};\n')
-    print('%d glyphs -> %s (%d bytes, round trip OK)' % (len(font), os.path.relpath(OUT_NFNT), len(nfnt)))
+        for name in ('small', 'large'):
+            f.write('UInt8 g%sFontWidths[256] = {\n' % name.capitalize())
+            for r in range(0, 256, 16):
+                f.write('\t' + ', '.join(str(w) for w in widths[name][r:r + 16]) + ',\n')
+            f.write('};\n')
 
 
 if __name__ == '__main__':

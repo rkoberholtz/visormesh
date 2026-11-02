@@ -5,6 +5,7 @@
 #include "contacts.h"
 #include "messages.h"
 #include "convos.h"
+#include "mutes.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static void HexPrefix(const UInt8 *p, Char *out) VM_SECT2;
@@ -149,7 +150,9 @@ UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)
 		conv.type = VM_CONV_CHANNEL;
 		conv.channel = ch.idx;
 		ChannelDisplayName(&ch, name, sizeof(name));
-		AddConv(rows, &n, max, &conv, ChannelMarker(&ch), name);
+		r = AddConv(rows, &n, max, &conv, ChannelMarker(&ch), name);
+		if (r)
+			r->muted = ChannelMuted(&ch);
 	}
 
 	AddSection(rows, &n, max, "Direct");
@@ -206,6 +209,7 @@ UInt16 ConvosUnread(const VmConvRow *rows, UInt16 n)
 	UInt16 i, total = 0;
 
 	for (i = 0; i < n; i++)
-		total += rows[i].unread;
+		if (!rows[i].muted)
+			total += rows[i].unread;
 	return total;
 }

@@ -4,6 +4,7 @@
 #include "session.h"
 #include "app.h"
 #include "sounds.h"
+#include "mutes.h"
 
 VmConv  gAppConv;
 Boolean gAppAutoConnectTried = false;
@@ -27,6 +28,7 @@ void AppLoadPrefs(void)
 	Int32 west;
 
 	SoundsLoad();
+	MutesLoad();
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
 		/*

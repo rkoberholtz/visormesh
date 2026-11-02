@@ -23,6 +23,7 @@
 #define MainMenuAddChannel 1006
 #define MainMenuLeaveChannel 1007
 #define MainMenuSounds     1008
+#define MainMenuMuteChannel 1009
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -122,8 +123,13 @@
 #define SoundsForm            2200
 #define SoundsFirstCheck      2201   /* + VM_SND_* (sounds.h), in that order */
 #define SoundsDoneButton      2210
+#define MuteAlert             2211
+#define SoundsSmallPush       2212
+#define SoundsLargePush       2213
+#define SoundsTextGroup       5
 
 #define SmallFontRes          1000
+#define LargeFontRes          1001
 #define FontPreviewForm       1400
 #define FontPreviewDoneButton 1401
 

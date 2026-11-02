@@ -38,6 +38,8 @@
 - [x] Split the code into segments: protocol.c + ui/text.c in vmcode2 (seg 1 24.3 KB, seg 2 4.9 KB); rules in src/sections.h (to verify on the Visor)
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
+- [x] Notification sounds per event kind, mute channels, larger text option (5x8 font)
+- [ ] Flood scopes (regions): manage the list of scopes, set the default scope, and set a scope per channel. MeshCore v8+ has CMD_SET_FLOOD_SCOPE_KEY (54), CMD_SET_DEFAULT_FLOOD_SCOPE (63) / CMD_GET_DEFAULT_FLOOD_SCOPE (64)
 
 ## Open questions
 - Which CF adapter is it, and does its ROM include an app installer?
@@ -82,3 +84,4 @@
 - 2026-11-02: Slot with an empty slot reset the Visor (bus error at csSlot0), and since Slot was saved and Home auto-connects, every launch reset it. Slot is no longer restored at launch, and Connect now checks `HsCardAttrGet(hsCardAttrHwInstalled)` and takes the chip-select base and size from the OS before any bus access. Verified on the Neo: empty slot gives "No module in the slot." with no reset. Node-screen errors shortened to its 22-character labels.
 - 2026-11-02: Notification sounds (Options > Sounds): separate tunes for direct messages, mentions, room posts, private / hashtag / Public channels and new contacts (PUSH_NEW_ADVERT), each on or off, at the alarm volume. One sound per poll, by priority; none for the conversation on screen. Verified on the Neo. Segment 3 is 13.8 KB.
 - 2026-11-02: SB-LoRa receive is interrupt-driven: a slot IRQ* handler (hsCardAttrIntHandler) drains the SC16IS740 RX FIFO (IER RHR, trigger 8 or timeout) into a 1 KB ring passed as cardParam. The handler path (SbDrainRx and the bus core) is in segment 1 with no A5 references, checked in the disassembly, so it's safe in interrupt context and while the Visor sleeps. The app masks the slot interrupt around its own SPI transactions, and falls back to polling if the handler won't install. Host tests cover draining, ring wrap and overflow; untested on hardware.
+- 2026-11-02: Mute Channel (Options menu; by channel key; mentions still sound; open-circle unread badge, left out of the title total) and Text size Small/Large on the new Preferences screen (5x8 misc-fixed via tools/pcf2bdf.py from XQuartz's PCF; gen_font.py builds both fonts). Verified on the Neo. Segments: 11.1 / 28.0 / 14.7 KB.

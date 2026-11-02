@@ -3,11 +3,14 @@
 #include "app.h"
 #include "session.h"
 #include "sounds.h"
+#include "ui/draw.h"
 
 static void SavePrefs(void) VM_SECT3;
 
 #define VM_SOUNDS_PREFS_ID      1
 #define VM_SOUNDS_PREFS_VERSION 1
+#define VM_TEXT_PREFS_ID        3
+#define VM_TEXT_PREFS_VERSION   1
 
 /* Off by default: the busy channels. */
 #define VM_SND_DEFAULT ((UInt16)~((1 << VM_SND_HASHTAG) | (1 << VM_SND_PUBLIC)))
@@ -17,7 +20,13 @@ typedef struct {
 	UInt16 enabled;    /* 1 << VM_SND_* */
 } SoundsPrefs;
 
+typedef struct {
+	UInt16  version;
+	Boolean large;
+} TextPrefs;
+
 static UInt16 gEnabled = VM_SND_DEFAULT;
+static Boolean gLargeText = false;
 static UInt16 gReturnForm = HomeForm;
 
 /* Up to three notes per kind as (Hz, ms) pairs; 0 ends a tune early. */
@@ -34,20 +43,34 @@ static const UInt16 kTunes[VM_SND_COUNT][6] = {
 void SoundsLoad(void)
 {
 	SoundsPrefs prefs;
+	TextPrefs text;
 	UInt16 size = sizeof(prefs);
 
 	if (PrefGetAppPreferences(VM_CREATOR, VM_SOUNDS_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_SOUNDS_PREFS_VERSION)
 		gEnabled = prefs.enabled;
+	size = sizeof(text);
+	if (PrefGetAppPreferences(VM_CREATOR, VM_TEXT_PREFS_ID, &text, &size, true) != noPreferenceFound &&
+	    size == sizeof(text) && text.version == VM_TEXT_PREFS_VERSION)
+		gLargeText = text.large;
+}
+
+Boolean SoundsLargeText(void)
+{
+	return gLargeText;
 }
 
 static void SavePrefs(void)
 {
 	SoundsPrefs prefs;
+	TextPrefs text;
 
 	prefs.version = VM_SOUNDS_PREFS_VERSION;
 	prefs.enabled = gEnabled;
 	PrefSetAppPreferences(VM_CREATOR, VM_SOUNDS_PREFS_ID, VM_SOUNDS_PREFS_VERSION, &prefs, sizeof(prefs), true);
+	text.version = VM_TEXT_PREFS_VERSION;
+	text.large = gLargeText;
+	PrefSetAppPreferences(VM_CREATOR, VM_TEXT_PREFS_ID, VM_TEXT_PREFS_VERSION, &text, sizeof(text), true);
 }
 
 void SoundsPlay(UInt8 kind)
@@ -102,12 +125,21 @@ Boolean SoundsFormHandleEvent(EventType *event)
 		for (kind = 0; kind < VM_SND_COUNT; kind++)
 			FrmSetControlValue(form, FrmGetObjectIndex(form, SoundsFirstCheck + kind),
 			                   (gEnabled & (1 << kind)) != 0);
+		FrmSetControlGroupSelection(form, SoundsTextGroup, gLargeText ? SoundsLargePush : SoundsSmallPush);
 		FrmDrawForm(form);
 		return true;
 	case ctlSelectEvent:
 		id = event->data.ctlSelect.controlID;
 		if (id == SoundsDoneButton) {
 			FrmGotoForm(gReturnForm);
+			return true;
+		}
+		if (id == SoundsSmallPush || id == SoundsLargePush) {
+			/* this screen is in the system fonts; the others lay out again as they open */
+			if ((id == SoundsLargePush) != gLargeText && UiFontSetLarge(id == SoundsLargePush) == errNone) {
+				gLargeText = id == SoundsLargePush;
+				SavePrefs();
+			}
 			return true;
 		}
 		if (id >= SoundsFirstCheck && id < SoundsFirstCheck + VM_SND_COUNT) {

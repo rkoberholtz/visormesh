@@ -22,6 +22,7 @@ typedef struct {
 	UInt16  unread;
 	UInt32  last;                 /* Unix seconds of the newest message, 0 = none */
 	Boolean failed;               /* an outgoing message here wasn't delivered */
+	Boolean muted;                /* a muted channel (mutes.h) */
 	Char    preview[VM_PREVIEW_LEN];
 } VmConvRow;
 

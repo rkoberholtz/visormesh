@@ -13,6 +13,7 @@
 #include "remote.h"
 #include "remote_form.h"
 #include "sounds.h"
+#include "mutes.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -49,6 +50,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
 	case MainMenuAddChannel:  FrmGotoForm(ChannelForm);     return true;
 	case MainMenuLeaveChannel: ChannelLeaveCurrent();       return true;
+	case MainMenuMuteChannel: ChannelMuteToggleCurrent();   return true;
 	}
 	return false;
 }
@@ -162,8 +164,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 	if (err != errNone)
 		return err;
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
-		UiFontInit();
 		AppLoadPrefs();
+		UiFontInit(SoundsLargeText());
 		HeardLoad();
 		FrmGotoForm(HomeForm);
 		AppEventLoop();

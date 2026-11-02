@@ -50,7 +50,8 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 		buf[1] = 0;
 		DrawRight(buf, x + BADGE_R, y);
 	} else if (r->unread) {
-		StrPrintF(buf, "%c%u", GLYPH_COMPANION, r->unread);
+		/* open circle: a muted channel's unread */
+		StrPrintF(buf, "%c%u", r->muted ? GLYPH_UNKNOWN : GLYPH_COMPANION, r->unread);
 		DrawRight(buf, x + BADGE_R, y);
 	}
 	if (r->last) {

@@ -9,6 +9,7 @@
 #include "heard.h"
 #include "remote.h"
 #include "sounds.h"
+#include "mutes.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -387,10 +388,12 @@ static UInt8 MessageSound(const VmMessage *m)
 	VmContact ct;
 
 	if (MentionsUs(m))
-		return VM_SND_MENTION;
+		return VM_SND_MENTION;   /* even in a muted channel */
 	if (m->isChannel) {
 		if (!ChannelsFindSlot(m->channelIdx, &ch))
 			return VM_SND_PRIVATE;
+		if (ChannelMuted(&ch))
+			return VM_SND_NONE;
 		switch (ChannelKind(&ch)) {
 		case VM_CHAN_PUBLIC:  return VM_SND_PUBLIC;
 		case VM_CHAN_HASHTAG: return VM_SND_HASHTAG;
@@ -443,8 +446,11 @@ Err SessionSyncMessages(void)
 			continue;
 		}
 		if (MessagesAddIncoming(&m, SessionNow()) == errNone) {
+			UInt8 kind = MessageSound(&m);
+
 			gChanged |= VM_CHANGED_MESSAGES;
-			NoteSound(MessageSound(&m), &m);
+			if (kind != VM_SND_NONE)
+				NoteSound(kind, &m);
 		}
 	}
 	gMsgWaiting = true;     /* more left: carry on at the next poll */

@@ -10,7 +10,11 @@
 /* Width of one character in pixels (e.g. from gSmallFontWidths, or FntCharWidth on the device). */
 typedef Int16 (*TxtWidthFn)(Char c);
 
-/* The small font's widths from the generated table. */
+/*
+ * The UI font's widths from the generated tables: the small font, or the
+ * larger one while gTxtLarge is set (draw.c keeps it in step with the font).
+ */
+extern Boolean gTxtLarge;
 Int16  TxtSmallWidth(Char c) VM_SECT2;
 
 Int16  TxtWidth(const Char *s, UInt16 len, TxtWidthFn w) VM_SECT2;

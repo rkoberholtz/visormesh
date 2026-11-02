@@ -5,9 +5,11 @@
 /* In the second code segment: see sections.h for the rules. */
 static Char MapUnicode(UInt32 cp) VM_SECT2;
 
+Boolean gTxtLarge = 0;
+
 Int16 TxtSmallWidth(Char c)
 {
-	return gSmallFontWidths[(UInt8)c];
+	return gTxtLarge ? gLargeFontWidths[(UInt8)c] : gSmallFontWidths[(UInt8)c];
 }
 
 Int16 TxtWidth(const Char *s, UInt16 len, TxtWidthFn w)

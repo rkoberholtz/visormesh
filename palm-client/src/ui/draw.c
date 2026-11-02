@@ -1,20 +1,43 @@
 #include <PalmOS.h>
 #include "../resources.h"
 #include "draw.h"
+#include "text.h"
 
 /* In the second code segment: see sections.h for the rules. */
 
 
 static MemHandle gFontH = 0;
+UInt16 gUiFontHeight = VM_SMALL_FONT_HEIGHT;
 
-Err UiFontInit(void)
+Err UiFontInit(Boolean large)
 {
 	if (gFontH)
 		return errNone;
-	gFontH = DmGetResource('NFNT', SmallFontRes);
+	gFontH = DmGetResource('NFNT', large ? LargeFontRes : SmallFontRes);
 	if (!gFontH)
 		return DmGetLastErr();
+	gUiFontHeight = large ? VM_LARGE_FONT_HEIGHT : VM_SMALL_FONT_HEIGHT;
+	gTxtLarge = large;
 	return FntDefineFont(vmSmallFont, (FontPtr)MemHandleLock(gFontH));
+}
+
+/* FntDefineFont replaces the font at that ID; the old resource is released after. */
+Err UiFontSetLarge(Boolean large)
+{
+	MemHandle old = gFontH;
+	Err err;
+
+	gFontH = 0;
+	err = UiFontInit(large);
+	if (err != errNone) {
+		gFontH = old;
+		return err;
+	}
+	if (old) {
+		MemHandleUnlock(old);
+		DmReleaseResource(old);
+	}
+	return errNone;
 }
 
 void UiFontRelease(void)
