@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -78,6 +78,8 @@ test: | build
 	build/test_sblora
 	gcc -std=c99 -Wall -Wextra -o build/test_scopes tests/test_scopes.c src/scope_proto.c src/protocol.c src/sha256.c
 	build/test_scopes
+	gcc -std=c99 -Wall -Wextra -D_DEFAULT_SOURCE -o build/test_map tests/test_map.c src/map_geo.c -lm
+	build/test_map
 
 build:
 	mkdir -p build
@@ -90,6 +92,18 @@ install: all
 	  pkill -f tools/visor_bridge.py; sleep 1; fi
 	@echo "Press the HotSync button on the Visor cradle..."
 	$(PILOT_XFER) -p $(PORT) -i build/$(APP).prc
+
+# The basemap (tools/make_map.py; OSM data cached in tools/map-cache). `make map`
+# downloads on the first run; MAP_ARGS passes options, e.g. MAP_ARGS="--max-zoom 12".
+map: | build
+	python3 tools/make_map.py --cache tools/map-cache --fetch --out build/VisorMeshMap.pdb $(MAP_ARGS)
+
+install-map:
+	@if pgrep -f tools/visor_bridge.py >/dev/null; then \
+	  echo "Stopping visor_bridge.py (it would grab the Visor during HotSync)"; \
+	  pkill -f tools/visor_bridge.py; sleep 1; fi
+	@echo "Press the HotSync button on the Visor cradle..."
+	$(PILOT_XFER) -p $(PORT) -i build/VisorMeshMap.pdb
 
 clean:
 	rm -rf build
@@ -104,4 +118,4 @@ editor: image
 	  -Wno-ignored-attributes -Wno-pragma-once-outside-header > compile_flags.txt
 	find .sdk/sdk-3.5 -type d | sed 's|^|-I|' >> compile_flags.txt
 
-.PHONY: all test image install clean editor
+.PHONY: all test image install clean editor map install-map

@@ -26,6 +26,7 @@
 #define MainMenuMuteChannel 1009
 #define MainMenuChannelScope 1010
 #define MainMenuScopes     1011
+#define MainMenuMap        1012
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -146,6 +147,13 @@
 #define ChanScopeList         2401
 #define ChanScopeOKButton     2402
 #define ChanScopeCancelButton 2403
+
+#define MapForm               2500
+#define MapGadget             2501
+#define MapDoneButton         2502
+#define MapOutButton          2503
+#define MapInButton           2504
+#define MapAlert              2505
 
 #define SmallFontRes          1000
 #define LargeFontRes          1001

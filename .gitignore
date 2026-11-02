@@ -19,3 +19,6 @@ firmware/meshcore/
 # Palm SDK headers copied out of the Docker image for the editor (see Makefile: editor)
 palm-client/.sdk/
 palm-client/compile_flags.txt
+
+# OpenStreetMap downloads for the basemap (palm-client/tools/make_map.py)
+palm-client/tools/map-cache/

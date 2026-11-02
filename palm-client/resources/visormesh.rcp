@@ -17,6 +17,7 @@ BEGIN
     MENUITEM "Conversations" ID MainMenuHome "H"
     MENUITEM "Contacts" ID MainMenuContacts "C"
     MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
     MENUITEM "-" AUTOID
     MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
     MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
@@ -324,6 +325,27 @@ BEGIN
   LIST "" ID ChanScopeList AT (5 28 146 AUTO) VISIBLEITEMS 7
   BUTTON "OK" ID ChanScopeOKButton AT (5 113 36 12)
   BUTTON "Cancel" ID ChanScopeCancelButton AT (PREVRIGHT+5 PREVTOP 36 12)
+END
+
+/* Map: the basemap with positioned nodes; drag to pan, tap a node, tap again to open */
+FORM ID MapForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "Map"
+  GADGET ID MapGadget AT (0 15 160 130)
+  BUTTON "Done" ID MapDoneButton AT (1 147 28 12)
+  BUTTON "-" ID MapOutButton AT (PREVRIGHT+4 PREVTOP 14 12)
+  BUTTON "+" ID MapInButton AT (PREVRIGHT+2 PREVTOP 14 12)
+END
+
+ALERT ID MapAlert
+INFORMATION
+BEGIN
+  TITLE "Map"
+  MESSAGE "^1"
+  BUTTONS "OK"
 END
 
 ALERT ID MuteAlert

@@ -15,6 +15,7 @@
 #include "sounds.h"
 #include "mutes.h"
 #include "scopes.h"
+#include "map_form.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -46,6 +47,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuHome:        FrmGotoForm(HomeForm);        return true;
 	case MainMenuContacts:    FrmGotoForm(ContactsForm);    return true;
 	case MainMenuNode:        FrmGotoForm(MainForm);        return true;
+	case MainMenuMap:         FrmGotoForm(MapForm);         return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
 	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
@@ -84,6 +86,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case RemoteForm:      FrmSetEventHandler(form, RemoteFormHandleEvent);      break;
 	case SoundsForm:      FrmSetEventHandler(form, SoundsFormHandleEvent);      break;
 	case ScopesForm:      FrmSetEventHandler(form, ScopesFormHandleEvent);      break;
+	case MapForm:         FrmSetEventHandler(form, MapFormHandleEvent);         break;
 	}
 	return true;
 }
