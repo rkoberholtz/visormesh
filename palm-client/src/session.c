@@ -8,6 +8,7 @@
 #include "session.h"
 #include "heard.h"
 #include "remote.h"
+#include "sounds.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -39,6 +40,8 @@ static UInt16 gRxPos, gRxLen;
  * offset to UTC is an app preference. Everything stored and sent is UTC.
  */
 static Int32 gUtcOffsetSecs = 0;      /* local minus UTC */
+
+static void NoteSound(UInt8 kind, const VmMessage *m);
 
 void SessionSetUtcOffset(Int16 minutes)
 {
@@ -83,6 +86,9 @@ static void HandlePush(void)
 		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx))
 			HeardRecord(&rx, SessionNow());
 	} else if (code == VM_PUSH_ADVERT || code == VM_PUSH_NEW_ADVERT || code == VM_PUSH_PATH_UPDATED) {
+		/* NEW_ADVERT is the radio's first sight of a node (MyMesh::onDiscoveredContact is_new) */
+		if (code == VM_PUSH_NEW_ADVERT)
+			NoteSound(VM_SND_CONTACT, NULL);
 		gChanged |= VM_CHANGED_CONTACTS;
 	}
 }
@@ -332,19 +338,24 @@ Err SessionGetChannel(UInt8 slot, VmChannel *out)
 	return err;
 }
 
-/* The newest message that should alert (a DM, or a mention of us in a channel). */
-static VmConv  gAlertConv;
+/* Sound kinds noted since SessionTakeSounds, and the conversation of the newest of each. */
+static UInt16  gSounds;
+static VmConv  gSoundConv[VM_SND_COUNT];
 
-static void NoteAlert(const VmMessage *m)
+/* m is the message, or NULL for an event without a conversation (a new contact). */
+static void NoteSound(UInt8 kind, const VmMessage *m)
 {
-	MemSet(&gAlertConv, sizeof(gAlertConv), 0);
-	if (m->isChannel) {
-		gAlertConv.type = VM_CONV_CHANNEL;
-		gAlertConv.channel = m->channelIdx;
-	} else {
-		gAlertConv.type = VM_CONV_DIRECT;
-		MemMove(gAlertConv.key, m->senderPrefix, 6);
+	VmConv *c = &gSoundConv[kind];
+
+	MemSet(c, sizeof(*c), 0);
+	if (m && m->isChannel) {
+		c->type = VM_CONV_CHANNEL;
+		c->channel = m->channelIdx;
+	} else if (m) {
+		c->type = VM_CONV_DIRECT;
+		MemMove(c->key, m->senderPrefix, 6);
 	}
+	gSounds |= 1 << kind;
 	gChanged |= VM_CHANGED_ALERT;
 }
 
@@ -369,9 +380,39 @@ static Boolean MentionsUs(const VmMessage *m)
 	return false;
 }
 
-const VmConv *SessionAlertConv(void)
+/* Room posts arrive signed, from the room's key; a room contact covers unsigned ones. */
+static UInt8 MessageSound(const VmMessage *m)
 {
-	return &gAlertConv;
+	VmChannel ch;
+	VmContact ct;
+
+	if (MentionsUs(m))
+		return VM_SND_MENTION;
+	if (m->isChannel) {
+		if (!ChannelsFindSlot(m->channelIdx, &ch))
+			return VM_SND_PRIVATE;
+		switch (ChannelKind(&ch)) {
+		case VM_CHAN_PUBLIC:  return VM_SND_PUBLIC;
+		case VM_CHAN_HASHTAG: return VM_SND_HASHTAG;
+		default:              return VM_SND_PRIVATE;
+		}
+	}
+	if (m->hasSigner || (ContactsFindByPrefix(m->senderPrefix, &ct) && ct.type == VM_ADV_TYPE_ROOM))
+		return VM_SND_ROOM;
+	return VM_SND_DIRECT;
+}
+
+UInt16 SessionTakeSounds(void)
+{
+	UInt16 kinds = gSounds;
+
+	gSounds = 0;
+	return kinds;
+}
+
+const VmConv *SessionSoundConv(UInt8 kind)
+{
+	return &gSoundConv[kind];
 }
 
 Err SessionSyncMessages(void)
@@ -403,8 +444,7 @@ Err SessionSyncMessages(void)
 		}
 		if (MessagesAddIncoming(&m, SessionNow()) == errNone) {
 			gChanged |= VM_CHANGED_MESSAGES;
-			if (!m.isChannel || MentionsUs(&m))
-				NoteAlert(&m);
+			NoteSound(MessageSound(&m), &m);
 		}
 	}
 	gMsgWaiting = true;     /* more left: carry on at the next poll */

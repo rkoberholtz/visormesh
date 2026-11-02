@@ -12,6 +12,7 @@
 #include "heard.h"
 #include "remote.h"
 #include "remote_form.h"
+#include "sounds.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -45,6 +46,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuNode:        FrmGotoForm(MainForm);        return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
+	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
 	case MainMenuAddChannel:  FrmGotoForm(ChannelForm);     return true;
 	case MainMenuLeaveChannel: ChannelLeaveCurrent();       return true;
 	}
@@ -75,6 +77,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case ContactForm:     FrmSetEventHandler(form, ContactFormHandleEvent);     break;
 	case ContactAddForm:  FrmSetEventHandler(form, ContactAddFormHandleEvent);  break;
 	case RemoteForm:      FrmSetEventHandler(form, RemoteFormHandleEvent);      break;
+	case SoundsForm:      FrmSetEventHandler(form, SoundsFormHandleEvent);      break;
 	}
 	return true;
 }
@@ -121,9 +124,9 @@ static void Poll(void)
 	if (RemoteTick())
 		changed |= VM_CHANGED_REMOTE;
 
-	/* a short beep for a new DM or mention, unless that conversation is on screen */
-	if ((changed & VM_CHANGED_ALERT) && !(formId == ConvoForm && ConvEqual(SessionAlertConv(), &gAppConv)))
-		SndPlaySystemSound(sndConfirmation);
+	/* a notification sound, unless it's for the conversation on screen */
+	if (changed & VM_CHANGED_ALERT)
+		SoundsNotify(SessionTakeSounds(), formId == ConvoForm ? &gAppConv : NULL);
 	if (changed)
 		FrmUpdateForm(formId, VM_UPDATE_DATA);
 	if (formId == ConvoForm)

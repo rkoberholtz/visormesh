@@ -19,7 +19,7 @@
 /* What SessionPoll found changed, so the screen on show can redraw. */
 #define VM_CHANGED_MESSAGES  0x0001
 #define VM_CHANGED_CONTACTS  0x0002
-#define VM_CHANGED_ALERT     0x0004   /* a new DM or mention of us arrived: see SessionAlertConv */
+#define VM_CHANGED_ALERT     0x0004   /* something to sound for: see SessionTakeSounds */
 #define VM_CHANGED_REMOTE    0x0008   /* the admin console has new lines */
 
 
@@ -72,8 +72,10 @@ UInt32  SessionRadioTime(void);
  * messages and times out unacked DMs. Returns VM_CHANGED_* flags.
  */
 UInt16  SessionPoll(void);
-/* The conversation of the newest message that should alert (a DM or a mention of us). */
-const VmConv *SessionAlertConv(void);
+/* The sound kinds (1 << VM_SND_*, sounds.h) noted since the last call; clears them. */
+UInt16  SessionTakeSounds(void);
+/* The conversation of the newest message of that kind. */
+const VmConv *SessionSoundConv(UInt8 kind);
 /* Pulls queued messages into the message store (SYNC_NEXT_MESSAGE until none are left). */
 Err     SessionSyncMessages(void);
 Err     SessionGetChannel(UInt8 slot, VmChannel *out);

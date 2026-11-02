@@ -20,6 +20,8 @@ BEGIN
     MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
     MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
     MENUITEM "-" AUTOID
+    MENUITEM "Sounds..." ID MainMenuSounds "B"
+    MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
   END
@@ -258,6 +260,24 @@ USABLE
 BEGIN
   TITLE "Serial Ports"
   BUTTON "Done" ID PortsDoneButton AT (CENTER 145 AUTO AUTO)
+END
+
+/* Sounds: checkbox IDs are SoundsFirstCheck + VM_SND_* (sounds.h) */
+FORM ID SoundsForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Sounds"
+  CHECKBOX "Direct messages" ID 2201 AT (5 18 AUTO 12)
+  CHECKBOX "Mentions of me" ID 2202 AT (5 PREVBOTTOM+1 AUTO 12)
+  CHECKBOX "Room posts" ID 2203 AT (5 PREVBOTTOM+1 AUTO 12)
+  CHECKBOX "Private channels" ID 2204 AT (5 PREVBOTTOM+1 AUTO 12)
+  CHECKBOX "Hashtag channels" ID 2205 AT (5 PREVBOTTOM+1 AUTO 12)
+  CHECKBOX "Public channel" ID 2206 AT (5 PREVBOTTOM+1 AUTO 12)
+  CHECKBOX "New contacts" ID 2207 AT (5 PREVBOTTOM+1 AUTO 12)
+  LABEL "Turning a sound on plays it." AUTOID AT (5 PREVBOTTOM+6)
+  LABEL "Volume: Prefs, General, Alarm" AUTOID AT (5 PREVBOTTOM+1)
+  BUTTON "Done" ID SoundsDoneButton AT (CENTER 145 AUTO AUTO)
 END
 
 ALERT ID RomIncompatibleAlert

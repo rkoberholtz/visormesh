@@ -15,6 +15,12 @@ UInt16  ChannelsCount(void) VM_SECT2;
 Boolean ChannelsGet(UInt16 i, VmChannel *out) VM_SECT2;
 Boolean ChannelsFindSlot(UInt8 slot, VmChannel *out) VM_SECT2;
 
+/* A slot's kind, from its name: Public (slot 0), a #hashtag, or private. */
+#define VM_CHAN_PUBLIC  0
+#define VM_CHAN_HASHTAG 1
+#define VM_CHAN_PRIVATE 2
+UInt8   ChannelKind(const VmChannel *c) VM_SECT2;
+
 /* The first slot not in use (from the cache), or -1 if all maxChannels are used. */
 Int16   ChannelsFreeSlot(UInt8 maxChannels) VM_SECT2;
 /* Stores a channel in a slot on the radio (name in the Visor's charset), then refreshes the cache. */

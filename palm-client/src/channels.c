@@ -157,3 +157,12 @@ Err ChannelsRemove(UInt8 slot, UInt8 maxChannels)
 	MemSet(zero, sizeof(zero), 0);
 	return ChannelsSet(slot, kEmpty, zero, maxChannels);
 }
+
+UInt8 ChannelKind(const VmChannel *c)
+{
+	if (c->name[0] == '#')
+		return VM_CHAN_HASHTAG;
+	if (c->idx == 0 || StrCaselessCompare(c->name, "Public") == 0)
+		return VM_CHAN_PUBLIC;
+	return VM_CHAN_PRIVATE;
+}

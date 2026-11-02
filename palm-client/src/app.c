@@ -3,6 +3,7 @@
 #include "transport.h"
 #include "session.h"
 #include "app.h"
+#include "sounds.h"
 
 VmConv  gAppConv;
 Boolean gAppAutoConnectTried = false;
@@ -25,6 +26,7 @@ void AppLoadPrefs(void)
 	UInt16 size = sizeof(prefs);
 	Int32 west;
 
+	SoundsLoad();
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
 		/*

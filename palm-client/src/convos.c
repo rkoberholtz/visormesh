@@ -37,11 +37,11 @@ void ContactNameForPrefix(const UInt8 *prefix, Char *out, UInt16 size)
 /* Channel names: "#foo" shows as marker '#' + "foo"; slot 0 / Public as '@'; others are private. */
 static Char ChannelMarker(const VmChannel *c)
 {
-	if (c->name[0] == '#')
-		return '#';
-	if (c->idx == 0 || StrCaselessCompare(c->name, "Public") == 0)
-		return '@';
-	return GLYPH_LOCK;
+	switch (ChannelKind(c)) {
+	case VM_CHAN_HASHTAG: return '#';
+	case VM_CHAN_PUBLIC:  return '@';
+	default:              return GLYPH_LOCK;
+	}
 }
 
 static void ChannelDisplayName(const VmChannel *c, Char *out, UInt16 size)

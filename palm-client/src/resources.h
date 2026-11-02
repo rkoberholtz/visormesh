@@ -22,6 +22,7 @@
 #define MainMenuNode       1005
 #define MainMenuAddChannel 1006
 #define MainMenuLeaveChannel 1007
+#define MainMenuSounds     1008
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -117,6 +118,10 @@
 #define PortsDoneButton   1101
 
 #define RomIncompatibleAlert 2000
+
+#define SoundsForm            2200
+#define SoundsFirstCheck      2201   /* + VM_SND_* (sounds.h), in that order */
+#define SoundsDoneButton      2210
 
 #define SmallFontRes          1000
 #define FontPreviewForm       1400
