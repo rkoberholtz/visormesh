@@ -18,8 +18,8 @@
 
 /*
  * csSlot0 base and the default 16 MB chip-select size (Springboard Dev Guide
- * §2.1). The guide says to ask HsCardAttrGet(hsCardAttrCsBase) instead; that
- * needs the Handspring SDK headers, which this tree doesn't have yet.
+ * §2.1). Used until SbSetBase(); on the Visor, transport_sb.c passes what
+ * HsCardAttrGet reports.
  */
 #define SB_CS0_BASE  0x28000000UL
 #define SB_CS_SIZE   0x01000000UL
@@ -48,6 +48,9 @@
  * to A0 and up; both are tried, and the one that works is kept.
  */
 Boolean SbProbe(void) VM_SECT3;
+
+/* csSlot0's address and the size of each chip select; csSlot1 follows csSlot0. */
+void    SbSetBase(UInt32 cs0, UInt32 csSize) VM_SECT3;
 
 /* 115200 8N1 (14.7456 MHz crystal, DLL = 8), FIFOs on, interrupts off. */
 void    SbUartInit(void) VM_SECT3;

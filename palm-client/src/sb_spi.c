@@ -86,6 +86,12 @@ static Boolean ScratchOk(void)
 	return SbReadReg(SB_SPR) == 0xAA;
 }
 
+void SbSetBase(UInt32 cs0, UInt32 csSize)
+{
+	gCs0 = cs0;
+	gCs1 = cs0 + csSize;
+}
+
 Boolean SbProbe(void)
 {
 	UInt8 shift;

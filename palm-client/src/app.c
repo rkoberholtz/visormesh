@@ -58,17 +58,17 @@ void AppSavePrefs(void)
 void AppErrorText(Err err, Char *out)
 {
 	if (err == vmErrNoReply)
-		StrCopy(out, "No reply from the radio.");
+		StrCopy(out, "No reply from radio.");
 	else if (err == vmErrRadio)
-		StrCopy(out, "The radio returned an error.");
+		StrCopy(out, "Radio returned error.");
 	else if (err == vmErrBadReply)
-		StrCopy(out, "Unexpected reply from the radio.");
+		StrCopy(out, "Bad reply from radio.");
 	else if (err == vmErrTooLong)
 		StrCopy(out, "Message too long.");
 	else if (err == serErrNotOpen)
 		StrCopy(out, "Not connected.");
 	else if (err == vmErrNoModule)
-		StrCopy(out, "No SB-LoRa module in the slot.");
+		StrCopy(out, "No module in the slot.");
 	else if (err == vmErrLoginFailed)
 		StrCopy(out, "Login refused: wrong password?");
 	else

@@ -2,22 +2,43 @@
  * Transport over the SB-LoRa Springboard module (sb_spi.c). Polled: the
  * SC16IS740's 64-byte RX FIFO fills in about 5.5 ms at 115200, so bytes that
  * arrive while the app isn't inside TransportRecv can be lost. An interrupt
- * handler on the slot IRQ* (wired to the chip's IRQ) would fix that; it needs
- * the Handspring card API.
+ * handler on the slot IRQ* (wired to the chip's IRQ) would fix that, through
+ * hsCardAttrIntHandler (not done yet).
  */
 #include <PalmOS.h>
 #include "transport.h"
 #include "sb_spi.h"
+#include "hs_card.h"
 
 #define SB_SEND_TICKS 200   /* give up if the TX FIFO doesn't drain for 2 s */
 
 static Boolean gOpen = false;
 
+/*
+ * Asks the OS whether a module is in the slot and where its chip selects
+ * are. A bus read with the slot empty is a bus error, which resets the Visor.
+ */
+static Boolean ModulePresent(void)
+{
+	UInt32 version, base, size;
+	UInt8 installed = 0;
+
+	if (FtrGet(hsFtrCreator, hsFtrIDVersion, &version) != errNone)
+		return false;   /* not a Handspring device: no slot */
+	if (HsCardAttrGet(hsCardSlot, hsCardAttrHwInstalled, &installed) != errNone || !installed)
+		return false;
+	if (HsCardAttrGet(hsCardSlot, hsCardAttrCsBase, &base) != errNone ||
+	    HsCardAttrGet(hsCardSlot, hsCardAttrCsSize, &size) != errNone)
+		return false;
+	SbSetBase(base, size);
+	return true;
+}
+
 Err SbTransportOpen(void)
 {
 	if (gOpen)
 		return errNone;
-	if (!SbProbe())
+	if (!ModulePresent() || !SbProbe())
 		return vmErrNoModule;
 	SbUartInit();
 	gOpen = true;
