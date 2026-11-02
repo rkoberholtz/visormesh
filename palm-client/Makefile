@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -70,7 +70,7 @@ build/$(APP).prc: build/$(APP) build/res.stamp
 	build-prc -o $@ $(APP).def build/$(APP) build/res/*.bin
 
 test: | build
-	gcc -std=c99 -Wall -Wextra -o build/test_protocol tests/test_protocol.c src/protocol.c src/sha256.c
+	gcc -std=c99 -Wall -Wextra -o build/test_protocol tests/test_protocol.c src/protocol.c src/sha256.c src/remote_fmt.c
 	build/test_protocol
 	gcc -std=c99 -Wall -Wextra -o build/test_text tests/test_text.c src/ui/text.c src/ui/fontmetrics.c src/protocol.c
 	build/test_text

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../src/protocol.h"
+#include "../src/remote_fmt.h"
 #include "fixtures.h"
 #include "../src/sha256.h"
 
@@ -303,6 +304,60 @@ static void test_rx_log(void)
 	CHECK(!VmParseRxLog(advert2, 7, &rx));       /* path cut off */
 }
 
+static void test_remote(void)
+{
+	UInt8 out[200], key[32], prefix[6], st[8 + 56];
+	VmRepeaterStats s;
+	char line[64];
+	const UInt8 *data;
+	UInt16 dlen, pos, i;
+	VmFrameDecoder d;
+	/* ch1 voltage 4.12 V, ch2 temp -3.5 C, ch3 humidity 41.5%, ch4 GPS 39.9526,-75.1652 12.34m */
+	static const UInt8 lpp[] = { 1, 116, 0x01, 0x9c, 2, 103, 0xff, 0xdd, 3, 104, 83,
+	                             4, 136, 0x06, 0x18, 0xa6, 0xf4, 0x87, 0xdc, 0x00, 0x04, 0xd2, 5, 77, 1 };
+
+	for (i = 0; i < 32; i++)
+		key[i] = (UInt8)(0x40 + i);
+	CHECK(VmBuildSendCli(out, sizeof(out), key, 0x12345678UL, (const UInt8 *)"get tx", 6) == 3 + 13 + 6);
+	CHECK(out[3] == 2 && out[4] == 1 && out[5] == 0 && out[10] == 0x40 && memcmp(out + 16, "get tx", 6) == 0);
+	CHECK(VmBuildStatusReq(out, sizeof(out), key) == 3 + 33 && out[3] == 27 && out[4] == 0x40);
+	CHECK(VmBuildTelemetryReq(out, sizeof(out), key) == 3 + 36 && out[3] == 39 && out[4] == 0 && out[7] == 0x40);
+
+	memset(st, 0, sizeof(st));
+	st[0] = 0x87; st[2] = 0xaa; st[7] = 0xff;
+	st[8] = 0x1c; st[9] = 0x10;                   /* 4124 mV */
+	st[12] = 0x92; st[13] = 0xff;                 /* noise -110 */
+	st[28] = 0x10; st[29] = 0x0e; st[30] = 0x04;  /* up 265744 s = 3d 1h */
+	st[50] = 0xe8; st[51] = 0xff;                 /* snr -24/4 = -6.00 */
+	st[16] = 0xd2; st[17] = 0x04;                 /* recv 1234 */
+	CHECK(VmParseStatus(st, sizeof(st), prefix, &s) && prefix[0] == 0xaa && prefix[5] == 0xff);
+	CHECK(s.battMv == 4124 && s.noiseFloor == -110 && s.upSecs == 265744UL && s.lastSnrQ == -24 && s.recv == 1234);
+	VmFormatStatusLine(&s, 0, line);
+	CHECK(strcmp(line, "Battery 4.124V, up 3d 1h, queue 0") == 0);
+	VmFormatStatusLine(&s, 1, line);
+	CHECK(strcmp(line, "Noise -110dBm, last 0dBm -6.00dB") == 0);
+	VmFormatStatusLine(&s, 2, line);
+	CHECK(strcmp(line, "Recv 1234 (flood 0, direct 0)") == 0);
+	CHECK(!VmParseStatus(st, 40, prefix, &s));
+
+	{
+		UInt8 t[8 + sizeof(lpp)];
+
+		t[0] = 0x8b; t[1] = 0;
+		memcpy(t + 2, key, 6);
+		memcpy(t + 8, lpp, sizeof(lpp));
+		CHECK(VmParseTelemetry(t, sizeof(t), prefix, &data, &dlen) && dlen == sizeof(lpp) && prefix[0] == 0x40);
+	}
+	pos = 0;
+	CHECK(VmLppNext(lpp, sizeof(lpp), &pos, line) && strcmp(line, "Ch1 Voltage 4.12V") == 0);
+	CHECK(VmLppNext(lpp, sizeof(lpp), &pos, line) && strcmp(line, "Ch2 Temperature -3.5\xb0" "C") == 0);
+	CHECK(VmLppNext(lpp, sizeof(lpp), &pos, line) && strcmp(line, "Ch3 Humidity 41.5%") == 0);
+	CHECK(VmLppNext(lpp, sizeof(lpp), &pos, line) && strcmp(line, "Ch4 GPS 39.9526, -75.1652 12.34m") == 0);
+	CHECK(VmLppNext(lpp, sizeof(lpp), &pos, line) && strcmp(line, "Ch5 type 77: not understood") == 0);
+	CHECK(!VmLppNext(lpp, sizeof(lpp), &pos, line));
+	(void)d;
+}
+
 static void test_path_len(void)
 {
 	CHECK(VM_PATH_HOPS(0x00) == 0 && VM_PATH_HASH_BYTES(0x00) == 1);
@@ -501,6 +556,7 @@ int main(void)
 	test_sha256_and_channels();
 	test_contacts_and_rooms();
 	test_rx_log();
+	test_remote();
 	test_messaging();
 	test_parse_self_info();
 	test_parse_contacts();

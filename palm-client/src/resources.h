@@ -71,6 +71,17 @@
 #define ContactAddCancelButton 1907
 #define ContactAddTypeGroup   4
 
+#define RemoteForm            2100
+#define RemoteGadget          2101
+#define RemoteScroll          2102
+#define RemoteField           2103
+#define RemoteSendButton      2104
+#define RemoteStatusButton    2105
+#define RemoteTelemButton     2106
+#define RemoteCmdsButton      2107
+#define RemoteDoneButton      2108
+#define RemoteCmdList         2109
+
 #define PasswordAlert         2007
 #define RemoveContactAlert    2008
 

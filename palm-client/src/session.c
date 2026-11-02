@@ -7,6 +7,7 @@
 #include "ui/text.h"
 #include "session.h"
 #include "heard.h"
+#include "remote.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -70,6 +71,12 @@ static void HandlePush(void)
 	} else if (code == VM_PUSH_SEND_CONFIRMED) {
 		if (VmParseSendConfirmed(gDecoder.payload, gDecoder.len, &ack, &trip) && MessagesAcked(ack))
 			gChanged |= VM_CHANGED_MESSAGES;
+	} else if (code == VM_PUSH_STATUS_RESPONSE) {
+		if (RemoteOnStatus(gDecoder.payload, gDecoder.len))
+			gChanged |= VM_CHANGED_REMOTE;
+	} else if (code == VM_PUSH_TELEMETRY_RESPONSE) {
+		if (RemoteOnTelemetry(gDecoder.payload, gDecoder.len))
+			gChanged |= VM_CHANGED_REMOTE;
 	} else if (code == VM_PUSH_LOG_RX) {
 		VmRxLog rx;
 
@@ -386,7 +393,15 @@ Err SessionSyncMessages(void)
 			return err;
 		if (gDecoder.payload[0] == VM_RESP_NO_MORE_MESSAGES)
 			return errNone;
-		if (VmParseMessage(gDecoder.payload, gDecoder.len, &m) && MessagesAddIncoming(&m, SessionNow()) == errNone) {
+		if (!VmParseMessage(gDecoder.payload, gDecoder.len, &m))
+			continue;
+		if (!m.isChannel && m.txtType == VM_TXT_TYPE_CLI_DATA) {
+			/* a CLI reply: for the admin console, not the conversation */
+			RemoteOnCli(m.senderPrefix, m.text, m.textLen);
+			gChanged |= VM_CHANGED_REMOTE;
+			continue;
+		}
+		if (MessagesAddIncoming(&m, SessionNow()) == errNone) {
 			gChanged |= VM_CHANGED_MESSAGES;
 			if (!m.isChannel || MentionsUs(&m))
 				NoteAlert(&m);
@@ -496,7 +511,18 @@ UInt16 SessionPoll(void)
 /* Rooms logged into this session (key prefixes); the firmware keeps them alive. */
 #define VM_MAX_LOGINS 4
 static UInt8  gLogins[VM_MAX_LOGINS][6];
+static Boolean gLoginAdmin[VM_MAX_LOGINS];
 static UInt16 gLoginCount = 0;
+
+Boolean SessionIsAdmin(const UInt8 *prefix6)
+{
+	UInt16 i;
+
+	for (i = 0; i < gLoginCount; i++)
+		if (MemCmp(gLogins[i], prefix6, 6) == 0)
+			return gLoginAdmin[i];
+	return false;
+}
 
 Boolean SessionIsLoggedIn(const UInt8 *prefix6)
 {
@@ -540,9 +566,28 @@ Err SessionLogin(const UInt8 *pubKey, const Char *password, Boolean *isAdmin)
 		return vmErrBadReply;
 	if (!ok)
 		return vmErrLoginFailed;
-	if (!SessionIsLoggedIn(prefix) && gLoginCount < VM_MAX_LOGINS)
+	for (n = 0; n < gLoginCount && MemCmp(gLogins[n], prefix, 6) != 0; n++)
+		;
+	if (n == gLoginCount && gLoginCount < VM_MAX_LOGINS)
 		MemMove(gLogins[gLoginCount++], prefix, 6);
+	if (n < gLoginCount)
+		gLoginAdmin[n] = *isAdmin;
 	return errNone;
+}
+
+Err SessionRequestSent(const UInt8 *frame, UInt16 len, VmSent *sent)
+{
+	static const UInt8 sentCode[] = { VM_RESP_SENT };
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	if (len == 0)
+		return vmErrTooLong;
+	err = RequestAny(frame, len, sentCode, 1, 1);
+	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, sent))
+		err = vmErrBadReply;
+	return err;
 }
 
 Err SessionKeyCommand(UInt8 code, const UInt8 *pubKey)

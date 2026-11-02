@@ -106,7 +106,7 @@ BEGIN
   BUTTON "Message" ID ContactMessageButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
   BUTTON "Login" ID ContactLoginButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
   BUTTON "More" ID ContactMoreButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
-  LIST "Reset Path" "Remove" ID ContactMoreList AT (100 122 58 AUTO) NONUSABLE VISIBLEITEMS 2
+  LIST "Admin Console" "Reset Path" "Remove" ID ContactMoreList AT (90 111 68 AUTO) NONUSABLE VISIBLEITEMS 3
 END
 
 FORM ID ContactAddForm AT (0 0 160 160)
@@ -127,6 +127,30 @@ BEGIN
   BUTTON "Add" ID ContactAddAddButton AT (5 145 AUTO AUTO)
   BUTTON "Cancel" ID ContactAddCancelButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
   GRAFFITISTATEINDICATOR AT (145 147)
+END
+
+/* Remote admin console for a repeater or room */
+FORM ID RemoteForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "                                "
+  GADGET ID RemoteGadget AT (0 16 153 114)
+  SCROLLBAR ID RemoteScroll AT (153 16 7 114) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  FIELD ID RemoteField AT (1 132 148 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 140
+  GRAFFITISTATEINDICATOR AT (151 133)
+  BUTTON "Send" ID RemoteSendButton AT (1 147 25 12)
+  BUTTON "Status" ID RemoteStatusButton AT (PREVRIGHT+3 PREVTOP 31 12)
+  BUTTON "Telem" ID RemoteTelemButton AT (PREVRIGHT+3 PREVTOP 29 12)
+  BUTTON "Cmds" ID RemoteCmdsButton AT (PREVRIGHT+3 PREVTOP 28 12)
+  BUTTON "Done" ID RemoteDoneButton AT (PREVRIGHT+3 PREVTOP 27 12)
+  LIST "Read settings" "ver" "clock" "clock sync" "neighbors" "advert" "advert.zerohop"
+       "stats-core" "stats-radio" "stats-packets" "get acl" "clear stats"
+       "set name..." "set tx..." "set radio..." "set repeat..." "set advert.interval..."
+       "set flood.advert.interval..." "set flood.max..." "set guest.password..." "password..."
+       "reboot..."
+       ID RemoteCmdList AT (30 16 128 AUTO) NONUSABLE VISIBLEITEMS 12
 END
 
 ALERT ID PasswordAlert

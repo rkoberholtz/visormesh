@@ -10,6 +10,8 @@
 #include "contacts_form.h"
 #include "contact_form.h"
 #include "heard.h"
+#include "remote.h"
+#include "remote_form.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -72,6 +74,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case ChannelForm:     FrmSetEventHandler(form, ChannelFormHandleEvent);     break;
 	case ContactForm:     FrmSetEventHandler(form, ContactFormHandleEvent);     break;
 	case ContactAddForm:  FrmSetEventHandler(form, ContactAddFormHandleEvent);  break;
+	case RemoteForm:      FrmSetEventHandler(form, RemoteFormHandleEvent);      break;
 	}
 	return true;
 }
@@ -114,6 +117,9 @@ static void Poll(void)
 {
 	UInt16 formId = FrmGetActiveFormID();
 	UInt16 changed = SessionPoll();
+
+	if (RemoteTick())
+		changed |= VM_CHANGED_REMOTE;
 
 	/* a short beep for a new DM or mention, unless that conversation is on screen */
 	if ((changed & VM_CHANGED_ALERT) && !(formId == ConvoForm && ConvEqual(SessionAlertConv(), &gAppConv)))

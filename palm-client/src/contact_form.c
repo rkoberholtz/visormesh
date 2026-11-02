@@ -5,8 +5,8 @@
  * Detail: type, route, last heard, the full key, then every time the radio
  * heard the node directly (its own zero-hop adverts, or relaying packets for a
  * repeater) with SNR and RSSI. Message opens the DM; for a room it logs in
- * first if needed. Login asks for the password; More has Reset Path and
- * Remove.
+ * first if needed. Login asks for the password and opens a room's posts or
+ * a repeater's admin console; More has Admin Console, Reset Path and Remove.
  */
 #include <PalmOS.h>
 #include "resources.h"
@@ -20,6 +20,7 @@
 #include "ui/text.h"
 #include "ui/rowlist.h"
 #include "contact_form.h"
+#include "remote.h"
 
 /* In an extra code segment (VM_SECT3): see sections.h for the rules. */
 static void *GetObject(FormType *form, UInt16 id) VM_SECT3;
@@ -198,8 +199,8 @@ static Boolean Login(FormType *form)
 			ErrorFor(err);
 		return false;
 	}
-	if (gContact.type != VM_ADV_TYPE_ROOM) {
-		StrPrintF(msg, "Logged in to %s%s.", gContact.name, admin ? " as admin" : "");
+	if (!admin && gContact.type == VM_ADV_TYPE_REPEATER) {
+		StrPrintF(msg, "Logged in to %s as a guest: status and telemetry only, no CLI.", gContact.name);
 		FrmCustomAlert(ContactInfoAlert, "Login", msg, "");
 	}
 	return true;
@@ -233,7 +234,14 @@ static void More(FormType *form)
 		Error("Connect to the radio first (Node).");
 		return;
 	}
-	if (pick == 0) {                    /* Reset Path */
+	if (pick == 0) {                    /* Admin Console */
+		if (gContact.type != VM_ADV_TYPE_ROOM && gContact.type != VM_ADV_TYPE_REPEATER) {
+			Error("Only repeaters and rooms have an admin console.");
+			return;
+		}
+		if (SessionIsLoggedIn(gContact.pubKey) || Login(form))
+			RemoteOpen(&gContact);
+	} else if (pick == 1) {             /* Reset Path */
 		err = SessionKeyCommand(VM_CMD_RESET_PATH, gContact.pubKey);
 		if (err == errNone)
 			err = ContactsRefresh(NULL);
@@ -241,7 +249,7 @@ static void More(FormType *form)
 			ErrorFor(err);
 		ReloadContact();
 		RowListDraw(&gList);
-	} else if (pick == 1) {             /* Remove */
+	} else if (pick == 2) {             /* Remove */
 		if (FrmCustomAlert(RemoveContactAlert, gContact.name, "", "") != 0)
 			return;
 		err = SessionKeyCommand(VM_CMD_REMOVE_CONTACT, gContact.pubKey);
@@ -309,10 +317,13 @@ Boolean ContactFormHandleEvent(EventType *event)
 			OpenConversation();
 			return true;
 		case ContactLoginButton:
-			if (Login(form) && gContact.type == VM_ADV_TYPE_ROOM)
+			/* a room opens to its posts, a repeater to its admin console */
+			if (!Login(form))
+				RowListDraw(&gList);
+			else if (gContact.type == VM_ADV_TYPE_ROOM)
 				OpenConversation();
 			else
-				RowListDraw(&gList);
+				RemoteOpen(&gContact);
 			return true;
 		case ContactMoreButton:
 			More(form);

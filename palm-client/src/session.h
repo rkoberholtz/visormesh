@@ -20,6 +20,7 @@
 #define VM_CHANGED_MESSAGES  0x0001
 #define VM_CHANGED_CONTACTS  0x0002
 #define VM_CHANGED_ALERT     0x0004   /* a new DM or mention of us arrived: see SessionAlertConv */
+#define VM_CHANGED_REMOTE    0x0008   /* the admin console has new lines */
 
 
 /* Opens the link and runs DEVICE_QUERY + APP_START. On error the link is closed. */
@@ -92,6 +93,9 @@ Err     SessionSendAdvert(Boolean flood);
  */
 Err     SessionLogin(const UInt8 *pubKey, const Char *password, Boolean *isAdmin);
 Boolean SessionIsLoggedIn(const UInt8 *prefix6);
+Boolean SessionIsAdmin(const UInt8 *prefix6);
+/* Sends a request whose first reply is RESP_SENT (CLI, status, telemetry); the answer comes later as a push. */
+Err     SessionRequestSent(const UInt8 *frame, UInt16 len, VmSent *sent);
 /* VM_CMD_RESET_PATH, VM_CMD_REMOVE_CONTACT, VM_CMD_LOGOUT for a full key; needs RESP_OK. */
 Err     SessionKeyCommand(UInt8 code, const UInt8 *pubKey);
 /* Adds a contact the radio hasn't heard yet, by its full key (unknown path). */
