@@ -83,11 +83,11 @@ static void FormatWhen(Char *out, UInt32 utc)
 static void DrawHex(const UInt8 *bytes, UInt16 n, Coord x, Coord y)
 {
 	Char hex[2 * 16 + 1];
-	UInt16 i;
 
-	for (i = 0; i < n && i < 16; i++)
-		StrPrintF(hex + 2 * i, "%02x", bytes[i]);
-	WinDrawChars(hex, (Int16)(2 * i), x, y);
+	if (n > 16)
+		n = 16;
+	TxtHex(bytes, n, hex);
+	WinDrawChars(hex, (Int16)(2 * n), x, y);
 }
 
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)

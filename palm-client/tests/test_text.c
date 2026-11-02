@@ -80,6 +80,13 @@ static void test_age_and_snr(void)
 {
 	char buf[16];
 
+	{
+		static const UInt8 key[] = { 0x00, 0x9c, 0xd8, 0xff, 0x0a };
+		Char hex[11];
+
+		TxtHex(key, 5, hex);    CHECK(strcmp(hex, "009cd8ff0a") == 0);
+		TxtHex(key, 0, hex);    CHECK(hex[0] == 0);
+	}
 	TxtFormatAge(buf, 0);       CHECK(strcmp(buf, "now") == 0);
 	TxtFormatAge(buf, 59);      CHECK(strcmp(buf, "now") == 0);
 	TxtFormatAge(buf, 300);     CHECK(strcmp(buf, "5m") == 0);

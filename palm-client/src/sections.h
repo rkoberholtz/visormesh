@@ -20,6 +20,9 @@
  *   be const (font widths and presets hit this).
  * - -fwritable-strings: literals move to .data but are still addressed
  *   PC-relative. Don't use it.
+ * - A static const table inside a function in an extra section (e.g. a hex
+ *   digit string) reads as garbage on the Visor, and check_sections.py doesn't
+ *   catch it. Compute such values instead (ui/text.c TxtHex).
  * tools/check_sections.py runs after every link and fails the build on any
  * PC-relative reference from vmcode2 to outside it.
  * On the host (tests) and in the editor's clang checker the attribute compiles away.

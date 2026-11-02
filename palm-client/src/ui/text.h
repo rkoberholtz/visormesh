@@ -34,6 +34,12 @@ UInt16 TxtWrap(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w, UInt16 *cons
 /* "now", "5m", "23h", "3d", "2y" (MeshTerm's aligned-column ages). */
 void   TxtFormatAge(Char *out, UInt32 seconds) VM_SECT2;
 
+/*
+ * n bytes as 2n lowercase hex digits plus a NUL. Not StrPrintF: the Visor's
+ * %x prints 4 digits for a byte, so "%02x" per byte overlapped and showed zeros.
+ */
+void   TxtHex(const UInt8 *bytes, UInt16 n, Char *out) VM_SECT2;
+
 /* SNR in quarter dB as a whole number: "+6dB", "-3dB", "0dB". */
 void   TxtFormatSnr(Char *out, Int8 quarterDb) VM_SECT2;
 

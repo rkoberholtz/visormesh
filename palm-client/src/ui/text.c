@@ -266,3 +266,22 @@ UInt16 TxtPalmToUtf8(const Char *in, UInt16 inLen, UInt8 *out, UInt16 outSize)
 	}
 	return o;
 }
+
+/* Arithmetic, not a digit table: a static table here sits outside vmcode2
+ * and read as garbage on the Visor (sections.h). */
+static Char HexDigit(UInt8 d) VM_SECT2;
+static Char HexDigit(UInt8 d)
+{
+	return (Char)(d < 10 ? '0' + d : 'a' + d - 10);
+}
+
+void TxtHex(const UInt8 *bytes, UInt16 n, Char *out)
+{
+	UInt16 i;
+
+	for (i = 0; i < n; i++) {
+		*out++ = HexDigit(bytes[i] >> 4);
+		*out++ = HexDigit(bytes[i] & 15);
+	}
+	*out = 0;
+}

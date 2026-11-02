@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include "protocol.h"
 #include "ui/glyphs.h"
+#include "ui/text.h"
 #include "channels.h"
 #include "contacts.h"
 #include "messages.h"
@@ -18,7 +19,7 @@ static void SetPreview(VmConvRow *r, const VmMsgHeader *h) VM_SECT2;
 
 static void HexPrefix(const UInt8 *p, Char *out)
 {
-	StrPrintF(out, "%02x%02x%02x%02x", p[0], p[1], p[2], p[3]);
+	TxtHex(p, 4, out);
 }
 
 void ContactNameForPrefix(const UInt8 *prefix, Char *out, UInt16 size)
