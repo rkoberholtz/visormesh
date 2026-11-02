@@ -27,7 +27,13 @@ void AppLoadPrefs(void)
 
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
-		TransportSetPort(prefs.port);
+		/*
+		 * Slot isn't restored: with no module in the slot, the first bus read
+		 * at csSlot0 is a bus error and resets the Visor, and the Home form
+		 * auto-connects at launch, so a saved Slot made every launch reset.
+		 */
+		if (prefs.port != VM_PORT_SBLORA)
+			TransportSetPort(prefs.port);
 		SessionSetUtcOffset(prefs.utcOffset);
 		return;
 	}
