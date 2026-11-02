@@ -14,6 +14,7 @@
 #include "remote_form.h"
 #include "sounds.h"
 #include "mutes.h"
+#include "scopes.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -51,6 +52,8 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuAddChannel:  FrmGotoForm(ChannelForm);     return true;
 	case MainMenuLeaveChannel: ChannelLeaveCurrent();       return true;
 	case MainMenuMuteChannel: ChannelMuteToggleCurrent();   return true;
+	case MainMenuChannelScope: ChannelScopeChooseCurrent(); return true;
+	case MainMenuScopes:      ScopesFormOpen(FrmGetActiveFormID()); return true;
 	}
 	return false;
 }
@@ -80,6 +83,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case ContactAddForm:  FrmSetEventHandler(form, ContactAddFormHandleEvent);  break;
 	case RemoteForm:      FrmSetEventHandler(form, RemoteFormHandleEvent);      break;
 	case SoundsForm:      FrmSetEventHandler(form, SoundsFormHandleEvent);      break;
+	case ScopesForm:      FrmSetEventHandler(form, ScopesFormHandleEvent);      break;
 	}
 	return true;
 }

@@ -24,6 +24,8 @@
 #define MainMenuLeaveChannel 1007
 #define MainMenuSounds     1008
 #define MainMenuMuteChannel 1009
+#define MainMenuChannelScope 1010
+#define MainMenuScopes     1011
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
@@ -127,6 +129,23 @@
 #define SoundsSmallPush       2212
 #define SoundsLargePush       2213
 #define SoundsTextGroup       5
+
+#define ScopesForm            2300
+#define ScopesDefaultLabel    2301
+#define ScopesList            2302
+#define ScopesField           2303
+#define ScopesAddButton       2304
+#define ScopesDeleteButton    2305
+#define ScopesSetDefaultButton 2306
+#define ScopesClearDefaultButton 2307
+#define ScopesDoneButton      2308
+#define ScopeAlert            2309
+#define ScopesDiscoverButton  2310
+
+#define ChanScopeForm         2400
+#define ChanScopeList         2401
+#define ChanScopeOKButton     2402
+#define ChanScopeCancelButton 2403
 
 #define SmallFontRes          1000
 #define LargeFontRes          1001

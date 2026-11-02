@@ -21,6 +21,8 @@ BEGIN
     MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
     MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
     MENUITEM "Mute Channel" ID MainMenuMuteChannel "M"
+    MENUITEM "Channel Scope..." ID MainMenuChannelScope "E"
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "-" AUTOID
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
@@ -283,6 +285,45 @@ BEGIN
   LABEL "Turning a sound on plays it." AUTOID AT (5 PREVBOTTOM+2)
   LABEL "Volume: Prefs, General, Alarm" AUTOID AT (5 PREVBOTTOM)
   BUTTON "Done" ID SoundsDoneButton AT (CENTER 145 AUTO AUTO)
+END
+
+/* Flood scopes: the list, and the radio's default */
+FORM ID ScopesForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Flood Scopes"
+  LABEL "Radio default:" AUTOID AT (5 17) FONT 1
+  LABEL "                              " ID ScopesDefaultLabel AT (75 17)
+  LIST "" ID ScopesList AT (5 31 150 AUTO) VISIBLEITEMS 6
+  FIELD ID ScopesField AT (5 100 68 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 31
+  BUTTON "Add" ID ScopesAddButton AT (78 99 30 12)
+  BUTTON "Discover" ID ScopesDiscoverButton AT (PREVRIGHT+4 PREVTOP 43 12)
+  BUTTON "Delete" ID ScopesDeleteButton AT (5 116 36 12)
+  BUTTON "Set Default" ID ScopesSetDefaultButton AT (PREVRIGHT+4 PREVTOP 52 12)
+  BUTTON "No Default" ID ScopesClearDefaultButton AT (PREVRIGHT+4 PREVTOP 52 12)
+  BUTTON "Done" ID ScopesDoneButton AT (CENTER 145 AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (150 148)
+END
+
+ALERT ID ScopeAlert
+INFORMATION
+BEGIN
+  TITLE "Flood Scopes"
+  MESSAGE "^1"
+  BUTTONS "OK"
+END
+
+/* Channel Scope: which scope this channel's messages flood in */
+FORM ID ChanScopeForm AT (2 28 156 130)
+MODAL
+DEFAULTBTNID ChanScopeCancelButton
+BEGIN
+  TITLE "Channel Scope"
+  LABEL "Flood this channel in:" AUTOID AT (5 15)
+  LIST "" ID ChanScopeList AT (5 28 146 AUTO) VISIBLEITEMS 7
+  BUTTON "OK" ID ChanScopeOKButton AT (5 113 36 12)
+  BUTTON "Cancel" ID ChanScopeCancelButton AT (PREVRIGHT+5 PREVTOP 36 12)
 END
 
 ALERT ID MuteAlert

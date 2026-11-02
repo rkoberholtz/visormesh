@@ -10,6 +10,7 @@
 #include "remote.h"
 #include "sounds.h"
 #include "mutes.h"
+#include "scopes.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -43,6 +44,15 @@ static UInt16 gRxPos, gRxLen;
 static Int32 gUtcOffsetSecs = 0;      /* local minus UTC */
 
 static void NoteSound(UInt8 kind, const VmMessage *m);
+
+/*
+ * What the radio's flood-scope override is set to on this connection. It
+ * outlasts connections (until the radio reboots), so it starts unknown and
+ * the first flood send sets it.
+ */
+#define VM_SCOPE_UNKNOWN 0xFF
+static UInt8 gScopeMode = VM_SCOPE_UNKNOWN;
+static UInt8 gScopeKey[VM_SCOPE_KEY_SIZE];
 
 void SessionSetUtcOffset(Int16 minutes)
 {
@@ -265,6 +275,7 @@ Err SessionConnect(void)
 		return err;
 	}
 	gConnected = true;
+	gScopeMode = VM_SCOPE_UNKNOWN;
 
 	/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
 	SessionSyncClock();
@@ -457,6 +468,113 @@ Err SessionSyncMessages(void)
 	return errNone;
 }
 
+/*
+ * Sets the scope for the next flood send: the channel's own (scopes.h), or the
+ * radio's default for everything else. Skipped when it's already set, and on
+ * firmware without scopes.
+ */
+static Err ApplyScope(const VmConv *conv)
+{
+	UInt8 frame[VM_HEADER_LEN + 2 + VM_SCOPE_KEY_SIZE];
+	UInt8 key[VM_SCOPE_KEY_SIZE];
+	UInt8 mode = VM_SCOPE_DEFAULT;
+	UInt16 len;
+	Err err;
+
+	if (gDevice.fwVerCode < VM_FW_SCOPES)
+		return errNone;
+	if (conv && conv->type == VM_CONV_CHANNEL)
+		mode = ScopesForChannel(conv->channel, key);
+	if (mode == VM_SCOPE_NONE && gDevice.fwVerCode < VM_FW_UNSCOPED)
+		mode = VM_SCOPE_DEFAULT;
+	if (mode == gScopeMode && (mode != VM_SCOPE_NAMED || MemCmp(key, gScopeKey, VM_SCOPE_KEY_SIZE) == 0))
+		return errNone;
+	if (mode == VM_SCOPE_NAMED)
+		len = VmBuildSetScopeKey(frame, sizeof(frame), key);
+	else if (mode == VM_SCOPE_NONE)
+		len = VmBuildSetUnscoped(frame, sizeof(frame));
+	else
+		len = VmBuildSetScopeKey(frame, sizeof(frame), NULL);
+	err = Request(frame, len, VM_RESP_OK, 1);
+	if (err != errNone) {
+		gScopeMode = VM_SCOPE_UNKNOWN;
+		return err;
+	}
+	gScopeMode = mode;
+	if (mode == VM_SCOPE_NAMED)
+		MemMove(gScopeKey, key, VM_SCOPE_KEY_SIZE);
+	return errNone;
+}
+
+Err SessionGetDefaultScope(Char *name)
+{
+	UInt8 frame[VM_HEADER_LEN + 1];
+	UInt8 key[VM_SCOPE_KEY_SIZE];
+	Err err;
+
+	name[0] = 0;
+	if (!gConnected)
+		return serErrNotOpen;
+	if (gDevice.fwVerCode < VM_FW_SCOPES)
+		return errNone;
+	err = Request(frame, VmBuildGetDefaultScope(frame, sizeof(frame)), VM_RESP_DEFAULT_FLOOD_SCOPE, 1);
+	if (err == errNone && !VmParseDefaultScope(gDecoder.payload, gDecoder.len, name, key))
+		err = vmErrBadReply;
+	return err;
+}
+
+Err SessionSetDefaultScope(const Char *name)
+{
+	UInt8 frame[VM_HEADER_LEN + 1 + VM_SCOPE_NAME_SIZE + VM_SCOPE_KEY_SIZE];
+	UInt16 len;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	if (gDevice.fwVerCode < VM_FW_SCOPES)
+		return vmErrRadio;
+	len = VmBuildSetDefaultScope(frame, sizeof(frame), name);
+	if (len == 0)
+		return vmErrBadReply;
+	return Request(frame, len, VM_RESP_OK, 1);
+}
+
+Err SessionAskRegions(const UInt8 *pubKey, Char *names, UInt16 size)
+{
+	static const UInt8 sentCode[] = { VM_RESP_SENT };
+	static const UInt8 replyCode[] = { VM_PUSH_BINARY_RESPONSE };
+	UInt8 frame[VM_HEADER_LEN + 1 + VM_PUB_KEY_SIZE + 2];
+	const UInt8 *list;
+	UInt32 deadline, tag;
+	UInt16 len, n;
+	VmSent sent;
+	Err err;
+
+	names[0] = 0;
+	if (!gConnected)
+		return serErrNotOpen;
+	len = VmBuildRegionsReq(frame, sizeof(frame), pubKey);
+	err = RequestAny(frame, len, sentCode, 1, 1);
+	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, &sent))
+		err = vmErrBadReply;
+	if (err != errNone)
+		return err;
+	/* the answer comes back over the mesh: as long as the radio estimates, plus slack */
+	deadline = TimGetTicks() + (sent.timeoutMs + 3000UL) / 1000UL * SysTicksPerSecond();
+	for (;;) {
+		err = WaitForAny(replyCode, 1, (Int32)(deadline - TimGetTicks()));
+		if (err != errNone)
+			return err;
+		if (VmParseRegionsReply(gDecoder.payload, gDecoder.len, &tag, &list, &len) && tag == sent.expectedAck)
+			break;
+		if (TimGetTicks() >= deadline)
+			return vmErrNoReply;
+	}
+	n = len < size - 1 ? len : size - 1;
+	MemMove(names, list, n);
+	names[n] = 0;
+	return errNone;
+}
+
 /* Sends message record 'index' (new or a retry) and records the outcome on it. */
 static Err SendRecord(UInt16 index)
 {
@@ -488,6 +606,11 @@ static Err SendRecord(UInt16 index)
 
 	MessagesSetStatus(index, VM_ST_PENDING, 0, 0);
 	gChanged |= VM_CHANGED_MESSAGES;
+	err = ApplyScope(&h.conv);
+	if (err != errNone) {
+		MessagesSetStatus(index, VM_ST_FAILED, 0, 0);
+		return err;
+	}
 	/* one try: a repeated send would go out twice */
 	if (h.conv.type == VM_CONV_CHANNEL) {
 		err = Request(frame, len, VM_RESP_OK, 1);
@@ -597,6 +720,9 @@ Err SessionLogin(const UInt8 *pubKey, const Char *password, Boolean *isAdmin)
 	n = TxtPalmToUtf8(password, StrLen(password), pw, sizeof(pw));
 	if (*password && n == 0)
 		return vmErrTooLong;
+	err = ApplyScope(NULL);
+	if (err != errNone)
+		return err;
 	len = VmBuildLogin(frame, sizeof(frame), pubKey, pw, n);
 	err = RequestAny(frame, len, sentCode, 1, 1);
 	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, &sent))
@@ -630,6 +756,9 @@ Err SessionRequestSent(const UInt8 *frame, UInt16 len, VmSent *sent)
 		return serErrNotOpen;
 	if (len == 0)
 		return vmErrTooLong;
+	err = ApplyScope(NULL);
+	if (err != errNone)
+		return err;
 	err = RequestAny(frame, len, sentCode, 1, 1);
 	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, sent))
 		err = vmErrBadReply;
@@ -701,6 +830,9 @@ const VmSelfInfo *SessionSelf(void)
 
 void SessionDisconnect(void)
 {
+	/* leave the radio on its default scope, for other apps and the next connection */
+	if (gConnected && gScopeMode != VM_SCOPE_DEFAULT && gScopeMode != VM_SCOPE_UNKNOWN)
+		ApplyScope(NULL);
 	TransportClose();
 	gConnected = false;
 	gLoginCount = 0;          /* the radio keeps room sessions alive, but re-check after a reconnect */

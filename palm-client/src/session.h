@@ -31,6 +31,16 @@ Boolean SessionMessageWaiting(void);
 
 /* What the radio last reported (valid while connected). */
 const VmDeviceInfo *SessionDevice(void);
+
+/* The radio's default flood scope (scope_proto.h): name[VM_SCOPE_NAME_SIZE], "" for none. */
+Err     SessionGetDefaultScope(Char *name);
+/* name NULL: no default. */
+Err     SessionSetDefaultScope(const Char *name);
+/*
+ * Asks a repeater for its regions (scope_proto.h): names gets them comma-separated
+ * ("" if it has none). Only reaches neighbours; vmErrNoReply if it doesn't answer.
+ */
+Err     SessionAskRegions(const UInt8 *pubKey, Char *names, UInt16 size);
 const VmSelfInfo   *SessionSelf(void);
 
 /* Sends a complete command frame and requires RESP_OK. */

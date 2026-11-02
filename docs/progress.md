@@ -39,7 +39,8 @@
 - [ ] UI: contacts, DMs, channels
 - [x] Install method confirmed: HotSync over the USB cradle from the dev Mac (`make install`)
 - [x] Notification sounds per event kind, mute channels, larger text option (5x8 font)
-- [ ] Flood scopes (regions): manage the list of scopes, set the default scope, and set a scope per channel. MeshCore v8+ has CMD_SET_FLOOD_SCOPE_KEY (54), CMD_SET_DEFAULT_FLOOD_SCOPE (63) / CMD_GET_DEFAULT_FLOOD_SCOPE (64)
+- [x] Flood scopes (regions): manage the list of scopes, set the default scope, and set a scope per channel; discover from neighbouring repeaters. MeshCore v8+ has CMD_SET_FLOOD_SCOPE_KEY (54), CMD_SET_DEFAULT_FLOOD_SCOPE (63) / CMD_GET_DEFAULT_FLOOD_SCOPE (64)
+- [ ] Region discovery beyond neighbours: keep each contact's out_path and send the reversed path as the reply path
 
 ## Open questions
 - Which CF adapter is it, and does its ROM include an app installer?
@@ -85,3 +86,4 @@
 - 2026-11-02: Notification sounds (Options > Sounds): separate tunes for direct messages, mentions, room posts, private / hashtag / Public channels and new contacts (PUSH_NEW_ADVERT), each on or off, at the alarm volume. One sound per poll, by priority; none for the conversation on screen. Verified on the Neo. Segment 3 is 13.8 KB.
 - 2026-11-02: SB-LoRa receive is interrupt-driven: a slot IRQ* handler (hsCardAttrIntHandler) drains the SC16IS740 RX FIFO (IER RHR, trigger 8 or timeout) into a 1 KB ring passed as cardParam. The handler path (SbDrainRx and the bus core) is in segment 1 with no A5 references, checked in the disassembly, so it's safe in interrupt context and while the Visor sleeps. The app masks the slot interrupt around its own SPI transactions, and falls back to polling if the handler won't install. Host tests cover draining, ring wrap and overflow; untested on hardware.
 - 2026-11-02: Mute Channel (Options menu; by channel key; mentions still sound; open-circle unread badge, left out of the title total) and Text size Small/Large on the new Preferences screen (5x8 misc-fixed via tools/pcf2bdf.py from XQuartz's PCF; gen_font.py builds both fonts). Verified on the Neo. Segments: 11.1 / 28.0 / 14.7 KB.
+- 2026-11-02: Flood scopes: a list of scope names (Options > Flood Scopes), the radio's default (Set Default / No Default), a per-channel choice (Options > Channel Scope: radio default, none, or a named scope), and Discover, which asks neighbouring repeaters for their regions (SEND_ANON_REQ type 0x01). The session sets the scope override before each flood send and resets it on disconnect. Keys and frames are host-tested (tests/test_scopes.c; the key for "test" matches the radio's #test channel key). Verified on the Neo. Discover only reaches 0-hop repeaters for now.
