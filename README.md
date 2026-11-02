@@ -11,8 +11,8 @@ See [docs/design.md](docs/design.md) for the architecture and the reasons behind
 | Path | What |
 |---|---|
 | `hardware/sb-lora/` | SB-LoRa Springboard carrier board: KiCad, fab outputs (JLCPCB), generator scripts. See its [README](hardware/sb-lora/README.md) |
-| `firmware/` | Patches to MeshCore: companion firmware on the XIAO's hardware UART (D6/D7) |
-| `palm-client/` | Palm OS client app (`.prc`), not started yet |
+| `firmware/` | MeshCore companion firmware patch for the XIAO (UART on D6/D7 plus USB), build Makefile, bench query tool and a fake radio |
+| `palm-client/` | VisorMesh, the Palm OS client: MeshTerm-style conversations, channels, contacts, node settings. Works over the Visor USB cradle via a Mac bridge until the SB-LoRa boards arrive. See its [README](palm-client/README.md) |
 | `docs/design.md` | Architecture, protocol notes and decisions |
 | `docs/progress.md` | Status, milestones and a dated log |
 | `docs/upstream-issues.md` | Problems found in pilot-link, PilRC/prc-tools and MeshCore, with evidence and workarounds, ready to report |
