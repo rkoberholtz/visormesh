@@ -49,7 +49,7 @@ build/%.o: src/%.c src/*.h src/ui/*.h | build
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Two code segments (see src/sections.h): multigen turns visormesh.def into a
+# Extra code segments (see src/sections.h): multigen turns visormesh.def into a
 # stub and a linker script that place section vmcode2 in its own code resource.
 build/$(APP)-sections.s build/$(APP)-sections.ld: $(APP).def | build
 	m68k-palmos-multigen -b build/$(APP)-sections $(APP).def

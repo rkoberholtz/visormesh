@@ -18,6 +18,7 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static Boolean Selectable(UInt16 row, void *ctx) VM_SECT2;
 static void DrawTitleStatus(void) VM_SECT2;
 static void ShowStatus(const Char *text) VM_SECT2;
+static void TitleRight(const Char *text) VM_SECT2;
 static void Rebuild(Boolean draw) VM_SECT2;
 
 #define HOME_MAX_ROWS 64
@@ -70,32 +71,44 @@ static Boolean Selectable(UInt16 row, void *ctx)
 }
 
 /* Right end of the title bar: unread total and connection state. */
-static void DrawTitleStatus(void)
+/*
+ * Text at the right end of the title bar. Erases back to where the previous
+ * text started, so a shorter one doesn't leave the start of a longer one
+ * behind ("Connecting..." is 65 px in the large font). Rows 2-10: above the
+ * title line, so the large font draws a row higher.
+ */
+static Coord gTitleLeft = 160;
+
+static void TitleRight(const Char *text)
 {
 	RectangleType r;
-	Char buf[24];
 	FontID old = FntSetFont(vmSmallFont);
+	Coord left = 158 - FntCharsWidth(text, StrLen(text));
+
+	if (left < gTitleLeft)
+		gTitleLeft = left;
+	RctSetRectangle(&r, gTitleLeft - 1, 2, 160 - (gTitleLeft - 1), 9);
+	WinEraseRectangle(&r, 0);
+	DrawRight(text, 158, gUiFontHeight > 6 ? 3 : 4);
+	gTitleLeft = left;
+	FntSetFont(old);
+}
+
+static void DrawTitleStatus(void)
+{
+	Char buf[24];
 	UInt16 unread = ConvosUnread(gRows, gCount);
 
-	RctSetRectangle(&r, 100, 2, 60, 9);
-	WinEraseRectangle(&r, 0);
 	if (unread)
 		StrPrintF(buf, "%c%u %s", GLYPH_COMPANION, unread, SessionIsConnected() ? "online" : "offline");
 	else
 		StrCopy(buf, SessionIsConnected() ? "online" : "offline");
-	DrawRight(buf, 158, 4);
-	FntSetFont(old);
+	TitleRight(buf);
 }
 
 static void ShowStatus(const Char *text)
 {
-	RectangleType r;
-	FontID old = FntSetFont(vmSmallFont);
-
-	RctSetRectangle(&r, 100, 2, 60, 9);
-	WinEraseRectangle(&r, 0);
-	DrawRight(text, 158, 4);
-	FntSetFont(old);
+	TitleRight(text);
 }
 
 static void Rebuild(Boolean draw)

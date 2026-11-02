@@ -16,16 +16,16 @@
 #define VM_SCOPE_NONE     1   /* unscoped (firmware v12+; older ones use the default) */
 #define VM_SCOPE_NAMED    2
 
-void    ScopesLoad(void) VM_SECT3;
+void    ScopesLoad(void) VM_SECT4;
 
 /* The channel in slot's choice; for VM_SCOPE_NAMED also its key. */
-UInt8   ScopesForChannel(UInt8 slot, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT3;
+UInt8   ScopesForChannel(UInt8 slot, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT4;
 
 /* Options > Channel Scope: picks a scope for the channel on screen. */
-void    ChannelScopeChooseCurrent(void) VM_SECT3;
+void    ChannelScopeChooseCurrent(void) VM_SECT4;
 
 /* Options > Flood Scopes: the list, and the radio's default. Done goes back to returnForm. */
-void    ScopesFormOpen(UInt16 returnForm) VM_SECT3;
-Boolean ScopesFormHandleEvent(EventType *event) VM_SECT3;
+void    ScopesFormOpen(UInt16 returnForm) VM_SECT4;
+Boolean ScopesFormHandleEvent(EventType *event) VM_SECT4;
 
 #endif

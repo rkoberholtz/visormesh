@@ -47,37 +47,37 @@
 #define VM_FW_UNSCOPED      12     /* SET_FLOOD_SCOPE_KEY 1 */
 
 /* Name without a leading '#', as stored; key from "#" + that. */
-const Char *VmScopeBareName(const Char *name) VM_SECT3;
-void   VmScopeKey(const Char *name, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT3;
+const Char *VmScopeBareName(const Char *name) VM_SECT4;
+void   VmScopeKey(const Char *name, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT4;
 
 /*
  * A name we can derive a key for: 1-30 printable ASCII characters after any
  * '#', not starting with '$' (private regions have keys only the repeaters
  * that set them up know).
  */
-Boolean VmScopeNameValid(const Char *name) VM_SECT3;
+Boolean VmScopeNameValid(const Char *name) VM_SECT4;
 
 /* key NULL: clear the override, so sends use the radio's default. */
-UInt16 VmBuildSetScopeKey(UInt8 *out, UInt16 outSize, const UInt8 *key) VM_SECT3;
-UInt16 VmBuildSetUnscoped(UInt8 *out, UInt16 outSize) VM_SECT3;
+UInt16 VmBuildSetScopeKey(UInt8 *out, UInt16 outSize, const UInt8 *key) VM_SECT4;
+UInt16 VmBuildSetUnscoped(UInt8 *out, UInt16 outSize) VM_SECT4;
 /* name NULL: no default. */
-UInt16 VmBuildSetDefaultScope(UInt8 *out, UInt16 outSize, const Char *name) VM_SECT3;
-UInt16 VmBuildGetDefaultScope(UInt8 *out, UInt16 outSize) VM_SECT3;
+UInt16 VmBuildSetDefaultScope(UInt8 *out, UInt16 outSize, const Char *name) VM_SECT4;
+UInt16 VmBuildGetDefaultScope(UInt8 *out, UInt16 outSize) VM_SECT4;
 
 /* A zero-hop regions request to the repeater with this key. */
-UInt16 VmBuildRegionsReq(UInt8 *out, UInt16 outSize, const UInt8 *pubKey) VM_SECT3;
+UInt16 VmBuildRegionsReq(UInt8 *out, UInt16 outSize, const UInt8 *pubKey) VM_SECT4;
 
 /* PUSH_BINARY_RESPONSE: the request's tag, and the names (not NUL-terminated). */
 Boolean VmParseRegionsReply(const UInt8 *p, UInt16 len, UInt32 *tag,
-                            const UInt8 **names, UInt16 *namesLen) VM_SECT3;
+                            const UInt8 **names, UInt16 *namesLen) VM_SECT4;
 
 /*
  * The next name in a comma list from *pos (advanced past it), trimmed, into
  * out[VM_SCOPE_NAME_SIZE] (cut if longer). Returns false at the end.
  */
-Boolean VmNextRegionName(const UInt8 *names, UInt16 len, UInt16 *pos, Char *out) VM_SECT3;
+Boolean VmNextRegionName(const UInt8 *names, UInt16 len, UInt16 *pos, Char *out) VM_SECT4;
 
 /* DEFAULT_FLOOD_SCOPE: name[VM_SCOPE_NAME_SIZE] is "" when the radio has none. */
-Boolean VmParseDefaultScope(const UInt8 *p, UInt16 len, Char *name, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT3;
+Boolean VmParseDefaultScope(const UInt8 *p, UInt16 len, Char *name, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT4;
 
 #endif

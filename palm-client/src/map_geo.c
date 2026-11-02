@@ -3,9 +3,9 @@
 #define HDR_FIXED  66      /* '>4sHHBBiiiiIHH32s' */
 #define HDR_ZOOM   16      /* '>BBHHHii' */
 
-static UInt16 Be16(const UInt8 *p) VM_SECT3;
-static Int32 Be32(const UInt8 *p) VM_SECT3;
-static Int32 Lookup(const UInt8 *table, UInt16 count, Int32 v0, UInt32 step, Int32 v, Boolean *ok) VM_SECT3;
+static UInt16 Be16(const UInt8 *p) VM_SECT4;
+static Int32 Be32(const UInt8 *p) VM_SECT4;
+static Int32 Lookup(const UInt8 *table, UInt16 count, Int32 v0, UInt32 step, Int32 v, Boolean *ok) VM_SECT4;
 
 static UInt16 Be16(const UInt8 *p)
 {

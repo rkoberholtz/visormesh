@@ -9,21 +9,21 @@
 #include "ui/draw.h"
 #include "ui/text.h"
 
-static Boolean OpenMap(void) VM_SECT3;
-static void CloseMap(void) VM_SECT3;
-static void LoadNodes(void) VM_SECT3;
-static BitmapType *Tile(UInt16 rec) VM_SECT3;
-static void ClampCenter(void) VM_SECT3;
-static void Draw(void) VM_SECT3;
-static void DrawNodes(const RectangleType *r, Int32 vx, Int32 vy) VM_SECT3;
-static void DrawInfo(const RectangleType *r) VM_SECT3;
-static void DrawFooter(void) VM_SECT3;
-static void Halo(const Char *s, UInt16 len, Coord x, Coord y) VM_SECT3;
-static Char TypeGlyph(UInt8 type) VM_SECT3;
-static Int16 NodeAt(Coord x, Coord y) VM_SECT3;
-static void Zoom(Int16 by) VM_SECT3;
-static void SaveView(void) VM_SECT3;
-static Int32 FloorDiv(Int32 a, Int32 b) VM_SECT3;
+static Boolean OpenMap(void) VM_SECT4;
+static void CloseMap(void) VM_SECT4;
+static void LoadNodes(void) VM_SECT4;
+static BitmapType *Tile(UInt16 rec) VM_SECT4;
+static void ClampCenter(void) VM_SECT4;
+static void Draw(void) VM_SECT4;
+static void DrawNodes(const RectangleType *r, Int32 vx, Int32 vy) VM_SECT4;
+static void DrawInfo(const RectangleType *r) VM_SECT4;
+static void DrawFooter(void) VM_SECT4;
+static void Halo(const Char *s, UInt16 len, Coord x, Coord y) VM_SECT4;
+static Char TypeGlyph(UInt8 type) VM_SECT4;
+static Int16 NodeAt(Coord x, Coord y) VM_SECT4;
+static void Zoom(Int16 by) VM_SECT4;
+static void SaveView(void) VM_SECT4;
+static Int32 FloorDiv(Int32 a, Int32 b) VM_SECT4;
 
 #define MAP_DB_NAME     "VisorMeshMap"
 #define MAP_PREFS_ID    5

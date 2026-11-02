@@ -9,6 +9,6 @@
 #include <PalmOS.h>
 #include "sections.h"
 
-Boolean MapFormHandleEvent(EventType *event) VM_SECT3;
+Boolean MapFormHandleEvent(EventType *event) VM_SECT4;
 
 #endif

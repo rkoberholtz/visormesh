@@ -6,17 +6,17 @@
 #include "contacts.h"
 #include "scopes.h"
 
-static Int16 FindChannel(const VmChannel *c) VM_SECT3;
-static void SavePrefs(void) VM_SECT3;
-static void Error(const Char *msg) VM_SECT3;
-static void FillList(FormType *form) VM_SECT3;
-static void ShowDefault(FormType *form) VM_SECT3;
-static void AddTyped(FormType *form) VM_SECT3;
-static void DeleteSelected(FormType *form) VM_SECT3;
-static void SetRadioDefault(FormType *form, Boolean clear) VM_SECT3;
-static void Discover(FormType *form) VM_SECT3;
-static Boolean AddName(const Char *name) VM_SECT3;
-static void SetDefaultLabel(FormType *form, const Char *text) VM_SECT3;
+static Int16 FindChannel(const VmChannel *c) VM_SECT4;
+static void SavePrefs(void) VM_SECT4;
+static void Error(const Char *msg) VM_SECT4;
+static void FillList(FormType *form) VM_SECT4;
+static void ShowDefault(FormType *form) VM_SECT4;
+static void AddTyped(FormType *form) VM_SECT4;
+static void DeleteSelected(FormType *form) VM_SECT4;
+static void SetRadioDefault(FormType *form, Boolean clear) VM_SECT4;
+static void Discover(FormType *form) VM_SECT4;
+static Boolean AddName(const Char *name) VM_SECT4;
+static void SetDefaultLabel(FormType *form, const Char *text) VM_SECT4;
 
 #define VM_SCOPES_PREFS_ID      4
 #define VM_SCOPES_PREFS_VERSION 1

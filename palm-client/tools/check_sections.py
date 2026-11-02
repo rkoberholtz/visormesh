@@ -16,7 +16,7 @@ import re
 import subprocess
 import sys
 
-SECTIONS = ('vmcode2', 'vmcode3')
+SECTIONS = ('vmcode2', 'vmcode3', 'vmcode4')
 OBJDUMP = 'm68k-palmos-objdump'
 
 

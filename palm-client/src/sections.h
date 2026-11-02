@@ -1,6 +1,6 @@
 /*
  * Code segments. The app's code is more than the ~32 KB one 68k code resource
- * can reach, so modules also live in vmcode2 and vmcode3 (VM_SECT2/VM_SECT3; see
+ * can reach, so modules also live in vmcode2, vmcode3 and vmcode4 (VM_SECT2-4; see
  * visormesh.def; multigen makes the stub and linker script). Everything below
  * applies to any extra section.
  *
@@ -33,9 +33,11 @@
 #if defined(__palmos__) && !defined(__clang__)   /* clang: the editor's checker, which rejects the section name */
 #define VM_SECT2 __attribute__ ((section ("vmcode2")))
 #define VM_SECT3 __attribute__ ((section ("vmcode3")))
+#define VM_SECT4 __attribute__ ((section ("vmcode4")))
 #else
 #define VM_SECT2
 #define VM_SECT3
+#define VM_SECT4
 #endif
 
 #endif

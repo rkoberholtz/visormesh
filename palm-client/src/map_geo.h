@@ -35,18 +35,18 @@ typedef struct {
 } VmMapHeader;
 
 /* The header record; the tables point into p, which must stay valid. */
-Boolean VmMapParseHeader(const UInt8 *p, UInt32 len, VmMapHeader *h) VM_SECT3;
+Boolean VmMapParseHeader(const UInt8 *p, UInt32 len, VmMapHeader *h) VM_SECT4;
 
 /* World pixels at the map's max zoom; false outside the map's area. */
-Boolean VmMapWorld(const VmMapHeader *h, Int32 latE6, Int32 lonE6, Int32 *wx, Int32 *wy) VM_SECT3;
+Boolean VmMapWorld(const VmMapHeader *h, Int32 latE6, Int32 lonE6, Int32 *wx, Int32 *wy) VM_SECT4;
 
 /* World pixels at the max zoom to pixels at zoom index zi, from the zoom's tile (0, 0). */
-void    VmMapToZoom(const VmMapHeader *h, UInt8 zi, Int32 wx, Int32 wy, Int32 *x, Int32 *y) VM_SECT3;
+void    VmMapToZoom(const VmMapHeader *h, UInt8 zi, Int32 wx, Int32 wy, Int32 *x, Int32 *y) VM_SECT4;
 
 /* The record holding tile (col, row) at zoom index zi, or 0 if outside the grid. */
-UInt16  VmMapTileRecord(const VmMapHeader *h, UInt8 zi, Int32 col, Int32 row) VM_SECT3;
+UInt16  VmMapTileRecord(const VmMapHeader *h, UInt8 zi, Int32 col, Int32 row) VM_SECT4;
 
 /* PackBits: false if src runs out or overflows dst before dstLen bytes. */
-Boolean VmUnpackBits(const UInt8 *src, UInt32 srcLen, UInt8 *dst, UInt32 dstLen) VM_SECT3;
+Boolean VmUnpackBits(const UInt8 *src, UInt32 srcLen, UInt8 *dst, UInt32 dstLen) VM_SECT4;
 
 #endif

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Puts a C file's static functions in an extra code segment: inserts a
-'static <signature> VM_SECT2;' (or --sect3: VM_SECT3) forward declaration for
+'static <signature> VM_SECT2;' (or --sect3 / --sect4: VM_SECT3 / VM_SECT4) forward declaration for
 each one after the last #include (see src/sections.h). Run once per file
 moved; idempotent."""
 import re
 import sys
 
-macro = 'VM_SECT3' if '--sect3' in sys.argv else 'VM_SECT2'
+macro = 'VM_SECT4' if '--sect4' in sys.argv else 'VM_SECT3' if '--sect3' in sys.argv else 'VM_SECT2'
 for path in [a for a in sys.argv[1:] if not a.startswith('--')]:
     src = open(path).read()
     marker = '/* In an extra code segment (' + macro + '): see sections.h for the rules. */'
