@@ -1,7 +1,8 @@
 /*
  * Code segments. The app's code is more than the ~32 KB one 68k code resource
- * can reach, so some modules live in a second one (section vmcode2, see
- * visormesh.def; multigen makes the stub and linker script).
+ * can reach, so modules also live in vmcode2 and vmcode3 (VM_SECT2/VM_SECT3; see
+ * visormesh.def; multigen makes the stub and linker script). Everything below
+ * applies to any extra section.
  *
  * How prc-tools/GCC 2.95 handles it (checked in the compiled objects):
  * - A function declared VM_SECT2 is placed in vmcode2; callers that see the
@@ -28,8 +29,10 @@
 
 #if defined(__palmos__) && !defined(__clang__)   /* clang: the editor's checker, which rejects the section name */
 #define VM_SECT2 __attribute__ ((section ("vmcode2")))
+#define VM_SECT3 __attribute__ ((section ("vmcode3")))
 #else
 #define VM_SECT2
+#define VM_SECT3
 #endif
 
 #endif
