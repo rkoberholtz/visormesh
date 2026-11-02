@@ -157,6 +157,7 @@
 
 #define SmallFontRes          1000
 #define LargeFontRes          1001
+#define EmojiArtRes           1002
 #define FontPreviewForm       1400
 #define FontPreviewDoneButton 1401
 

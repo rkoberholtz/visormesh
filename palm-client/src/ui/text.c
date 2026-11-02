@@ -137,8 +137,25 @@ UInt16 TxtSplitSender(const Char *text, UInt16 len)
  */
 static Char MapUnicode(UInt32 cp)
 {
-	if (cp == 0xFE0F || cp == 0xFE0E || (cp >= 0x200B && cp <= 0x200F) || cp == 0x2060)
-		return 0;                                       /* invisible */
+	if (cp == 0xFE0F || cp == 0xFE0E || (cp >= 0x200B && cp <= 0x200F) || cp == 0x2060 ||
+	    (cp >= 0x1F3FB && cp <= 0x1F3FF))
+		return 0;                                       /* invisible; skin tones: the plain emoji */
+	/* the emoji with their own glyph (tools/gen_font.py EMOJI); the rest get GLYPH_EMOJI */
+	switch (cp) {
+	case 0x1F44D: return GLYPH_THUMBS;
+	case 0x1F602: case 0x1F923: return GLYPH_LAUGH;
+	case 0x2764: case 0x2665: case 0x1F499: case 0x1F49A: case 0x1F49B: case 0x1F49C:
+	case 0x1F5A4: case 0x1F90D: case 0x1F90E: case 0x1F9E1: return GLYPH_HEART;
+	case 0x1F622: case 0x1F62D: return GLYPH_CRY;
+	case 0x1F64F: return GLYPH_PRAY;
+	case 0x1F44B: return GLYPH_WAVE;
+	case 0x1F525: return GLYPH_FIRE;
+	case 0x1F389: case 0x1F973: return GLYPH_PARTY;
+	case 0x1F914: return GLYPH_THINK;
+	case 0x1F440: return GLYPH_EYES;
+	case 0x1F4E1: return GLYPH_DISH;
+	case 0x1F4AF: return GLYPH_HUNDRED;
+	}
 	if ((cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF && cp != 0x2605 &&
 	     cp != 0x2713 && cp != 0x2714 && cp != 0x2717 && cp != 0x2718 && cp != 0x2705 && cp != 0x274C))
 		return GLYPH_EMOJI;

@@ -81,6 +81,20 @@ static void test_age_and_snr(void)
 	char buf[16];
 
 	{
+		/* thumbs up with a skin tone, tears of joy, rolling (same glyph), a heart with VS16, 100, a rocket */
+		static const UInt8 em[] = {
+			0xF0, 0x9F, 0x91, 0x8D, 0xF0, 0x9F, 0x8F, 0xBD,
+			0xF0, 0x9F, 0x98, 0x82, 0xF0, 0x9F, 0xA4, 0xA3,
+			0xE2, 0x9D, 0xA4, 0xEF, 0xB8, 0x8F,
+			0xF0, 0x9F, 0x92, 0xAF, 0xF0, 0x9F, 0x9A, 0x80
+		};
+		Char o[16];
+
+		CHECK(TxtUtf8ToPalm(em, sizeof(em), o, sizeof(o)) == 6);
+		CHECK(o[0] == GLYPH_THUMBS && o[1] == GLYPH_LAUGH && o[2] == GLYPH_LAUGH);
+		CHECK(o[3] == GLYPH_HEART && o[4] == GLYPH_HUNDRED && o[5] == GLYPH_EMOJI);
+	}
+	{
 		static const UInt8 key[] = { 0x00, 0x9c, 0xd8, 0xff, 0x0a };
 		Char hex[11];
 
@@ -120,7 +134,7 @@ static void test_utf8(void)
 
 	CHECK(TxtUtf8ToPalm(cafe, sizeof(cafe), out, sizeof(out)) == 4 && (unsigned char)out[3] == 0xE9);
 	CHECK(TxtUtf8ToPalm(dots, sizeof(dots), out, sizeof(out)) == 2 && out[1] == GLYPH_ELLIPSIS);
-	CHECK(TxtUtf8ToPalm(emoji, sizeof(emoji), out, sizeof(out)) == 4 && out[3] == GLYPH_EMOJI);
+	CHECK(TxtUtf8ToPalm(emoji, sizeof(emoji), out, sizeof(out)) == 4 && out[3] == GLYPH_WAVE);
 	{
 		/* "a→b" (arrow), "“hi”" (curly quotes), "x—y" (em dash), "❤️" (heart + VS16) */
 		static const UInt8 arrow[] = { 'a', 0xE2, 0x86, 0x92, 'b' };
@@ -132,7 +146,7 @@ static void test_utf8(void)
 		CHECK(TxtUtf8ToPalm(arrow, sizeof(arrow), out, sizeof(out)) == 3 && out[1] == GLYPH_RIGHT);
 		CHECK(TxtUtf8ToPalm(quotes, sizeof(quotes), out, sizeof(out)) == 4 && strcmp(out, "\"hi\"") == 0);
 		CHECK(TxtUtf8ToPalm(dash, sizeof(dash), out, sizeof(out)) == 3 && strcmp(out, "x-y") == 0);
-		CHECK(TxtUtf8ToPalm(heart, sizeof(heart), out, sizeof(out)) == 1 && out[0] == GLYPH_EMOJI);
+		CHECK(TxtUtf8ToPalm(heart, sizeof(heart), out, sizeof(out)) == 1 && out[0] == GLYPH_HEART);
 		CHECK(TxtUtf8ToPalm(check, sizeof(check), out, sizeof(out)) == 1 && out[0] == GLYPH_ACKED);
 	}
 	CHECK(TxtUtf8ToPalm(broken, sizeof(broken), out, sizeof(out)) == 2 && strcmp(out, "x?") == 0);

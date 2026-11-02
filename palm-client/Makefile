@@ -10,7 +10,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -31,7 +31,7 @@ ifeq ($(shell command -v $(CC) 2>/dev/null),)
 # so an install of an up-to-date build doesn't need the toolchain at all.
 all: build/$(APP).prc
 
-build/$(APP).prc: $(SRCS) src/*.h src/ui/*.h resources/$(APP).rcp resources/smallfont.nfnt resources/largefont.nfnt $(APP).def
+build/$(APP).prc: $(SRCS) src/*.h src/ui/*.h resources/$(APP).rcp resources/smallfont.nfnt resources/largefont.nfnt resources/emoji.bin $(APP).def
 	$(MAKE) image
 	$(DOCKER_RUN) make all
 
@@ -60,7 +60,7 @@ build/$(APP)-sections.o: build/$(APP)-sections.s
 build/$(APP): $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
 	$(CC) $(CFLAGS) -o $@ $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
 
-build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt resources/largefont.nfnt | build
+build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt resources/largefont.nfnt resources/emoji.bin | build
 	rm -rf build/res && mkdir -p build/res
 	$(PILRC) -q -I src $< build/res
 	touch $@

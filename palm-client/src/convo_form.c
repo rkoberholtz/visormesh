@@ -14,6 +14,7 @@
 #include "ui/draw.h"
 #include "ui/text.h"
 #include "ui/rowlist.h"
+#include "ui/emoji.h"
 #include "convo_form.h"
 
 /* In the second code segment: see sections.h for the rules. */
@@ -23,7 +24,7 @@ static void SuffixOf(const VmMsgHeader *h, Char *out) VM_SECT2;
 static UInt32 LocalDay(UInt32 utc) VM_SECT2;
 static void AddLine(UInt8 kind, UInt16 msg, UInt16 off, UInt16 len, Boolean first, Boolean last, UInt32 day) VM_SECT2;
 static void Build(void) VM_SECT2;
-static void DrawTextWithMentions(const Char *text, UInt16 len, Coord x, Coord y) VM_SECT2;
+static Int16 TextWithMentions(const Char *text, UInt16 len, Coord x, Coord y, Coord hitX) VM_SECT2;
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static void DrawCounter(void) VM_SECT2;
 static UInt16 FirstUnread(void) VM_SECT2;
@@ -31,7 +32,8 @@ static void ScrollToNew(void) VM_SECT2;
 static void Refresh(Boolean toEnd) VM_SECT2;
 static void Send(FormType *form) VM_SECT2;
 static void InsertMention(const Char *sender) VM_SECT2;
-static void Tapped(UInt16 row) VM_SECT2;
+static void Tapped(UInt16 row, Coord penX) VM_SECT2;
+static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
 
 #define MAX_MSGS    40        /* newest messages shown */
 #define MAX_LINES   200
@@ -196,31 +198,52 @@ static void Build(void)
  * "@[Name]" it replaces (2 px pads vs three 4 px characters), so the line still
  * fits the width it was wrapped to.
  */
-static void DrawTextWithMentions(const Char *text, UInt16 len, Coord x, Coord y)
+/*
+ * A line's text with "@[name]" mentions drawn as chips. With hitX < 0 it
+ * draws; otherwise it only lays the line out and returns the index of the
+ * plain character under hitX (-1 if none, or a chip), so taps line up with
+ * what's drawn.
+ */
+static Int16 TextWithMentions(const Char *text, UInt16 len, Coord x, Coord y, Coord hitX)
 {
 	Char name[VM_NAME_SIZE];
-	UInt16 i = 0, start = 0, end, n;
+	UInt16 i = 0, start = 0, end = 0, n = 0, k;
+	Coord w;
 
-	while (i + 2 < len) {
-		if (text[i] != '@' || text[i + 1] != '[') {
-			i++;
-			continue;
+	for (;;) {
+		/* find the next mention (or the end) */
+		for (; i + 2 < len; i++) {
+			if (text[i] != '@' || text[i + 1] != '[')
+				continue;
+			for (end = i + 2; end < len && text[end] != ']'; end++)
+				;
+			n = end - (i + 2);
+			if (end < len && n > 0 && n < sizeof(name))
+				break;
 		}
-		for (end = i + 2; end < len && text[end] != ']'; end++)
-			;
-		n = end - (i + 2);
-		if (end >= len || n == 0 || n >= sizeof(name)) {
-			i++;
-			continue;
+		if (i + 2 >= len)
+			i = len;
+		/* the plain text before it */
+		if (hitX < 0) {
+			WinDrawChars(text + start, i - start, x, y);
+			x += FntCharsWidth(text + start, i - start);
+		} else {
+			for (k = start; k < i; k++, x += w) {
+				w = FntCharWidth(text[k]);
+				if (hitX < x + w)
+					return hitX >= x ? (Int16)k : -1;
+			}
 		}
-		WinDrawChars(text + start, i - start, x, y);
-		x += FntCharsWidth(text + start, i - start);
+		if (i >= len)
+			return -1;
 		MemMove(name, text + i + 2, n);
 		name[n] = 0;
-		x += DrawChip(name, x, y - 1);
+		w = hitX < 0 ? DrawChip(name, x, y - 1) : ChipWidth(name);
+		if (hitX >= 0 && hitX < x + w)
+			return -1;
+		x += w;
 		i = start = end + 1;
 	}
-	WinDrawChars(text + start, len - start, x, y);
 }
 
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
@@ -253,7 +276,7 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 			StrPrintF(buf, "%02u:%02u", dt.hour, dt.minute);
 			WinDrawChars(buf, StrLen(buf), x + TIME_X, y);
 		}
-		DrawTextWithMentions(text, l->len, x + TEXT_X, y);
+		TextWithMentions(text, l->len, x + TEXT_X, y, -1);
 		if (l->last) {
 			SuffixOf(h, buf);
 			if (buf[0])
@@ -371,13 +394,56 @@ static void InsertMention(const Char *sender)
 	DrawCounter();
 }
 
-/* Tap a failed message of ours to retry it, or someone's channel message to reply to them. */
-static void Tapped(UInt16 row)
+/* An emoji (or its neighbour, they're narrow) under the pen: show it enlarged. */
+static Boolean TappedEmoji(UInt16 row, Coord penX)
 {
-	const VmMsgHeader *h = MessagesLock(gLines[row].msg);
+	FormType *form = FrmGetActiveForm();
+	const Line *l = &gLines[row];
+	const VmMsgHeader *h;
+	const Char *text;
+	RectangleType b;
+	FontID old;
+	Int16 k;
+	Char c[3];
+	UInt16 n = 0, i;
+
+	if (l->kind != L_TEXT)
+		return false;
+	h = MessagesLock(l->msg);
+	if (!h)
+		return false;
+	FrmGetObjectBounds(form, FrmGetObjectIndex(form, ConvoGadget), &b);
+	text = (const Char *)(h + 1) + l->off;
+	old = FntSetFont(vmSmallFont);
+	k = TextWithMentions(text, l->len, b.topLeft.x + TEXT_X, 0, penX);
+	FntSetFont(old);
+	if (k >= 0) {
+		c[n++] = text[k];
+		if (k > 0)
+			c[n++] = text[k - 1];
+		if (k + 1 < (Int16)l->len)
+			c[n++] = text[k + 1];
+	}
+	MessagesRelease(l->msg);
+	for (i = 0; i < n; i++)
+		if (EmojiShow(c[i]))
+			return true;
+	return false;
+}
+
+/*
+ * Tap an emoji to see it enlarged, a failed message of ours to retry it, or
+ * someone's channel message to reply to them.
+ */
+static void Tapped(UInt16 row, Coord penX)
+{
+	const VmMsgHeader *h;
 	Boolean failed, reply;
 	Char sender[VM_NAME_SIZE];
 
+	if (TappedEmoji(row, penX))
+		return;
+	h = MessagesLock(gLines[row].msg);
 	if (!h)
 		return;
 	failed = h->dir == VM_DIR_OUT && h->status == VM_ST_FAILED;
@@ -466,7 +532,7 @@ Boolean ConvoFormHandleEvent(EventType *event)
 
 	if (gLines && RowListHandleEvent(&gList, event, &tapped)) {
 		if (tapped >= 0)
-			Tapped((UInt16)tapped);
+			Tapped((UInt16)tapped, event->screenX);
 		return true;
 	}
 	return false;

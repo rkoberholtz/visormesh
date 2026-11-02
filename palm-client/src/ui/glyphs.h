@@ -21,6 +21,18 @@
 #define GLYPH_PENDING    ((Char)0x90)
 #define GLYPH_EMOJI      ((Char)0x99)
 #define GLYPH_FORWARD    ((Char)0x9B)
+#define GLYPH_THUMBS     ((Char)0x91)
+#define GLYPH_LAUGH      ((Char)0x92)
+#define GLYPH_HEART      ((Char)0x93)
+#define GLYPH_CRY        ((Char)0x94)
+#define GLYPH_PRAY       ((Char)0x95)
+#define GLYPH_WAVE       ((Char)0x96)
+#define GLYPH_FIRE       ((Char)0x97)
+#define GLYPH_PARTY      ((Char)0x98)
+#define GLYPH_THINK      ((Char)0x9A)
+#define GLYPH_EYES       ((Char)0x9C)
+#define GLYPH_DISH       ((Char)0x9D)
+#define GLYPH_HUNDRED    ((Char)0x9E)
 
 #define VM_SMALL_FONT_HEIGHT 6
 #define VM_LARGE_FONT_HEIGHT 8

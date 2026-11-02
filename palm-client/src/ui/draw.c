@@ -71,6 +71,11 @@ void DrawSection(const Char *label, Coord x0, Coord y, Coord width)
 #define CHIP_PAD_X 2
 #define CHIP_PAD_Y 1
 
+Coord ChipWidth(const Char *text)
+{
+	return FntCharsWidth(text, StrLen(text)) + 2 * CHIP_PAD_X;
+}
+
 Coord DrawChip(const Char *text, Coord x, Coord y)
 {
 	UInt16 len = StrLen(text);

@@ -9,6 +9,7 @@ APPLICATIONICONNAME ID 1000 "VisorMesh"
  */
 DATA "NFNT" ID SmallFontRes "resources/smallfont.nfnt"
 DATA "NFNT" ID LargeFontRes "resources/largefont.nfnt"
+DATA "EMJI" ID EmojiArtRes "resources/emoji.bin"
 
 MENU ID MainMenuBar
 BEGIN
