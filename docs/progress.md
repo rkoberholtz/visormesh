@@ -26,7 +26,7 @@
 - [x] USB link from the dev Mac: pilot-link (desrod @6d696653 + `tools/pilot-link-darwin-usb-open-retry.patch`) lists the Visor's databases
 - [x] `make install` puts VisorMesh on the Visor; app launches and shows the main form on the Visor Neo
 - [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
-- [x] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them). The calls used are declared in `src/hs_card.h`; the SDK itself isn't in the repo (Handspring EULA)
+- [x] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them). The calls used are declared in `src/hs_card.h`; the SDK is in `docs/reference/Handspring_SDK.zip`
 - [x] Bus SPI routines and SC16IS740 driver (`sb_spi.c`, `transport_sb.c`); host-tested against a simulated carrier, not on hardware
 - [x] Companion protocol: framing, builders (DEVICE_QUERY, APP_START, GET_CONTACTS, SYNC_NEXT_MESSAGE), parsers (SELF_INFO, contacts, v3 contact/channel messages); host tests from real captures + MeshCore layouts
 - [x] USB bench link: app (`HsUd`) → Visor USB cradle → `tools/visor_bridge.py` → FTDI → XIAO D6/D7. Query radio shows `Reply 0x000D, 82 bytes` on the Visor

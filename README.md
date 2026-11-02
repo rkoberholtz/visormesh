@@ -16,7 +16,7 @@ See [docs/design.md](docs/design.md) for the architecture and the reasons behind
 | `docs/design.md` | Architecture, protocol notes and decisions |
 | `docs/progress.md` | Status, milestones and a dated log |
 | `docs/upstream-issues.md` | Problems found in pilot-link, PilRC/prc-tools and MeshCore, with evidence and workarounds, ready to report |
-| `docs/reference/` | Third-party reference: Handspring Springboard dev guide and mechanical spec, springSD v1.1 hardware |
+| `docs/reference/` | Third-party reference: Handspring Springboard dev guide and mechanical spec, the Handspring SDK (`HsExt.h`, Springboard docs and tools), springSD v1.1 hardware |
 
 ## Versioning
 

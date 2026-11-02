@@ -1,6 +1,6 @@
 /*
  * The few Handspring Springboard card calls VisorMesh uses, declared from the
- * Handspring SDK's HsExt.h (not vendored: it's under Handspring's EULA).
+ * Handspring SDK's HsExt.h (docs/reference/Handspring_SDK.zip).
  * Calls go through sysTrapOEMDispatch with a 16-bit selector pushed on the
  * stack, which the dispatcher pops ("unpopped" in HsExt.h).
  */
