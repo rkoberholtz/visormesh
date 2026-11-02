@@ -9,7 +9,7 @@ Boolean gAppAutoConnectTried = false;
 
 typedef struct {
 	UInt16 version;
-	UInt32 port;       /* VM_PORT_USB or VM_PORT_SERIAL */
+	UInt32 port;       /* VM_PORT_USB, VM_PORT_SERIAL or VM_PORT_SBLORA */
 	Int16  utcOffset;  /* local minus UTC, minutes */
 } AppPrefs;
 
@@ -61,6 +61,8 @@ void AppErrorText(Err err, Char *out)
 		StrCopy(out, "Message too long.");
 	else if (err == serErrNotOpen)
 		StrCopy(out, "Not connected.");
+	else if (err == vmErrNoModule)
+		StrCopy(out, "No SB-LoRa module in the slot.");
 	else if (err == vmErrLoginFailed)
 		StrCopy(out, "Login refused: wrong password?");
 	else

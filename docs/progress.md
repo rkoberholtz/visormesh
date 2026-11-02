@@ -27,7 +27,7 @@
 - [x] `make install` puts VisorMesh on the Visor; app launches and shows the main form on the Visor Neo
 - [ ] Emulator: CloudpilotEmu with a Palm OS 3.5 ROM (the Visor isn't emulated); optionally POSE + a Visor Neo ROM in a Windows VM
 - [ ] Original Handspring SDK headers (Springboard `HsCard*` APIs; the PalmOne `HsExt.h` lacks them), needed for module-ROM work only
-- [ ] Port springSD bus routines; SC16IS740 driver
+- [x] Bus SPI routines and SC16IS740 driver (`sb_spi.c`, `transport_sb.c`); host-tested against a simulated carrier, not on hardware
 - [x] Companion protocol: framing, builders (DEVICE_QUERY, APP_START, GET_CONTACTS, SYNC_NEXT_MESSAGE), parsers (SELF_INFO, contacts, v3 contact/channel messages); host tests from real captures + MeshCore layouts
 - [x] USB bench link: app (`HsUd`) → Visor USB cradle → `tools/visor_bridge.py` → FTDI → XIAO D6/D7. Query radio shows `Reply 0x000D, 82 bytes` on the Visor
 - [x] Connect screen: DEVICE_QUERY + APP_START via session.c; shows node, freq, BW/SF/CR, TX power, firmware (verified on the Neo over the USB bridge)
@@ -78,3 +78,4 @@
 - Docker Desktop's amd64 emulation hung once (containers never started); make install now only uses Docker when sources changed.
 - Verified on the Neo: two-line compose field (scrolls, redraws after the on-screen keyboard), Unicode symbols/emoji smiley, line breaks in messages, beep for DMs/mentions, "new" divider. Segments: 1 = 7.8 KB, 2 = 27.1 KB (the next big feature should go in a third segment); tools/check_sections.py guards the rules on every build.
 - 2026-11-02: Verified on the Neo against a PhillyMesh repeater: login, admin console (Read settings, typed CLI commands, Status 0x87 and Telemetry 0x8B decoded), contact detail with signal history, Add Contact, Reset Path. Segments: 9.1 / 27.7 / 12.4 KB. Upstream issues written up in docs/upstream-issues.md (none filed yet).
+- 2026-11-02: SB-LoRa transport written ahead of the boards: bus-SPI bit-bang over CS0/CS1 (`sb_spi.c`), SC16IS740 setup for 115200 8N1, burst FIFO access, sleep, and a "Slot" link on the Node screen (`transport_sb.c`). `tests/test_sblora.c` checks it against a simulated carrier (latches, inverter, SC16IS740). Unknowns for bring-up: whether connector A0 is CPU A1 (the probe tries both mappings via the scratch register), the hard-coded csSlot0 base 0x28000000 (no Handspring SDK for HsCardAttrGet), and RX overruns while the app isn't polling (no IRQ handler yet). Segments: 9.6 / 27.7 / 13.1 KB.

@@ -61,8 +61,9 @@ MENUID MainMenuBar
 BEGIN
   TITLE "Node"
   LABEL "Link:" AUTOID AT (5 18) FONT 1
-  PUSHBUTTON "Serial" ID MainSerialPush AT (50 17 40 12) GROUP MainLinkGroup
-  PUSHBUTTON "USB" ID MainUsbPush AT (PREVRIGHT+1 PREVTOP 40 12) GROUP MainLinkGroup
+  PUSHBUTTON "Serial" ID MainSerialPush AT (50 17 34 12) GROUP MainLinkGroup
+  PUSHBUTTON "USB" ID MainUsbPush AT (PREVRIGHT+1 PREVTOP 34 12) GROUP MainLinkGroup
+  PUSHBUTTON "Slot" ID MainSlotPush AT (PREVRIGHT+1 PREVTOP 34 12) GROUP MainLinkGroup
 
   LABEL "Node:" AUTOID AT (5 40) FONT 1
   LABEL "                      " ID MainNameLabel AT (50 40)

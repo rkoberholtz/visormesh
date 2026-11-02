@@ -6,6 +6,7 @@
 #define MainConnectButton 1002
 #define MainSerialPush    1004
 #define MainUsbPush       1005
+#define MainSlotPush      1013
 #define MainFreqLabel     1006
 #define MainModeLabel     1007
 #define MainPowerLabel    1008

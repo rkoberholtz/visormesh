@@ -172,7 +172,8 @@ Boolean NodeFormHandleEvent(EventType *event)
 
 	switch (event->eType) {
 	case frmOpenEvent: {
-		UInt16 link = (TransportGetPort() == VM_PORT_USB) ? MainUsbPush : MainSerialPush;
+		UInt32 port = TransportGetPort();
+		UInt16 link = port == VM_PORT_USB ? MainUsbPush : port == VM_PORT_SBLORA ? MainSlotPush : MainSerialPush;
 
 		FrmSetControlGroupSelection(form, MainLinkGroup, link);
 		ShowRadioInfo(form);
@@ -191,12 +192,17 @@ Boolean NodeFormHandleEvent(EventType *event)
 		switch (event->data.ctlSelect.controlID) {
 		case MainSerialPush:
 		case MainUsbPush:
+		case MainSlotPush:
 			/* Changing the link drops any open connection; it applies on the next Connect. */
 			if (SessionIsConnected()) {
 				SessionDisconnect();
 				ShowRadioInfo(form);
 			}
-			TransportSetPort(event->data.ctlSelect.controlID == MainUsbPush ? VM_PORT_USB : VM_PORT_SERIAL);
+			switch (event->data.ctlSelect.controlID) {
+			case MainUsbPush:  TransportSetPort(VM_PORT_USB); break;
+			case MainSlotPush: TransportSetPort(VM_PORT_SBLORA); break;
+			default:           TransportSetPort(VM_PORT_SERIAL); break;
+			}
 			AppSavePrefs();
 			return true;
 		case MainConnectButton:

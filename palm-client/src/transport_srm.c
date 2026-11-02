@@ -22,6 +22,8 @@ Err TransportOpen(void)
 {
 	Err err;
 
+	if (gPort == VM_PORT_SBLORA)
+		return SbTransportOpen();
 	if (gPortOpen)
 		return errNone;
 	err = SrmOpen(gPort, VM_BAUD, &gPortId);
@@ -32,6 +34,7 @@ Err TransportOpen(void)
 
 void TransportClose(void)
 {
+	SbTransportClose();
 	if (!gPortOpen)
 		return;
 	SrmClose(gPortId);
@@ -44,6 +47,8 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 	UInt32 sent = 0;
 	UInt16 tries;
 
+	if (gPort == VM_PORT_SBLORA)
+		return SbTransportSend(buf, len);
 	if (!gPortOpen)
 		return serErrNotOpen;
 	/*
@@ -68,6 +73,8 @@ UInt16 TransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP)
 	UInt32 avail = 0;
 	UInt32 n;
 
+	if (gPort == VM_PORT_SBLORA)
+		return SbTransportRecv(buf, max, timeoutTicks, errP);
 	*errP = errNone;
 	if (!gPortOpen) {
 		*errP = serErrNotOpen;
