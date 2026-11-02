@@ -41,6 +41,28 @@
 #define SB_EFR       0x02
 
 #define SB_FIFO_SIZE 64
+#define SB_IER_RHR   0x01   /* IER: interrupt on RX data (trigger level or timeout) */
+
+/* Where the chip is on the bus: chip-select addresses and the A17/A8 offsets. */
+typedef struct {
+	UInt32 cs0, cs1;
+	UInt32 offNcs;     /* byte offset that drives connector A17 */
+	UInt32 offMosi;    /* ... and A8 */
+} SbBus;
+
+/*
+ * Received bytes, filled by the interrupt handler (SbDrainRx) and read by the
+ * app. head is only written by the handler and tail only by the app, so the
+ * two need no locking (16-bit writes are atomic on the 68k).
+ */
+#define SB_RING_SIZE 1024   /* a power of two */
+typedef struct {
+	SbBus            bus;       /* a copy, so the handler needs no globals */
+	volatile UInt16  head;
+	volatile UInt16  tail;
+	volatile Boolean overflow;  /* bytes were dropped */
+	UInt8            buf[SB_RING_SIZE];
+} SbRing;
 
 /*
  * Finds the module by writing and reading back the scratch register. The
@@ -54,6 +76,16 @@ void    SbSetBase(UInt32 cs0, UInt32 csSize) VM_SECT3;
 
 /* 115200 8N1 (14.7456 MHz crystal, DLL = 8), FIFOs on, interrupts off. */
 void    SbUartInit(void) VM_SECT3;
+
+/* The bus SbProbe found, to copy into an SbRing. */
+const SbBus *SbCurrentBus(void) VM_SECT3;
+
+/*
+ * Moves everything in the RX FIFO into r. Safe in the slot interrupt handler,
+ * even before the system is awake: it uses only r and plain bus reads, and
+ * it's in the first segment (no VM_SECT3) so calling it needs no A5.
+ */
+void    SbDrainRx(SbRing *r);
 
 /* Low-power sleep (IER bit 4) while the link is closed, or wake. */
 void    SbSleep(Boolean sleep) VM_SECT3;

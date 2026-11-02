@@ -207,6 +207,65 @@ static void test_sleep(void)
 	CHECK(regs[SB_IER] == 0);
 }
 
+static void inject(int n, UInt8 first)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		rxq[rxn + i] = (UInt8)(first + i);
+	rxn = (UInt8)(rxn + n);
+}
+
+static void test_drain(void)
+{
+	static SbRing r;
+	int i, before;
+
+	SimInsert(1);
+	CHECK(SbProbe());
+	SbUartInit();
+	memset(&r, 0, sizeof(r));
+	r.bus = *SbCurrentBus();
+
+	/* a plain drain empties the FIFO (which is what releases IRQ*) */
+	inject(40, 0x10);
+	SbDrainRx(&r);
+	CHECK(rxn == 0);
+	CHECK(r.head == 40 && r.tail == 0 && !r.overflow);
+	for (i = 0; i < 40; i++)
+		CHECK(r.buf[i] == (UInt8)(0x10 + i));
+	CHECK(ncs);
+
+	/* wraps at the end of the ring */
+	r.head = r.tail = SB_RING_SIZE - 10;
+	inject(30, 0x40);
+	SbDrainRx(&r);
+	CHECK(rxn == 0);
+	CHECK(r.head == (UInt16)(SB_RING_SIZE + 20));
+	CHECK(r.buf[SB_RING_SIZE - 10] == 0x40 && r.buf[SB_RING_SIZE - 1] == 0x40 + 9);
+	CHECK(r.buf[0] == 0x40 + 10 && r.buf[19] == 0x40 + 29);
+
+	/* the counters wrap at 64K too */
+	r.head = r.tail = 0xFFFE;
+	inject(4, 0x60);
+	SbDrainRx(&r);
+	CHECK(r.head == 2 && (UInt16)(r.head - r.tail) == 4);
+
+	/* a full ring keeps what fits, drops the rest, and still empties the FIFO */
+	r.tail = 0;
+	r.head = SB_RING_SIZE - 5;
+	r.overflow = false;
+	before = transactions;
+	inject(20, 0x80);
+	SbDrainRx(&r);
+	CHECK(rxn == 0);
+	CHECK(r.head == SB_RING_SIZE);
+	CHECK(r.overflow);
+	CHECK(r.buf[SB_RING_SIZE - 5] == 0x80 && r.buf[SB_RING_SIZE - 1] == 0x84);
+	CHECK(transactions > before);
+	CHECK(ncs);
+}
+
 int main(void)
 {
 	test_probe();
@@ -214,6 +273,7 @@ int main(void)
 	test_registers();
 	test_fifos();
 	test_sleep();
+	test_drain();
 	if (failures) {
 		printf("%d failure(s)\n", failures);
 		return 1;
