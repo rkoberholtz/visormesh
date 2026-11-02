@@ -53,10 +53,15 @@ typedef char     Char;
 #define VM_CMD_SET_DEVICE_TIME    6
 #define VM_CMD_SEND_SELF_ADVERT   7
 #define VM_CMD_SET_ADVERT_NAME    8
+#define VM_CMD_ADD_UPDATE_CONTACT 9
 #define VM_CMD_SYNC_NEXT_MESSAGE  10
 #define VM_CMD_SET_RADIO_PARAMS   11
 #define VM_CMD_SET_RADIO_TX_POWER 12
+#define VM_CMD_RESET_PATH         13
+#define VM_CMD_REMOVE_CONTACT     15
 #define VM_CMD_REBOOT             19
+#define VM_CMD_SEND_LOGIN         26
+#define VM_CMD_LOGOUT             29
 #define VM_CMD_DEVICE_QUERY       22
 #define VM_CMD_GET_CHANNEL        31
 #define VM_CMD_SET_CHANNEL        32
@@ -82,6 +87,9 @@ typedef char     Char;
 #define VM_PUSH_PATH_UPDATED      0x81
 #define VM_PUSH_SEND_CONFIRMED    0x82
 #define VM_PUSH_MSG_WAITING       0x83
+#define VM_PUSH_LOGIN_SUCCESS     0x85
+#define VM_PUSH_LOGIN_FAIL        0x86
+#define VM_PUSH_LOG_RX            0x88
 #define VM_PUSH_NEW_ADVERT        0x8A
 #define VM_IS_PUSH(code)          ((code) >= 0x80)
 
@@ -183,6 +191,8 @@ typedef struct {
 	UInt8        senderPrefix[6];/* contact messages: first 6 bytes of the sender's key */
 	UInt8        pathLen;        /* 0xFF = direct */
 	UInt8        txtType;
+	Boolean      hasSigner;      /* signed text (e.g. a room post): signer is the author's key prefix */
+	UInt8        signer[4];
 	UInt32       timestamp;      /* sender's clock, seconds since 1970 */
 	const UInt8 *text;           /* points into the payload; not NUL-terminated */
 	UInt16       textLen;
@@ -228,6 +238,13 @@ UInt16 VmBuildSendChannelTxt(UInt8 *out, UInt16 outSize, UInt8 channelIdx, UInt3
 UInt16 VmBuildGetTime(UInt8 *out, UInt16 outSize) VM_SECT2;
 UInt16 VmBuildSetTime(UInt8 *out, UInt16 outSize, UInt32 unixSeconds) VM_SECT2;
 UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood) VM_SECT2;
+/* Room/repeater login: the full 32-byte key and a password (UTF-8, may be empty). Reply SENT, then a login push. */
+UInt16 VmBuildLogin(UInt8 *out, UInt16 outSize, const UInt8 *pubKey, const UInt8 *password, UInt16 pwLen) VM_SECT2;
+/* Commands that take only a full 32-byte key: VM_CMD_LOGOUT, VM_CMD_RESET_PATH, VM_CMD_REMOVE_CONTACT. */
+UInt16 VmBuildKeyCommand(UInt8 *out, UInt16 outSize, UInt8 code, const UInt8 *pubKey) VM_SECT2;
+/* CMD_ADD_UPDATE_CONTACT for a node we only know by key: unknown path, no advert time yet. */
+UInt16 VmBuildAddContact(UInt8 *out, UInt16 outSize, const UInt8 *pubKey, UInt8 type,
+                         const UInt8 *name, UInt16 nameLen) VM_SECT2;
 /* CMD_REBOOT: the radio restarts without replying. */
 UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize) VM_SECT2;
 
@@ -242,5 +259,26 @@ Boolean VmParseChannelInfo(const UInt8 *p, UInt16 len, VmChannel *out) VM_SECT2;
 Boolean VmParseSent(const UInt8 *p, UInt16 len, VmSent *out) VM_SECT2;
 Boolean VmParseSendConfirmed(const UInt8 *p, UInt16 len, UInt32 *ack, UInt32 *tripMs) VM_SECT2;
 Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds) VM_SECT2;
+/*
+ * PUSH_LOG_RX: a packet the radio received, with its signal. 'from' names the
+ * node we heard it from directly, when that's known: the advertiser of a
+ * zero-hop advert (fromLen 6, its key prefix), or the last repeater on a
+ * flooded packet's path (fromLen = the path hash size, 1-3 bytes).
+ */
+typedef struct {
+	Int16   snrQ;           /* SNR in quarter dB */
+	Int8    rssi;           /* dBm */
+	UInt8   payloadType;    /* 4 = advert */
+	UInt8   hops;
+	Boolean isAdvert;
+	UInt8   advertKey[6];   /* the advertiser (any hop count), if isAdvert */
+	UInt8   fromLen;        /* 0 = not known */
+	UInt8   from[6];
+} VmRxLog;
+#define VM_PAYLOAD_ADVERT 4
+Boolean VmParseRxLog(const UInt8 *p, UInt16 len, VmRxLog *out) VM_SECT2;
+
+/* PUSH_LOGIN_SUCCESS / PUSH_LOGIN_FAIL: which node (key prefix) and, on success, whether we're admin. */
+Boolean VmParseLoginResult(const UInt8 *p, UInt16 len, Boolean *ok, Boolean *isAdmin, UInt8 *prefix6) VM_SECT2;
 
 #endif

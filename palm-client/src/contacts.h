@@ -15,6 +15,8 @@ UInt16  ContactsCount(void) VM_SECT2;
 Boolean ContactsGet(UInt16 index, VmContact *out) VM_SECT2;
 /* Finds a contact by the first 6 bytes of its key (how DMs name their sender). */
 Boolean ContactsFindByPrefix(const UInt8 *prefix6, VmContact *out) VM_SECT2;
+/* Same with the first n bytes (room posts name their author by 4). */
+Boolean ContactsFindByPrefixN(const UInt8 *prefix, UInt16 n, VmContact *out) VM_SECT2;
 
 /*
  * Downloads the radio's whole contact list and replaces the stored one. The

@@ -6,6 +6,7 @@
 #include "contacts.h"
 #include "ui/text.h"
 #include "session.h"
+#include "heard.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -69,6 +70,11 @@ static void HandlePush(void)
 	} else if (code == VM_PUSH_SEND_CONFIRMED) {
 		if (VmParseSendConfirmed(gDecoder.payload, gDecoder.len, &ack, &trip) && MessagesAcked(ack))
 			gChanged |= VM_CHANGED_MESSAGES;
+	} else if (code == VM_PUSH_LOG_RX) {
+		VmRxLog rx;
+
+		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx))
+			HeardRecord(&rx, SessionNow());
 	} else if (code == VM_PUSH_ADVERT || code == VM_PUSH_NEW_ADVERT || code == VM_PUSH_PATH_UPDATED) {
 		gChanged |= VM_CHANGED_CONTACTS;
 	}
@@ -487,6 +493,82 @@ UInt16 SessionPoll(void)
 	return changed;
 }
 
+/* Rooms logged into this session (key prefixes); the firmware keeps them alive. */
+#define VM_MAX_LOGINS 4
+static UInt8  gLogins[VM_MAX_LOGINS][6];
+static UInt16 gLoginCount = 0;
+
+Boolean SessionIsLoggedIn(const UInt8 *prefix6)
+{
+	UInt16 i;
+
+	for (i = 0; i < gLoginCount; i++)
+		if (MemCmp(gLogins[i], prefix6, 6) == 0)
+			return true;
+	return false;
+}
+
+Err SessionLogin(const UInt8 *pubKey, const Char *password, Boolean *isAdmin)
+{
+	static const UInt8 sentCode[] = { VM_RESP_SENT };
+	static const UInt8 resultCodes[] = { VM_PUSH_LOGIN_SUCCESS, VM_PUSH_LOGIN_FAIL };
+	UInt8 frame[VM_HEADER_LEN + 1 + VM_PUB_KEY_SIZE + VM_NAME_SIZE];
+	UInt8 pw[VM_NAME_SIZE], prefix[6];
+	UInt16 len, n;
+	VmSent sent;
+	Boolean ok;
+	Int32 wait;
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	n = TxtPalmToUtf8(password, StrLen(password), pw, sizeof(pw));
+	if (*password && n == 0)
+		return vmErrTooLong;
+	len = VmBuildLogin(frame, sizeof(frame), pubKey, pw, n);
+	err = RequestAny(frame, len, sentCode, 1, 1);
+	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, &sent))
+		err = vmErrBadReply;
+	if (err != errNone)
+		return err;
+	/* the answer comes back over the mesh: wait as long as the radio estimates, plus slack */
+	wait = (Int32)((sent.timeoutMs + 5000UL) / 1000UL) * SysTicksPerSecond();
+	err = WaitForAny(resultCodes, 2, wait);
+	if (err != errNone)
+		return err;
+	if (!VmParseLoginResult(gDecoder.payload, gDecoder.len, &ok, isAdmin, prefix))
+		return vmErrBadReply;
+	if (!ok)
+		return vmErrLoginFailed;
+	if (!SessionIsLoggedIn(prefix) && gLoginCount < VM_MAX_LOGINS)
+		MemMove(gLogins[gLoginCount++], prefix, 6);
+	return errNone;
+}
+
+Err SessionKeyCommand(UInt8 code, const UInt8 *pubKey)
+{
+	UInt8 frame[VM_HEADER_LEN + 1 + VM_PUB_KEY_SIZE];
+	UInt16 len = VmBuildKeyCommand(frame, sizeof(frame), code, pubKey);
+
+	if (!gConnected)
+		return serErrNotOpen;
+	return Request(frame, len, VM_RESP_OK, 1);
+}
+
+Err SessionAddContact(const UInt8 *pubKey, UInt8 type, const Char *name)
+{
+	UInt8 frame[VM_HEADER_LEN + 1 + VM_PUB_KEY_SIZE + 3 + VM_MAX_PATH_SIZE + VM_NAME_SIZE + 4];
+	UInt8 utf8[VM_NAME_SIZE];
+	UInt16 n = TxtPalmToUtf8(name, StrLen(name), utf8, VM_NAME_SIZE - 1), len;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	if (n == 0)
+		return vmErrTooLong;
+	len = VmBuildAddContact(frame, sizeof(frame), pubKey, type, utf8, n);
+	return Request(frame, len, VM_RESP_OK, 1);
+}
+
 Err SessionSendAdvert(Boolean flood)
 {
 	UInt8 frame[VM_HEADER_LEN + 2];
@@ -530,6 +612,7 @@ void SessionDisconnect(void)
 {
 	TransportClose();
 	gConnected = false;
+	gLoginCount = 0;          /* the radio keeps room sessions alive, but re-check after a reconnect */
 }
 
 Boolean SessionIsConnected(void)

@@ -8,6 +8,8 @@
 #include "home_form.h"
 #include "convo_form.h"
 #include "contacts_form.h"
+#include "contact_form.h"
+#include "heard.h"
 #include "node_form.h"
 #include "settings.h"
 #include "ports.h"
@@ -68,6 +70,8 @@ static Boolean AppHandleEvent(EventType *event)
 	case PortsForm:       FrmSetEventHandler(form, PortsFormHandleEvent);       break;
 	case FontPreviewForm: FrmSetEventHandler(form, FontPreviewFormHandleEvent); break;
 	case ChannelForm:     FrmSetEventHandler(form, ChannelFormHandleEvent);     break;
+	case ContactForm:     FrmSetEventHandler(form, ContactFormHandleEvent);     break;
+	case ContactAddForm:  FrmSetEventHandler(form, ContactAddFormHandleEvent);  break;
 	}
 	return true;
 }
@@ -151,9 +155,11 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
 		UiFontInit();
 		AppLoadPrefs();
+		HeardLoad();
 		FrmGotoForm(HomeForm);
 		AppEventLoop();
 		SessionDisconnect();
+		HeardSave();
 		FrmCloseAllForms();
 		ContactsClose();
 		ChannelsClose();

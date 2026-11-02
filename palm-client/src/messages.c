@@ -2,6 +2,7 @@
 #include "protocol.h"
 #include "ui/text.h"
 #include "messages.h"
+#include "contacts.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index) VM_SECT2;
@@ -124,6 +125,14 @@ Err MessagesAddIncoming(const VmMessage *m, UInt32 now)
 	} else {
 		hdr.conv.type = VM_CONV_DIRECT;
 		MemMove(hdr.conv.key, m->senderPrefix, 6);
+		if (m->hasSigner) {           /* a room post: file it under its author */
+			VmContact author;
+
+			if (ContactsFindByPrefixN(m->signer, 4, &author))
+				StrNCopy(hdr.sender, author.name, VM_NAME_SIZE - 1);
+			else
+				StrPrintF(hdr.sender, "%02x%02x%02x%02x", m->signer[0], m->signer[1], m->signer[2], m->signer[3]);
+		}
 	}
 	hdr.dir = VM_DIR_IN;
 	hdr.unread = 1;

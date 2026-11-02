@@ -80,6 +80,8 @@ static void SenderOf(const VmMsgHeader *h, Char *out, UInt16 size)
 		StrPrintF(out, "%c %s", GLYPH_SELF, SessionSelf()->name[0] ? SessionSelf()->name : "you");
 	else if (h->conv.type == VM_CONV_CHANNEL)
 		StrNCopy(out, h->sender[0] ? h->sender : "?", size - 1);
+	else if (h->sender[0])               /* a room post: its author */
+		StrNCopy(out, h->sender, size - 1);
 	else
 		ContactNameForPrefix(h->conv.key, out, size);
 	out[size - 1] = 0;

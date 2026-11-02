@@ -90,6 +90,61 @@ BEGIN
   SCROLLBAR ID ContactsScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
   BUTTON "Refresh" ID ContactsRefreshButton AT (1 147 AUTO AUTO)
   BUTTON "Done" ID ContactsDoneButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  BUTTON "Add" ID ContactsAddButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+END
+
+/* One contact: details and signal history */
+FORM ID ContactForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "                                "
+  GADGET ID ContactGadget AT (0 16 153 128)
+  SCROLLBAR ID ContactScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  BUTTON "Done" ID ContactDoneButton AT (1 147 AUTO AUTO)
+  BUTTON "Message" ID ContactMessageButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
+  BUTTON "Login" ID ContactLoginButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
+  BUTTON "More" ID ContactMoreButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
+  LIST "Reset Path" "Remove" ID ContactMoreList AT (100 122 58 AUTO) NONUSABLE VISIBLEITEMS 2
+END
+
+FORM ID ContactAddForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+  TITLE "Add Contact"
+  LABEL "Name:" AUTOID AT (5 20) FONT 1
+  FIELD ID ContactAddNameField AT (40 20 115 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 31
+  LABEL "Type:" AUTOID AT (5 38) FONT 1
+  PUSHBUTTON "Chat" ID ContactAddChatPush AT (40 37 36 12) GROUP ContactAddTypeGroup
+  PUSHBUTTON "Room" ID ContactAddRoomPush AT (PREVRIGHT+1 PREVTOP 36 12) GROUP ContactAddTypeGroup
+  PUSHBUTTON "Repeater" ID ContactAddRepeaterPush AT (PREVRIGHT+1 PREVTOP 42 12) GROUP ContactAddTypeGroup
+  LABEL "Public key (64 hex digits):" AUTOID AT (5 58) FONT 1
+  FIELD ID ContactAddKeyField AT (5 72 150 36) UNDERLINED MULTIPLELINES EDITABLE MAXCHARS 80
+  LABEL "For a node you haven't heard an advert" AUTOID AT (5 112)
+  LABEL "from yet. Its path starts unknown (flood)." AUTOID AT (5 123)
+  BUTTON "Add" ID ContactAddAddButton AT (5 145 AUTO AUTO)
+  BUTTON "Cancel" ID ContactAddCancelButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (145 147)
+END
+
+ALERT ID PasswordAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Log In"
+  MESSAGE "Password for ^1:"
+  BUTTONS "Log In" "Cancel"
+END
+
+ALERT ID RemoveContactAlert
+WARNING
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Remove Contact"
+  MESSAGE "Remove ^1 from the radio's contacts? Its messages stay on the Visor."
+  BUTTONS "Remove" "Cancel"
 END
 
 ALERT ID ContactInfoAlert

@@ -398,6 +398,47 @@ UInt16 VmBuildSendAdvert(UInt8 *out, UInt16 outSize, Boolean flood)
 	return VmEncodeFrame(out, outSize, p, 2);
 }
 
+/* CMD_SEND_LOGIN: code, pub_key[32], password (rest of frame). */
+UInt16 VmBuildLogin(UInt8 *out, UInt16 outSize, const UInt8 *pubKey, const UInt8 *password, UInt16 pwLen)
+{
+	UInt8 p[1 + VM_PUB_KEY_SIZE + VM_NAME_SIZE];
+
+	if (pwLen > VM_NAME_SIZE)
+		return 0;
+	p[0] = VM_CMD_SEND_LOGIN;
+	CopyBytes(p + 1, pubKey, VM_PUB_KEY_SIZE);
+	CopyBytes(p + 1 + VM_PUB_KEY_SIZE, password, pwLen);
+	return VmEncodeFrame(out, outSize, p, (UInt16)(1 + VM_PUB_KEY_SIZE + pwLen));
+}
+
+UInt16 VmBuildKeyCommand(UInt8 *out, UInt16 outSize, UInt8 code, const UInt8 *pubKey)
+{
+	UInt8 p[1 + VM_PUB_KEY_SIZE];
+
+	p[0] = code;
+	CopyBytes(p + 1, pubKey, VM_PUB_KEY_SIZE);
+	return VmEncodeFrame(out, outSize, p, sizeof(p));
+}
+
+/* CMD_ADD_UPDATE_CONTACT: code, pub_key[32], type, flags, out_path_len, out_path[64], name[32], last_advert. */
+UInt16 VmBuildAddContact(UInt8 *out, UInt16 outSize, const UInt8 *pubKey, UInt8 type,
+                         const UInt8 *name, UInt16 nameLen)
+{
+	UInt8 p[1 + VM_PUB_KEY_SIZE + 3 + VM_MAX_PATH_SIZE + VM_NAME_SIZE + 4];
+	UInt16 i;
+
+	if (nameLen == 0 || nameLen > VM_NAME_SIZE - 1)
+		return 0;
+	for (i = 0; i < sizeof(p); i++)
+		p[i] = 0;
+	p[0] = VM_CMD_ADD_UPDATE_CONTACT;
+	CopyBytes(p + 1, pubKey, VM_PUB_KEY_SIZE);
+	p[1 + VM_PUB_KEY_SIZE] = type;
+	p[1 + VM_PUB_KEY_SIZE + 2] = VM_PATH_UNKNOWN;           /* no path yet: flood */
+	CopyBytes(p + 1 + VM_PUB_KEY_SIZE + 3 + VM_MAX_PATH_SIZE, name, nameLen);
+	return VmEncodeFrame(out, outSize, p, sizeof(p));
+}
+
 /* CMD_REBOOT: code + "reboot" (the firmware checks the word, so a stray byte can't reboot it). */
 UInt16 VmBuildReboot(UInt8 *out, UInt16 outSize)
 {
@@ -526,10 +567,13 @@ Boolean VmParseMessage(const UInt8 *p, UInt16 len, VmMessage *out)
 	out->txtType = p[i++];
 	out->timestamp = GetLE32(p + i);
 	i += 4;
+	out->hasSigner = 0;
 	if (!out->isChannel && out->txtType == VM_TXT_TYPE_SIGNED_PLAIN) {
 		if (len < i + 4)
 			return 0;
-		i += 4;     /* signer's key prefix */
+		CopyBytes(out->signer, p + i, 4);    /* the author, e.g. of a room post */
+		out->hasSigner = 1;
+		i += 4;
 	}
 	out->text = p + i;
 	out->textLen = (UInt16)(len - i);
@@ -573,5 +617,59 @@ Boolean VmParseCurrTime(const UInt8 *p, UInt16 len, UInt32 *unixSeconds)
 	if (len < 5 || p[0] != VM_RESP_CURR_TIME)
 		return 0;
 	*unixSeconds = GetLE32(p + 1);
+	return 1;
+}
+
+/* LOGIN_SUCCESS: code, permissions, prefix[6], ...; LOGIN_FAIL: code, 0, prefix[6]. */
+Boolean VmParseLoginResult(const UInt8 *p, UInt16 len, Boolean *ok, Boolean *isAdmin, UInt8 *prefix6)
+{
+	if (len < 8 || (p[0] != VM_PUSH_LOGIN_SUCCESS && p[0] != VM_PUSH_LOGIN_FAIL))
+		return 0;
+	*ok = p[0] == VM_PUSH_LOGIN_SUCCESS;
+	*isAdmin = *ok && (p[1] & 1);
+	CopyBytes(prefix6, p + 2, 6);
+	return 1;
+}
+
+/* LOG_RX: code, snr*4, rssi, then the raw packet: header, [transport codes], path_len, path, payload. */
+Boolean VmParseRxLog(const UInt8 *p, UInt16 len, VmRxLog *out)
+{
+	UInt16 i = 3, pathBytes;
+	UInt8 header, route, size;
+
+	if (len < 5 || p[0] != VM_PUSH_LOG_RX)
+		return 0;
+	out->snrQ = (Int8)p[1];
+	out->rssi = (Int8)p[2];
+	header = p[i++];
+	route = header & 0x03;
+	out->payloadType = (UInt8)((header >> 2) & 0x0F);
+	if (route == 0 || route == 3)            /* transport codes */
+		i += 4;
+	if (len < i + 1)
+		return 0;
+	out->hops = VM_PATH_HOPS(p[i]);
+	size = VM_PATH_HASH_BYTES(p[i]);
+	if (size > 3)
+		return 0;
+	pathBytes = (UInt16)out->hops * size;
+	i++;
+	if (len < i + pathBytes)
+		return 0;
+	out->isAdvert = 0;
+	out->fromLen = 0;
+	if (out->payloadType == VM_PAYLOAD_ADVERT && len >= i + pathBytes + 6) {
+		out->isAdvert = 1;
+		CopyBytes(out->advertKey, p + i + pathBytes, 6);
+	}
+	if (route == 1 || route == 0) {          /* flood: the path is who relayed it, in order */
+		if (out->hops > 0) {
+			out->fromLen = size;
+			CopyBytes(out->from, p + i + pathBytes - size, size);
+		} else if (out->isAdvert) {
+			out->fromLen = 6;
+			CopyBytes(out->from, out->advertKey, 6);
+		}
+	}
 	return 1;
 }

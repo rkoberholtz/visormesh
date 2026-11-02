@@ -1,8 +1,8 @@
 /*
  * Contacts, MeshTerm style: our node pinned first (star), then the stored
  * contacts by name, each with its type mark, name, when it was last heard and
- * its route. Refresh downloads the list; tap a contact for its details and
- * Message to open a direct conversation.
+ * its route. Refresh downloads the list, Add adds one by key; tap a contact
+ * for its details.
  */
 #include <PalmOS.h>
 #include "resources.h"
@@ -15,11 +15,9 @@
 #include "ui/text.h"
 #include "ui/rowlist.h"
 #include "contacts_form.h"
+#include "contact_form.h"
 
 /* In the second code segment: see sections.h for the rules. */
-static Char TypeGlyph(UInt8 type) VM_SECT2;
-static const Char *TypeName(UInt8 type) VM_SECT2;
-static void FormatRoute(Char *out, UInt8 pathLen) VM_SECT2;
 static UInt16 SelfRows(void) VM_SECT2;
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static void Load(Boolean draw) VM_SECT2;
@@ -33,7 +31,7 @@ static void ShowDetails(UInt16 row) VM_SECT2;
 
 static RowList gList;
 
-static Char TypeGlyph(UInt8 type)
+Char ContactTypeGlyph(UInt8 type)
 {
 	switch (type) {
 	case VM_ADV_TYPE_CHAT:     return GLYPH_COMPANION;
@@ -44,7 +42,7 @@ static Char TypeGlyph(UInt8 type)
 	}
 }
 
-static const Char *TypeName(UInt8 type)
+const Char *ContactTypeName(UInt8 type)
 {
 	switch (type) {
 	case VM_ADV_TYPE_CHAT:     return "Companion";
@@ -56,7 +54,7 @@ static const Char *TypeName(UInt8 type)
 }
 
 /* "direct", "2 hops", or "flood" (no known path). */
-static void FormatRoute(Char *out, UInt8 pathLen)
+void ContactFormatRoute(Char *out, UInt8 pathLen)
 {
 	UInt8 hops = VM_PATH_HOPS(pathLen);
 
@@ -93,7 +91,7 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 		FntSetFont(old);
 		return;
 	}
-	mark = TypeGlyph(c.type);
+	mark = ContactTypeGlyph(c.type);
 	WinDrawChars(&mark, 1, x + 1, y);
 	DrawCut(c.name, x + NAME_X, y, NAME_W);
 	if (c.lastAdvert) {
@@ -102,7 +100,7 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 		TxtFormatAge(buf, now > c.lastAdvert ? now - c.lastAdvert : 0);
 		DrawRight(buf, x + HEARD_R, y);
 	}
-	FormatRoute(buf, c.outPathLen);
+	ContactFormatRoute(buf, c.outPathLen);
 	DrawRight(buf, right - 1, y);
 	FntSetFont(old);
 }
@@ -145,28 +143,9 @@ static void Refresh(FormType *form)
 static void ShowDetails(UInt16 row)
 {
 	VmContact c;
-	DateTimeType dt;
-	VmConv conv;
-	Char line[96], route[12];
 
-	if (row < SelfRows() || !ContactsGet(row - SelfRows(), &c))
-		return;
-	FormatRoute(route, c.outPathLen);
-	if (c.lastAdvert) {
-		TimSecondsToDateTime(SessionLocalPalm(c.lastAdvert), &dt);
-		StrPrintF(line, "%s, %s\nKey %02x%02x%02x%02x%02x%02x...\nHeard %u-%02u-%02u %02u:%02u",
-		          TypeName(c.type), route, c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3], c.pubKey[4],
-		          c.pubKey[5], dt.year, dt.month, dt.day, dt.hour, dt.minute);
-	} else {
-		StrPrintF(line, "%s, %s\nKey %02x%02x%02x%02x%02x%02x...", TypeName(c.type), route,
-		          c.pubKey[0], c.pubKey[1], c.pubKey[2], c.pubKey[3], c.pubKey[4], c.pubKey[5]);
-	}
-	if (FrmCustomAlert(ContactInfoAlert, c.name, line, "") == 1) {     /* Message */
-		MemSet(&conv, sizeof(conv), 0);
-		conv.type = VM_CONV_DIRECT;
-		MemMove(conv.key, c.pubKey, 6);
-		AppOpenConversation(&conv);
-	}
+	if (row >= SelfRows() && ContactsGet(row - SelfRows(), &c))
+		ContactFormOpen(&c);
 }
 
 Boolean ContactsFormHandleEvent(EventType *event)
@@ -197,6 +176,12 @@ Boolean ContactsFormHandleEvent(EventType *event)
 			return true;
 		case ContactsDoneButton:
 			FrmGotoForm(HomeForm);
+			return true;
+		case ContactsAddButton:
+			if (SessionIsConnected())
+				FrmGotoForm(ContactAddForm);
+			else
+				FrmCustomAlert(SettingsErrorAlert, "Connect to the radio first (Node).", "", "");
 			return true;
 		}
 		break;

@@ -61,6 +61,8 @@ void AppErrorText(Err err, Char *out)
 		StrCopy(out, "Message too long.");
 	else if (err == serErrNotOpen)
 		StrCopy(out, "Not connected.");
+	else if (err == vmErrLoginFailed)
+		StrCopy(out, "Login refused: wrong password?");
 	else
 		StrPrintF(out, "Error 0x%x.", err);
 }

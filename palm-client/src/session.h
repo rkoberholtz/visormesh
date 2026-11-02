@@ -14,6 +14,7 @@
 #define vmErrRadio     (appErrorClass | 2)   /* radio replied RESP_ERR */
 #define vmErrBadReply  (appErrorClass | 3)   /* reply had the right code but didn't parse */
 #define vmErrTooLong   (appErrorClass | 4)   /* message text over the byte limit */
+#define vmErrLoginFailed (appErrorClass | 5) /* a room/repeater refused the password */
 
 /* What SessionPoll found changed, so the screen on show can redraw. */
 #define VM_CHANGED_MESSAGES  0x0001
@@ -84,5 +85,16 @@ Err     SessionSend(const VmConv *conv, const Char *text, UInt16 *index);
 /* Sends a failed message again (next attempt number). */
 Err     SessionRetry(UInt16 index);
 Err     SessionSendAdvert(Boolean flood);
+
+/*
+ * Logs into a room (or repeater) by its full key: waits for the answer over
+ * the mesh (vmErrLoginFailed for a wrong password, vmErrNoReply if none).
+ */
+Err     SessionLogin(const UInt8 *pubKey, const Char *password, Boolean *isAdmin);
+Boolean SessionIsLoggedIn(const UInt8 *prefix6);
+/* VM_CMD_RESET_PATH, VM_CMD_REMOVE_CONTACT, VM_CMD_LOGOUT for a full key; needs RESP_OK. */
+Err     SessionKeyCommand(UInt8 code, const UInt8 *pubKey);
+/* Adds a contact the radio hasn't heard yet, by its full key (unknown path). */
+Err     SessionAddContact(const UInt8 *pubKey, UInt8 type, const Char *name);
 
 #endif

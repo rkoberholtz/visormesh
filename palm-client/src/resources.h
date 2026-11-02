@@ -50,6 +50,29 @@
 #define ContactsScroll        1302
 #define ContactsRefreshButton 1303
 #define ContactsDoneButton    1304
+#define ContactsAddButton     1305
+
+#define ContactForm           1800
+#define ContactGadget         1801
+#define ContactScroll         1802
+#define ContactDoneButton     1803
+#define ContactMessageButton  1804
+#define ContactLoginButton    1805
+#define ContactMoreButton     1806
+#define ContactMoreList       1807
+
+#define ContactAddForm        1900
+#define ContactAddNameField   1901
+#define ContactAddChatPush    1902
+#define ContactAddRoomPush    1903
+#define ContactAddRepeaterPush 1904
+#define ContactAddKeyField    1905
+#define ContactAddAddButton   1906
+#define ContactAddCancelButton 1907
+#define ContactAddTypeGroup   4
+
+#define PasswordAlert         2007
+#define RemoveContactAlert    2008
 
 #define HomeForm              1500
 #define HomeGadget            1501

@@ -240,6 +240,69 @@ static void test_sha256_and_channels(void)
 	                        testKey) == 0);
 }
 
+static void test_contacts_and_rooms(void)
+{
+	UInt8 out[200], key[32], prefix[6];
+	Boolean ok, admin;
+	VmFrameDecoder d;
+	VmMessage m;
+	UInt16 i;
+	static const UInt8 success[] = { 0x3e, 0x0e, 0x00, 0x85, 0x01, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 3, 1 };
+	static const UInt8 fail[] = { 0x3e, 0x08, 0x00, 0x86, 0x00, 1, 2, 3, 4, 5, 6 };
+
+	for (i = 0; i < 32; i++)
+		key[i] = (UInt8)(0x40 + i);
+
+	CHECK(VmBuildLogin(out, sizeof(out), key, (const UInt8 *)"hello", 5) == 3 + 1 + 32 + 5);
+	CHECK(out[3] == 26 && out[4] == 0x40 && out[35] == 0x5f && memcmp(out + 36, "hello", 5) == 0);
+	CHECK(VmBuildLogin(out, sizeof(out), key, (const UInt8 *)"", 0) == 3 + 1 + 32);      /* empty password */
+
+	CHECK(VmBuildKeyCommand(out, sizeof(out), VM_CMD_REMOVE_CONTACT, key) == 3 + 33);
+	CHECK(out[3] == 15 && out[4] == 0x40 && out[35] == 0x5f);
+	CHECK(VmBuildKeyCommand(out, sizeof(out), VM_CMD_RESET_PATH, key) == 3 + 33 && out[3] == 13);
+	CHECK(VmBuildKeyCommand(out, sizeof(out), VM_CMD_LOGOUT, key) == 3 + 33 && out[3] == 29);
+
+	/* same layout as a CONTACT record (MyMesh::updateContactFromFrame), without the optional tail */
+	CHECK(VmBuildAddContact(out, sizeof(out), key, VM_ADV_TYPE_ROOM, (const UInt8 *)"Room", 4) == 3 + 1 + 32 + 3 + 64 + 32 + 4);
+	CHECK(out[3] == 9 && out[4 + 32] == 3 && out[4 + 33] == 0 && out[4 + 34] == 0xff);
+	CHECK(memcmp(out + 4 + 35 + 64, "Room", 4) == 0 && out[4 + 35 + 64 + 4] == 0);
+	CHECK(VmBuildAddContact(out, sizeof(out), key, 1, (const UInt8 *)"", 0) == 0);
+
+	decode_one(&d, success, sizeof(success));
+	CHECK(VmParseLoginResult(d.payload, d.len, &ok, &admin, prefix) && ok && admin && prefix[5] == 6);
+	decode_one(&d, fail, sizeof(fail));
+	CHECK(VmParseLoginResult(d.payload, d.len, &ok, &admin, prefix) && !ok && !admin && prefix[0] == 1);
+
+	/* a signed message keeps its author's prefix (room posts) */
+	decode_one(&d, kSignedMsg, sizeof(kSignedMsg));
+	CHECK(VmParseMessage(d.payload, d.len, &m) && m.hasSigner && m.signer[0] == 0xa0 && m.signer[3] == 0xa3);
+	decode_one(&d, kContactMsg, sizeof(kContactMsg));
+	CHECK(VmParseMessage(d.payload, d.len, &m) && !m.hasSigner);
+}
+
+static void test_rx_log(void)
+{
+	VmRxLog rx;
+	/* zero-hop flood advert: snr +6.25, rssi -92 */
+	static const UInt8 advert0[] = { 0x88, 25, (UInt8)-92, (VM_PAYLOAD_ADVERT << 2) | 1, 0x40,
+	                                 0x9b, 0x1e, 0x4f, 0x92, 0xf1, 0x37, 0, 0 };
+	/* advert relayed by two repeaters, 2-byte hashes: aaaa then bbbb */
+	static const UInt8 advert2[] = { 0x88, (UInt8)-8, (UInt8)-110, (VM_PAYLOAD_ADVERT << 2) | 1, 0x42,
+	                                 0xaa, 0xaa, 0xbb, 0xbb, 0x9b, 0x1e, 0x4f, 0x92, 0xf1, 0x37 };
+	/* text message with transport codes, flood, 1 hop of 1-byte hash cc */
+	static const UInt8 text1[] = { 0x88, 4, (UInt8)-80, (2 << 2) | 0, 1, 2, 3, 4, 0x01, 0xcc, 9, 9, 9 };
+	/* direct route: the path is the route ahead, so no 'from' */
+	static const UInt8 direct[] = { 0x88, 4, (UInt8)-80, (2 << 2) | 2, 0x01, 0xdd, 9, 9 };
+
+	CHECK(VmParseRxLog(advert0, sizeof(advert0), &rx) && rx.snrQ == 25 && rx.rssi == -92);
+	CHECK(rx.isAdvert && rx.hops == 0 && rx.fromLen == 6 && rx.from[0] == 0x9b && rx.advertKey[5] == 0x37);
+	CHECK(VmParseRxLog(advert2, sizeof(advert2), &rx) && rx.snrQ == -8 && rx.hops == 2);
+	CHECK(rx.isAdvert && rx.advertKey[0] == 0x9b && rx.fromLen == 2 && rx.from[0] == 0xbb && rx.from[1] == 0xbb);
+	CHECK(VmParseRxLog(text1, sizeof(text1), &rx) && !rx.isAdvert && rx.hops == 1 && rx.fromLen == 1 && rx.from[0] == 0xcc);
+	CHECK(VmParseRxLog(direct, sizeof(direct), &rx) && rx.fromLen == 0);
+	CHECK(!VmParseRxLog(advert2, 7, &rx));       /* path cut off */
+}
+
 static void test_path_len(void)
 {
 	CHECK(VM_PATH_HOPS(0x00) == 0 && VM_PATH_HASH_BYTES(0x00) == 1);
@@ -436,6 +499,8 @@ int main(void)
 	test_decimals();
 	test_path_len();
 	test_sha256_and_channels();
+	test_contacts_and_rooms();
+	test_rx_log();
 	test_messaging();
 	test_parse_self_info();
 	test_parse_contacts();

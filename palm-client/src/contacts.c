@@ -68,6 +68,11 @@ Boolean ContactsGet(UInt16 index, VmContact *out)
 
 Boolean ContactsFindByPrefix(const UInt8 *prefix6, VmContact *out)
 {
+	return ContactsFindByPrefixN(prefix6, 6, out);
+}
+
+Boolean ContactsFindByPrefixN(const UInt8 *prefix, UInt16 len, VmContact *out)
+{
 	UInt16 i, n;
 	MemHandle h;
 	Boolean found = false;
@@ -82,7 +87,7 @@ Boolean ContactsFindByPrefix(const UInt8 *prefix6, VmContact *out)
 		if (!h)
 			continue;
 		c = MemHandleLock(h);
-		if (MemCmp(c->pubKey, prefix6, 6) == 0) {
+		if (MemCmp(c->pubKey, prefix, len) == 0) {
 			MemMove(out, c, sizeof(VmContact));
 			found = true;
 		}
