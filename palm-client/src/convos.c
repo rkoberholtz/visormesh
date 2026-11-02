@@ -186,8 +186,11 @@ UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)
 			}
 			if (h->unread)
 				r->unread++;
-			if (h->dir == VM_DIR_OUT && h->status == VM_ST_FAILED)
-				r->failed = true;
+			/* only the newest outgoing message counts: a later send that worked clears it */
+			if (h->dir == VM_DIR_OUT && h->received >= r->lastOut) {
+				r->lastOut = h->received;
+				r->failed = h->status == VM_ST_FAILED;
+			}
 			if (r->conv.type == VM_CONV_DIRECT)
 				r->marker = GLYPH_COMPANION;     /* has history */
 		}

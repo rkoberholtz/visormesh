@@ -21,7 +21,8 @@ typedef struct {
 	Char    name[VM_NAME_SIZE];
 	UInt16  unread;
 	UInt32  last;                 /* Unix seconds of the newest message, 0 = none */
-	Boolean failed;               /* an outgoing message here wasn't delivered */
+	Boolean failed;               /* the newest outgoing message here wasn't delivered */
+	UInt32  lastOut;              /* when that message was stored (Unix seconds) */
 	Boolean muted;                /* a muted channel (mutes.h) */
 	Char    preview[VM_PREVIEW_LEN];
 } VmConvRow;
