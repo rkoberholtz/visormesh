@@ -21,6 +21,7 @@
 #include "ports.h"
 #include "preview_form.h"
 #include "channel_form.h"
+#include "bgcheck.h"
 #include "ui/draw.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
@@ -170,7 +171,26 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 
 	if (err != errNone)
 		return err;
+	switch (cmd) {
+	case sysAppLaunchCmdAlarmTriggered:
+		BgAlarmTriggered((SysAlarmTriggeredParamType *)cmdPBP);
+		return errNone;
+	case sysAppLaunchCmdDisplayAlarm:
+		BgDisplayAlarm();
+		return errNone;
+	case VM_LAUNCH_BGCHECK:
+		/* only with the globals BgAlarmTriggered launches it with */
+		if (launchFlags & sysAppLaunchFlagNewGlobals)
+			*(UInt16 *)cmdPBP = BgCheckRun();
+		return errNone;
+	case sysAppLaunchCmdSystemReset:
+	case sysAppLaunchCmdSyncNotify:     /* installed, which drops the alarm */
+	case sysAppLaunchCmdTimeChange:
+		BgSchedule();
+		return errNone;
+	}
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
+		BgCancel();
 		AppLoadPrefs();
 		UiFontInit(SoundsLargeText());
 		HeardLoad();
@@ -183,6 +203,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		ChannelsClose();
 		MessagesClose();
 		UiFontRelease();
+		BgSchedule();
 	}
 	return errNone;
 }

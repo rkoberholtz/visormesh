@@ -253,7 +253,8 @@ UInt32 SessionRadioTime(void)
 	return gRadioTime ? gRadioTime + (TimGetSeconds() - gRadioTimeAt) : 0;
 }
 
-Err SessionConnect(void)
+/* Opens the link and runs DEVICE_QUERY + APP_START; on error the link is closed. */
+static Err OpenAndQuery(void)
 {
 	Err err;
 
@@ -276,7 +277,15 @@ Err SessionConnect(void)
 	}
 	gConnected = true;
 	gScopeMode = VM_SCOPE_UNKNOWN;
+	return errNone;
+}
 
+Err SessionConnect(void)
+{
+	Err err = OpenAndQuery();
+
+	if (err != errNone)
+		return err;
 	/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
 	SessionSyncClock();
 	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
@@ -285,6 +294,15 @@ Err SessionConnect(void)
 		gChanged |= VM_CHANGED_CONTACTS;
 	SessionSyncMessages();
 	return errNone;
+}
+
+Err SessionConnectLight(void)
+{
+	Err err = OpenAndQuery();
+
+	if (err == errNone)
+		SessionSyncMessages();
+	return err;
 }
 
 Err SessionRefresh(void)

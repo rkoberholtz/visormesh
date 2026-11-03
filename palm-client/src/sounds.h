@@ -31,6 +31,9 @@ void    SoundsPlay(UInt8 kind) VM_SECT3;
  */
 void    SoundsNotify(UInt16 kinds, const VmConv *onScreen) VM_SECT3;
 
+/* The kinds turned on (1 << VM_SND_*). */
+UInt16  SoundsEnabledKinds(void) VM_SECT3;
+
 /* Text size: the larger UI font (ui/draw.h). */
 Boolean SoundsLargeText(void) VM_SECT3;
 

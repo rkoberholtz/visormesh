@@ -3,6 +3,7 @@
 #include "app.h"
 #include "session.h"
 #include "sounds.h"
+#include "bgcheck.h"
 #include "ui/draw.h"
 
 static void SavePrefs(void) VM_SECT3;
@@ -40,6 +41,10 @@ static const UInt16 kTunes[VM_SND_COUNT][6] = {
 	{ 2637, 60, 1976, 60, 1568, 80 },      /* new contact: falling three */
 };
 
+/* The Check when closed list, in minutes (0 = off). */
+#define VM_CHECK_CHOICES 5
+static const UInt16 kCheckMinutes[VM_CHECK_CHOICES] = { 0, 5, 15, 30, 60 };
+
 void SoundsLoad(void)
 {
 	SoundsPrefs prefs;
@@ -53,6 +58,11 @@ void SoundsLoad(void)
 	if (PrefGetAppPreferences(VM_CREATOR, VM_TEXT_PREFS_ID, &text, &size, true) != noPreferenceFound &&
 	    size == sizeof(text) && text.version == VM_TEXT_PREFS_VERSION)
 		gLargeText = text.large;
+}
+
+UInt16 SoundsEnabledKinds(void)
+{
+	return gEnabled;
 }
 
 Boolean SoundsLargeText(void)
@@ -117,7 +127,8 @@ void SoundsFormOpen(UInt16 returnForm)
 Boolean SoundsFormHandleEvent(EventType *event)
 {
 	FormType *form = FrmGetActiveForm();
-	UInt16 id;
+	ListType *list;
+	UInt16 id, i, minutes;
 	UInt8 kind;
 
 	switch (event->eType) {
@@ -126,8 +137,21 @@ Boolean SoundsFormHandleEvent(EventType *event)
 			FrmSetControlValue(form, FrmGetObjectIndex(form, SoundsFirstCheck + kind),
 			                   (gEnabled & (1 << kind)) != 0);
 		FrmSetControlGroupSelection(form, SoundsTextGroup, gLargeText ? SoundsLargePush : SoundsSmallPush);
+		list = FrmGetObjectPtr(form, FrmGetObjectIndex(form, SoundsCheckList));
+		minutes = BgInterval();
+		for (i = 0; i < VM_CHECK_CHOICES - 1 && kCheckMinutes[i] != minutes; i++)
+			;
+		LstSetSelection(list, i);
+		CtlSetLabel(FrmGetObjectPtr(form, FrmGetObjectIndex(form, SoundsCheckTrigger)),
+		            LstGetSelectionText(list, i));
 		FrmDrawForm(form);
 		return true;
+	case popSelectEvent:
+		/* the alarm is set when the app exits; the trigger's label is set by the form */
+		if (event->data.popSelect.controlID == SoundsCheckTrigger &&
+		    event->data.popSelect.selection < VM_CHECK_CHOICES)
+			BgSetInterval(kCheckMinutes[event->data.popSelect.selection]);
+		break;
 	case ctlSelectEvent:
 		id = event->data.ctlSelect.controlID;
 		if (id == SoundsDoneButton) {

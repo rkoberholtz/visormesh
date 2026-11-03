@@ -25,6 +25,11 @@
 
 /* Opens the link and runs DEVICE_QUERY + APP_START. On error the link is closed. */
 Err     SessionConnect(void);
+/*
+ * Like SessionConnect without refreshing the channels and contacts (the stored
+ * copies are used): for the check while the app is closed.
+ */
+Err     SessionConnectLight(void);
 void    SessionDisconnect(void);
 Boolean SessionIsConnected(void);
 Boolean SessionMessageWaiting(void);

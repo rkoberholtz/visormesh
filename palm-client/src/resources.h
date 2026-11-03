@@ -130,6 +130,9 @@
 #define SoundsSmallPush       2212
 #define SoundsLargePush       2213
 #define SoundsTextGroup       5
+#define SoundsCheckTrigger    2214
+#define SoundsCheckList       2215   /* items: kCheckMinutes (sounds.c) */
+#define BgNewAlert            2216
 
 #define ScopesForm            2300
 #define ScopesDefaultLabel    2301
