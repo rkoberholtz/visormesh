@@ -15,14 +15,17 @@ DATA "EMJI" ID EmojiArtRes "resources/emoji.bin"
 
 /*
  * Menus: Go and Options on every screen; a Channel menu on Home and in a
- * channel conversation (main.c picks ConvoChanMenuBar or MainMenuBar for ConvoForm).
+ * channel conversation (main.c picks ConvoChanMenuBar or ConvoMenuBar for
+ * ConvoForm); the standard Edit menu wherever there's a text field. The
+ * Edit commands are the system's IDs: FrmHandleEvent applies them to the
+ * field with the focus. App shortcuts keep clear of U X C P S K G.
  */
 MENU ID MainMenuBar
 BEGIN
   PULLDOWN "Go"
   BEGIN
     MENUITEM "Conversations" ID MainMenuHome "H"
-    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
   END
@@ -31,10 +34,58 @@ BEGIN
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
-    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
-    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+  END
+END
+
+MENU ID ConvoMenuBar
+BEGIN
+  PULLDOWN "Go"
+  BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
+  END
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM "-" ID 10005
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
+    MENUITEM "Preferences..." ID MainMenuSounds "R"
+    MENUITEM "-" AUTOID
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+  END
+END
+
+/* Forms with text fields and no other menu */
+MENU ID EditMenuBar
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM "-" ID 10005
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
   END
 END
 
@@ -43,7 +94,7 @@ BEGIN
   PULLDOWN "Go"
   BEGIN
     MENUITEM "Conversations" ID MainMenuHome "H"
-    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
   END
@@ -56,9 +107,9 @@ BEGIN
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
-    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
-    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
   END
 END
@@ -68,9 +119,20 @@ BEGIN
   PULLDOWN "Go"
   BEGIN
     MENUITEM "Conversations" ID MainMenuHome "H"
-    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+  END
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM "-" ID 10005
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
   END
   PULLDOWN "Channel"
   BEGIN
@@ -85,9 +147,9 @@ BEGIN
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
-    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
-    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
   END
 END
@@ -110,7 +172,7 @@ END
 FORM ID ConvoForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenuBar
+MENUID ConvoMenuBar
 BEGIN
   TITLE "                                "
   GADGET ID ConvoGadget AT (0 16 153 104)
@@ -182,6 +244,7 @@ END
 FORM ID ContactAddForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID EditMenuBar
 BEGIN
   TITLE "Add Contact"
   LABEL "Name:" AUTOID AT (5 20) FONT 1
@@ -203,7 +266,7 @@ END
 FORM ID RemoteForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenuBar
+MENUID ConvoMenuBar
 BEGIN
   TITLE "                                "
   GADGET ID RemoteGadget AT (0 16 153 114)
@@ -270,6 +333,7 @@ END
 FORM ID SettingsForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID EditMenuBar
 SAVEBEHIND
 BEGIN
   TITLE "Node Settings"
@@ -358,6 +422,7 @@ END
 FORM ID ScopesForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID EditMenuBar
 BEGIN
   TITLE "Flood Scopes"
   LABEL "Radio default:" AUTOID AT (5 17) FONT 1
@@ -467,6 +532,7 @@ END
 FORM ID ChannelForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID EditMenuBar
 BEGIN
   TITLE "Add Channel"
   LABEL "Name:" AUTOID AT (5 20) FONT 1

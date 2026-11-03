@@ -42,7 +42,7 @@ static Err RomVersionCompatible(UInt32 required, UInt16 launchFlags)
 	return sysErrRomIncompatible;
 }
 
-/* The Options menu is the same on every screen. */
+/* Go, Channel and Options commands, whichever screen's menu they're on; Edit is the form's. */
 static Boolean HandleMenu(UInt16 itemID)
 {
 	switch (itemID) {
@@ -79,8 +79,8 @@ static Boolean AppHandleEvent(EventType *event)
 	switch (formId) {
 	case HomeForm:        FrmSetEventHandler(form, HomeFormHandleEvent);        break;
 	case ConvoForm:
-		/* the Channel menu only for a channel; a DM gets the plain one */
-		FrmSetMenu(form, gAppConv.type == VM_CONV_CHANNEL ? ConvoChanMenuBar : MainMenuBar);
+		/* the Channel menu only for a channel */
+		FrmSetMenu(form, gAppConv.type == VM_CONV_CHANNEL ? ConvoChanMenuBar : ConvoMenuBar);
 		FrmSetEventHandler(form, ConvoFormHandleEvent);
 		break;
 	case ContactsForm:    FrmSetEventHandler(form, ContactsFormHandleEvent);    break;

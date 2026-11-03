@@ -30,7 +30,9 @@
 #define HomeMenuBar        1013   /* Go, Channel (Add), Options */
 #define MainMenuShot       1015
 #define MainMenuShotLater  1016
-#define ConvoChanMenuBar   1014   /* Go, Channel (Add, Leave, Mute, Scope), Options */
+#define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */
+#define ConvoMenuBar       1017   /* Go, Edit, Options: a DM, the console */
+#define EditMenuBar        1018   /* Edit only: forms with text fields */
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
