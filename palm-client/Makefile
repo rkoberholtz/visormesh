@@ -60,7 +60,7 @@ build/$(APP)-sections.o: build/$(APP)-sections.s
 build/$(APP): $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
 	$(CC) $(CFLAGS) -o $@ $(OBJS) build/$(APP)-sections.o build/$(APP)-sections.ld
 
-build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt resources/largefont.nfnt resources/emoji.bin | build
+build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt resources/largefont.nfnt resources/emoji.bin resources/icon/*.bmp | build
 	rm -rf build/res && mkdir -p build/res
 	$(PILRC) -q -I src $< build/res
 	touch $@

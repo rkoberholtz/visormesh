@@ -190,7 +190,6 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		return errNone;
 	}
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
-		BgCancel();
 		AppLoadPrefs();
 		UiFontInit(SoundsLargeText());
 		HeardLoad();

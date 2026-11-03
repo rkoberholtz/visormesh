@@ -2,6 +2,8 @@
 
 VERSION ID 1 "0.1"
 APPLICATIONICONNAME ID 1000 "VisorMesh"
+ICONFAMILY "resources/icon/large1.bmp" "" "resources/icon/large4.bmp" "resources/icon/large8.bmp" TRANSPARENT 255 255 255
+SMALLICONFAMILY "resources/icon/small1.bmp" "" "resources/icon/small4.bmp" "resources/icon/small8.bmp" TRANSPARENT 255 255 255
 
 /*
  * Small UI font, registered as app font 0x80 at launch. tools/gen_font.py writes the
@@ -285,7 +287,7 @@ BEGIN
   CHECKBOX "Public channel" ID 2206 AT (5 PREVBOTTOM AUTO 11)
   CHECKBOX "New contacts" ID 2207 AT (5 PREVBOTTOM AUTO 11)
   LABEL "Turning a sound on plays it." AUTOID AT (5 PREVBOTTOM+1)
-  LABEL "Volume: Prefs, General, Alarm" AUTOID AT (5 PREVBOTTOM)
+  LABEL "Volume: Prefs, General, Alarm          " ID SoundsStatusLabel AT (5 PREVBOTTOM)
   LABEL "Check when closed:" AUTOID AT (5 132) FONT 1
   POPUPTRIGGER "Off" ID SoundsCheckTrigger AT (95 131 AUTO AUTO) LEFTANCHOR
   LIST "Off" "Every 5 min" "Every 15 min" "Every 30 min" "Every hour" ID SoundsCheckList AT (90 90 66 AUTO) NONUSABLE VISIBLEITEMS 5

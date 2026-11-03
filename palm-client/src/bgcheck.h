@@ -7,8 +7,8 @@
  * and plays the notification sound. If anything new arrived, the alarm stays
  * for display, and BgDisplayAlarm shows an alert with an Open button.
  *
- * While the app is open it checks for itself: the alarm is cleared at launch
- * and set again at exit.
+ * While the app is open it checks for itself: the alarm keeps coming and is
+ * skipped, and exiting sets it N minutes on.
  */
 #ifndef VM_BGCHECK_H
 #define VM_BGCHECK_H
@@ -24,11 +24,13 @@ void   BgSetInterval(UInt16 minutes);
 
 /* Sets the next alarm from the interval (clears it when off). */
 void   BgSchedule(void);
-void   BgCancel(void);
 
 /* Launch codes; no globals needed. */
 void   BgAlarmTriggered(SysAlarmTriggeredParamType *p);
 void   BgDisplayAlarm(void);
+
+/* "Last 18:05 ok, next 18:10" for Preferences: out holds 40. */
+void   BgStatusText(Char *out) VM_SECT4;
 
 /* The VM_LAUNCH_BGCHECK work, with globals: returns the enabled sound kinds (1 << VM_SND_*) found. */
 UInt16 BgCheckRun(void) VM_SECT4;

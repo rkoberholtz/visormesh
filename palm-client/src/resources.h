@@ -133,6 +133,7 @@
 #define SoundsCheckTrigger    2214
 #define SoundsCheckList       2215   /* items: kCheckMinutes (sounds.c) */
 #define BgNewAlert            2216
+#define SoundsStatusLabel     2217   /* last background check, or the volume hint */
 
 #define ScopesForm            2300
 #define ScopesDefaultLabel    2301

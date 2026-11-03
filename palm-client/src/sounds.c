@@ -7,6 +7,7 @@
 #include "ui/draw.h"
 
 static void SavePrefs(void) VM_SECT3;
+static void ShowCheckStatus(FormType *form) VM_SECT3;
 
 #define VM_SOUNDS_PREFS_ID      1
 #define VM_SOUNDS_PREFS_VERSION 1
@@ -117,6 +118,18 @@ void SoundsNotify(UInt16 kinds, const VmConv *onScreen)
 	}
 }
 
+/* The status line shows the volume hint while checking is off. */
+static void ShowCheckStatus(FormType *form)
+{
+	Char text[40];
+
+	if (BgInterval())
+		BgStatusText(text);
+	else
+		StrCopy(text, "Volume: Prefs, General, Alarm");
+	FrmCopyLabel(form, SoundsStatusLabel, text);
+}
+
 void SoundsFormOpen(UInt16 returnForm)
 {
 	if (returnForm != SoundsForm)
@@ -144,13 +157,17 @@ Boolean SoundsFormHandleEvent(EventType *event)
 		LstSetSelection(list, i);
 		CtlSetLabel(FrmGetObjectPtr(form, FrmGetObjectIndex(form, SoundsCheckTrigger)),
 		            LstGetSelectionText(list, i));
+		ShowCheckStatus(form);
 		FrmDrawForm(form);
 		return true;
 	case popSelectEvent:
-		/* the alarm is set when the app exits; the trigger's label is set by the form */
+		/* the trigger's label is set by the form */
 		if (event->data.popSelect.controlID == SoundsCheckTrigger &&
-		    event->data.popSelect.selection < VM_CHECK_CHOICES)
+		    event->data.popSelect.selection < VM_CHECK_CHOICES) {
 			BgSetInterval(kCheckMinutes[event->data.popSelect.selection]);
+			BgSchedule();
+			ShowCheckStatus(form);
+		}
 		break;
 	case ctlSelectEvent:
 		id = event->data.ctlSelect.controlID;
