@@ -10,4 +10,9 @@ void    ContactFormOpen(const VmContact *c) VM_SECT3;
 Boolean ContactFormHandleEvent(EventType *event) VM_SECT3;
 Boolean ContactAddFormHandleEvent(EventType *event) VM_SECT3;
 
+/* The More actions, for any contact (also Home's tap-and-hold); errors show in an alert. */
+void    ContactResetPath(const VmContact *c) VM_SECT3;
+/* Asks first; true if it was removed. */
+Boolean ContactRemove(const VmContact *c) VM_SECT3;
+
 #endif

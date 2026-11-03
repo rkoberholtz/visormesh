@@ -34,6 +34,7 @@ static void Status(const Char *text) VM_SECT3;
 static Boolean Login(FormType *form) VM_SECT3;
 static void OpenConversation(void) VM_SECT3;
 static Boolean ReloadContact(void) VM_SECT3;
+static Boolean Connected(void) VM_SECT3;
 static void More(FormType *form) VM_SECT3;
 static void ShowButtons(FormType *form) VM_SECT3;
 static Boolean Add(FormType *form) VM_SECT3;
@@ -222,19 +223,51 @@ static Boolean ReloadContact(void)
 	return ContactsFindByPrefixN(gContact.pubKey, VM_PUB_KEY_SIZE, &gContact);
 }
 
+static Boolean Connected(void)
+{
+	if (SessionIsConnected())
+		return true;
+	Error("Connect to the radio first (Node).");
+	return false;
+}
+
+void ContactResetPath(const VmContact *c)
+{
+	Err err;
+
+	if (!Connected())
+		return;
+	err = SessionKeyCommand(VM_CMD_RESET_PATH, c->pubKey);
+	if (err == errNone)
+		err = ContactsRefresh(NULL);
+	if (err != errNone)
+		ErrorFor(err);
+}
+
+Boolean ContactRemove(const VmContact *c)
+{
+	Err err;
+
+	if (!Connected() || FrmCustomAlert(RemoveContactAlert, c->name, "", "") != 0)
+		return false;
+	err = SessionKeyCommand(VM_CMD_REMOVE_CONTACT, c->pubKey);
+	if (err == errNone)
+		err = ContactsRefresh(NULL);
+	if (err != errNone) {
+		ErrorFor(err);
+		return false;
+	}
+	return true;
+}
+
 static void More(FormType *form)
 {
 	ListType *list = GetObject(form, ContactMoreList);
 	Int16 pick = LstPopupList(list);
-	Err err;
 
-	if (pick < 0)
-		return;
-	if (!SessionIsConnected()) {
-		Error("Connect to the radio first (Node).");
-		return;
-	}
 	if (pick == 0) {                    /* Admin Console */
+		if (!Connected())
+			return;
 		if (gContact.type != VM_ADV_TYPE_ROOM && gContact.type != VM_ADV_TYPE_REPEATER) {
 			Error("Only repeaters and rooms have an admin console.");
 			return;
@@ -242,24 +275,12 @@ static void More(FormType *form)
 		if (SessionIsLoggedIn(gContact.pubKey) || Login(form))
 			RemoteOpen(&gContact);
 	} else if (pick == 1) {             /* Reset Path */
-		err = SessionKeyCommand(VM_CMD_RESET_PATH, gContact.pubKey);
-		if (err == errNone)
-			err = ContactsRefresh(NULL);
-		if (err != errNone)
-			ErrorFor(err);
+		ContactResetPath(&gContact);
 		ReloadContact();
 		RowListDraw(&gList);
 	} else if (pick == 2) {             /* Remove */
-		if (FrmCustomAlert(RemoveContactAlert, gContact.name, "", "") != 0)
-			return;
-		err = SessionKeyCommand(VM_CMD_REMOVE_CONTACT, gContact.pubKey);
-		if (err == errNone)
-			err = ContactsRefresh(NULL);
-		if (err != errNone) {
-			ErrorFor(err);
-			return;
-		}
-		FrmGotoForm(ContactsForm);
+		if (ContactRemove(&gContact))
+			FrmGotoForm(ContactsForm);
 	}
 }
 
