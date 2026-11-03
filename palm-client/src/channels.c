@@ -2,10 +2,13 @@
 #include "protocol.h"
 #include "session.h"
 #include "channels.h"
+#include "messages.h"
 #include "ui/text.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static Boolean InUse(const VmChannel *c) VM_SECT2;
+static void RefileConv(VmConv *conv, void *ctx) VM_SECT2;
+static void RefileMessages(UInt16 oldCount, UInt8 maxChannels) VM_SECT2;
 
 /* data arrays, not literals: this module is in the second code segment (sections.h) */
 static Char DB_NAME[] = "VisorMeshChannels";
@@ -82,6 +85,74 @@ static Boolean InUse(const VmChannel *c)
 	return c->name[0] != 0;
 }
 
+/*
+ * Messages are filed by slot, so when a channel moves to another slot or is
+ * left, its history follows it by secret, or is set aside (VM_SLOT_GONE) and
+ * comes back if the channel is added again, rather than turning up under
+ * whatever channel takes the slot next.
+ */
+#define KEY_LEN 6     /* the secret prefix messages carry (messages.h) */
+
+typedef struct {
+	UInt16 nOld, nNew;
+	UInt8  *oldKeys;   /* by slot, nOld slots; zero: not in the old cache */
+	UInt8  *newKeys;   /* slot, then key, nNew entries */
+} Refile;
+
+static void RefileConv(VmConv *conv, void *ctx)
+{
+	Refile *r = ctx;
+	UInt8 zero[KEY_LEN];
+	UInt16 i;
+
+	MemSet(zero, sizeof(zero), 0);
+	if (MemCmp(conv->key, zero, KEY_LEN) == 0) {
+		/* stored before messages carried the key: the old cache knows it */
+		if (conv->channel >= r->nOld || MemCmp(r->oldKeys + conv->channel * KEY_LEN, zero, KEY_LEN) == 0)
+			return;
+		MemMove(conv->key, r->oldKeys + conv->channel * KEY_LEN, KEY_LEN);
+	}
+	for (i = 0; i < r->nNew; i++)
+		if (MemCmp(r->newKeys + i * (1 + KEY_LEN) + 1, conv->key, KEY_LEN) == 0) {
+			conv->channel = r->newKeys[i * (1 + KEY_LEN)];
+			return;
+		}
+	conv->channel = VM_SLOT_GONE;
+}
+
+/* Records before oldCount are the previous cache, the rest the new one. */
+static void RefileMessages(UInt16 oldCount, UInt8 maxChannels)
+{
+	VmChannel c;
+	Refile r;
+	UInt16 i, n = DmNumRecords(gDb);
+
+	r.nOld = maxChannels;
+	r.nNew = 0;
+	r.oldKeys = MemPtrNew(maxChannels * KEY_LEN + 1);
+	r.newKeys = MemPtrNew((n - oldCount) * (1 + KEY_LEN) + 1);
+	if (r.oldKeys && r.newKeys) {
+		MemSet(r.oldKeys, maxChannels * KEY_LEN, 0);
+		for (i = 0; i < n; i++) {
+			if (!ChannelsGet(i, &c))
+				continue;
+			if (i < oldCount) {
+				if (c.idx < maxChannels)
+					MemMove(r.oldKeys + c.idx * KEY_LEN, c.secret, KEY_LEN);
+			} else {
+				r.newKeys[r.nNew * (1 + KEY_LEN)] = c.idx;
+				MemMove(r.newKeys + r.nNew * (1 + KEY_LEN) + 1, c.secret, KEY_LEN);
+				r.nNew++;
+			}
+		}
+		MessagesRefileChannels(RefileConv, &r);
+	}
+	if (r.oldKeys)
+		MemPtrFree(r.oldKeys);
+	if (r.newKeys)
+		MemPtrFree(r.newKeys);
+}
+
 Err ChannelsRefresh(UInt8 maxChannels)
 {
 	VmChannel c;
@@ -112,6 +183,7 @@ Err ChannelsRefresh(UInt8 maxChannels)
 		MemHandleUnlock(h);
 		DmReleaseRecord(gDb, index, true);
 	}
+	RefileMessages(oldCount, maxChannels);
 	for (i = 0; i < oldCount; i++)
 		DmRemoveRecord(gDb, 0);
 	return errNone;

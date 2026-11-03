@@ -3,11 +3,13 @@
 #include "ui/text.h"
 #include "messages.h"
 #include "contacts.h"
+#include "channels.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index) VM_SECT2;
 static void WriteHeader(UInt16 i, const VmMsgHeader *hdr) VM_SECT2;
 static Boolean ReadHeader(UInt16 i, VmMsgHeader *hdr) VM_SECT2;
+static void TagChannel(VmConv *conv) VM_SECT2;
 
 /* a data array, not a literal: this module is in the second code segment (sections.h) */
 static Char DB_NAME[] = "VisorMeshMessages";
@@ -69,6 +71,15 @@ void MessagesRelease(UInt16 i)
 		MemHandleUnlock(h);
 }
 
+UInt32 MessagesUniqueId(UInt16 i)
+{
+	UInt32 id;
+
+	if (!gDb || DmRecordInfo(gDb, i, NULL, &id, NULL) != errNone)
+		return 0;
+	return id;
+}
+
 Boolean ConvEqual(const VmConv *a, const VmConv *b)
 {
 	if (a->type != b->type)
@@ -76,6 +87,16 @@ Boolean ConvEqual(const VmConv *a, const VmConv *b)
 	if (a->type == VM_CONV_CHANNEL)
 		return a->channel == b->channel;
 	return MemCmp(a->key, b->key, 6) == 0;
+}
+
+/* Notes the channel's secret prefix on a channel message, for MessagesRefileChannels. */
+static void TagChannel(VmConv *conv)
+{
+	VmChannel c;
+
+	MemSet(conv->key, sizeof(conv->key), 0);
+	if (ChannelsFindSlot(conv->channel, &c))
+		MemMove(conv->key, c.secret, sizeof(conv->key));
 }
 
 static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index)
@@ -115,6 +136,7 @@ Err MessagesAddIncoming(const VmMessage *m, UInt32 now)
 	if (m->isChannel) {
 		hdr.conv.type = VM_CONV_CHANNEL;
 		hdr.conv.channel = m->channelIdx;
+		TagChannel(&hdr.conv);
 		nameLen = TxtSplitSender(text, len);
 		if (nameLen) {
 			if (nameLen > VM_NAME_SIZE - 1)
@@ -153,6 +175,8 @@ Err MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16
 		return err;
 	MemSet(&hdr, sizeof(hdr), 0);
 	hdr.conv = *conv;
+	if (conv->type == VM_CONV_CHANNEL)
+		TagChannel(&hdr.conv);
 	hdr.dir = VM_DIR_OUT;
 	hdr.status = VM_ST_PENDING;
 	hdr.timestamp = now;
@@ -258,5 +282,24 @@ void MessagesMarkRead(const VmConv *conv)
 			hdr.unread = 0;
 			WriteHeader(i, &hdr);
 		}
+	}
+}
+
+void MessagesRefileChannels(MessagesConvFn fn, void *ctx)
+{
+	VmMsgHeader hdr;
+	VmConv was;
+	UInt16 i, n;
+
+	if (MessagesOpen() != errNone)
+		return;
+	n = DmNumRecords(gDb);
+	for (i = 0; i < n; i++) {
+		if (!ReadHeader(i, &hdr) || hdr.conv.type != VM_CONV_CHANNEL)
+			continue;
+		was = hdr.conv;
+		fn(&hdr.conv, ctx);
+		if (MemCmp(&was, &hdr.conv, sizeof(VmConv)) != 0)
+			WriteHeader(i, &hdr);
 	}
 }

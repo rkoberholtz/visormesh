@@ -12,14 +12,19 @@
 
 #define VM_MAX_MESSAGES 500
 
-/* A conversation: a channel slot, or a contact (by key prefix). */
+/*
+ * A conversation: a channel slot, or a contact (by key prefix). Stored
+ * channel messages also carry the channel's secret prefix in key, so their
+ * history follows the channel when its slot changes (channels.c).
+ */
 #define VM_CONV_CHANNEL 0
 #define VM_CONV_DIRECT  1
+#define VM_SLOT_GONE    0xFF
 
 typedef struct {
 	UInt8 type;          /* VM_CONV_CHANNEL / VM_CONV_DIRECT */
-	UInt8 channel;       /* channel slot */
-	UInt8 key[6];        /* contact key prefix */
+	UInt8 channel;       /* channel slot; VM_SLOT_GONE: a channel that was left */
+	UInt8 key[6];        /* contact key prefix; a stored channel message: the secret's */
 } VmConv;
 
 #define VM_DIR_IN   0
@@ -54,6 +59,8 @@ UInt16  MessagesCount(void) VM_SECT2;
 /* Locks record i; returns its header (text right after it). Call MessagesRelease(i) when done. */
 const VmMsgHeader *MessagesLock(UInt16 i) VM_SECT2;
 void    MessagesRelease(UInt16 i) VM_SECT2;
+/* Record i's unique ID (0 if none): unlike the index, it stays put when old messages drop off. */
+UInt32  MessagesUniqueId(UInt16 i) VM_SECT2;
 
 Boolean ConvEqual(const VmConv *a, const VmConv *b) VM_SECT2;
 
@@ -70,5 +77,11 @@ Boolean MessagesAcked(UInt32 ack) VM_SECT2;
 Boolean MessagesExpireAcks(UInt32 now) VM_SECT2;
 /* Clears the unread flag on a conversation's messages. */
 void    MessagesMarkRead(const VmConv *conv) VM_SECT2;
+/*
+ * Calls fn for each channel message's conversation; fn may change it (its
+ * slot, its key) and the record is rewritten if it did.
+ */
+typedef void (*MessagesConvFn)(VmConv *conv, void *ctx);
+void    MessagesRefileChannels(MessagesConvFn fn, void *ctx) VM_SECT2;
 
 #endif

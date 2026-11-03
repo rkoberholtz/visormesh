@@ -27,7 +27,7 @@ static void Build(void) VM_SECT2;
 static Int16 TextWithMentions(const Char *text, UInt16 len, Coord x, Coord y, Coord hitX) VM_SECT2;
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static void DrawCounter(void) VM_SECT2;
-static UInt16 FirstUnread(void) VM_SECT2;
+static UInt32 FirstUnread(void) VM_SECT2;
 static void ScrollToNew(void) VM_SECT2;
 static void Refresh(Boolean toEnd) VM_SECT2;
 static void Send(FormType *form) VM_SECT2;
@@ -45,7 +45,7 @@ static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
 #define L_CHIP  1
 #define L_TEXT  2
 #define L_NEW   3      /* "── new ──" before the first message unread when the screen opened */
-#define NO_NEW  0xFFFF
+#define NO_NEW  0
 
 typedef struct {
 	UInt8  kind;
@@ -60,7 +60,7 @@ static Line   *gLines = NULL;
 static UInt16  gCount = 0;
 static RowList gList;
 static Char    gTitle[VM_NAME_SIZE + 2];
-static UInt16  gNewFrom = NO_NEW;   /* message record of the first unread one at open */
+static UInt32  gNewFrom = NO_NEW;   /* unique ID of the first message unread at open */
 
 static const Char *kDays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static const Char *kMonths[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -161,7 +161,7 @@ static void Build(void)
 			lastDay = day;
 			lastSender[0] = 0;
 		}
-		if (m == gNewFrom) {
+		if (gNewFrom != NO_NEW && MessagesUniqueId(m) == gNewFrom) {
 			AddLine(L_NEW, m, 0, 0, false, false, 0);
 			lastSender[0] = 0;      /* start the new part with a sender chip */
 		}
@@ -310,16 +310,17 @@ static void DrawCounter(void)
 }
 
 /* The oldest unread message of this conversation, or NO_NEW. */
-static UInt16 FirstUnread(void)
+static UInt32 FirstUnread(void)
 {
-	UInt16 i, n = MessagesCount(), found = NO_NEW;
+	UInt16 i, n = MessagesCount();
+	UInt32 found = NO_NEW;
 
 	for (i = n; i > 0; i--) {
 		const VmMsgHeader *h = MessagesLock(i - 1);
 
 		if (h) {
 			if (h->unread && ConvEqual(&h->conv, &gAppConv))
-				found = i - 1;
+				found = MessagesUniqueId(i - 1);
 			MessagesRelease(i - 1);
 		}
 	}
