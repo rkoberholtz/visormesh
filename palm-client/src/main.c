@@ -75,7 +75,11 @@ static Boolean AppHandleEvent(EventType *event)
 	FrmSetActiveForm(form);
 	switch (formId) {
 	case HomeForm:        FrmSetEventHandler(form, HomeFormHandleEvent);        break;
-	case ConvoForm:       FrmSetEventHandler(form, ConvoFormHandleEvent);       break;
+	case ConvoForm:
+		/* the Channel menu only for a channel; a DM gets the plain one */
+		FrmSetMenu(form, gAppConv.type == VM_CONV_CHANNEL ? ConvoChanMenuBar : MainMenuBar);
+		FrmSetEventHandler(form, ConvoFormHandleEvent);
+		break;
 	case ContactsForm:    FrmSetEventHandler(form, ContactsFormHandleEvent);    break;
 	case MainForm:        FrmSetEventHandler(form, NodeFormHandleEvent);        break;
 	case SettingsForm:    FrmSetEventHandler(form, SettingsFormHandleEvent);    break;

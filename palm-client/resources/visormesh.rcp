@@ -13,21 +13,72 @@ DATA "NFNT" ID SmallFontRes "resources/smallfont.nfnt"
 DATA "NFNT" ID LargeFontRes "resources/largefont.nfnt"
 DATA "EMJI" ID EmojiArtRes "resources/emoji.bin"
 
+/*
+ * Menus: Go and Options on every screen; a Channel menu on Home and in a
+ * channel conversation (main.c picks ConvoChanMenuBar or MainMenuBar for ConvoForm).
+ */
 MENU ID MainMenuBar
 BEGIN
-  PULLDOWN "Options"
+  PULLDOWN "Go"
   BEGIN
     MENUITEM "Conversations" ID MainMenuHome "H"
     MENUITEM "Contacts" ID MainMenuContacts "C"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
+    MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
+    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+    MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+  END
+END
+
+MENU ID HomeMenuBar
+BEGIN
+  PULLDOWN "Go"
+  BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
+  END
+  PULLDOWN "Channel"
+  BEGIN
     MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
+    MENUITEM "Preferences..." ID MainMenuSounds "R"
+    MENUITEM "-" AUTOID
+    MENUITEM "Serial Ports..." ID MainMenuPorts "P"
+    MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+  END
+END
+
+MENU ID ConvoChanMenuBar
+BEGIN
+  PULLDOWN "Go"
+  BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "C"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
+  END
+  PULLDOWN "Channel"
+  BEGIN
+    MENUITEM "Add Channel..." ID MainMenuAddChannel "A"
+    MENUITEM "-" AUTOID
     MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
     MENUITEM "Mute Channel" ID MainMenuMuteChannel "M"
     MENUITEM "Channel Scope..." ID MainMenuChannelScope "E"
+  END
+  PULLDOWN "Options"
+  BEGIN
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
-    MENUITEM "-" AUTOID
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
@@ -39,7 +90,7 @@ END
 FORM ID HomeForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenuBar
+MENUID HomeMenuBar
 BEGIN
   TITLE "VisorMesh"
   GADGET ID HomeGadget AT (0 16 153 128)
@@ -95,6 +146,7 @@ END
 FORM ID ContactsForm AT (0 0 160 160)
 NOFRAME
 USABLE
+MENUID MainMenuBar
 BEGIN
   TITLE "Contacts            "
   GADGET ID ContactsGadget AT (0 16 153 128)

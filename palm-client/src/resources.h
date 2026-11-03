@@ -27,6 +27,8 @@
 #define MainMenuChannelScope 1010
 #define MainMenuScopes     1011
 #define MainMenuMap        1012
+#define HomeMenuBar        1013   /* Go, Channel (Add), Options */
+#define ConvoChanMenuBar   1014   /* Go, Channel (Add, Leave, Mute, Scope), Options */
 #define MainLinkGroup     1
 
 #define SettingsForm          1200
