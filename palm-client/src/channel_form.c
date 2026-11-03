@@ -147,22 +147,27 @@ Boolean ChannelFormHandleEvent(EventType *event)
 
 void ChannelLeaveCurrent(void)
 {
-	VmChannel c;
-	Char name[VM_NAME_SIZE + 1], msg[48];
-	Err err;
-
 	if (FrmGetActiveFormID() != ConvoForm || gAppConv.type != VM_CONV_CHANNEL) {
 		Error("Open the channel you want to leave first.");
 		return;
 	}
+	ChannelLeave(gAppConv.channel);
+}
+
+void ChannelLeave(UInt8 slot)
+{
+	VmChannel c;
+	Char name[VM_NAME_SIZE + 1], msg[48];
+	Err err;
+
 	if (!SessionIsConnected()) {
 		Error("Connect to the radio first.");
 		return;
 	}
-	StrCopy(name, ChannelsFindSlot(gAppConv.channel, &c) ? c.name : "this channel");
+	StrCopy(name, ChannelsFindSlot(slot, &c) ? c.name : "this channel");
 	if (FrmCustomAlert(LeaveChannelAlert, name, "", "") != 0)
 		return;
-	err = ChannelsRemove(gAppConv.channel, SessionDevice()->maxChannels);
+	err = ChannelsRemove(slot, SessionDevice()->maxChannels);
 	if (err != errNone) {
 		AppErrorText(err, msg);
 		Error(msg);

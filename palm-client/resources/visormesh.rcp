@@ -97,6 +97,7 @@ BEGIN
   SCROLLBAR ID HomeScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
   BUTTON "Contacts" ID HomeContactsButton AT (1 147 AUTO AUTO)
   BUTTON "Node" ID HomeNodeButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  LIST "" ID HomeActionList AT (28 16 80 AUTO) NONUSABLE VISIBLEITEMS 3
 END
 
 /* One conversation: transcript, compose field, send */

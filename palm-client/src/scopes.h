@@ -23,6 +23,8 @@ UInt8   ScopesForChannel(UInt8 slot, UInt8 key[VM_SCOPE_KEY_SIZE]) VM_SECT4;
 
 /* Options > Channel Scope: picks a scope for the channel on screen. */
 void    ChannelScopeChooseCurrent(void) VM_SECT4;
+/* The same for any channel (Home's tap-and-hold). */
+void    ChannelScopeChoose(UInt8 slot) VM_SECT4;
 
 /* Options > Flood Scopes: the list, and the radio's default. Done goes back to returnForm. */
 void    ScopesFormOpen(UInt16 returnForm) VM_SECT4;

@@ -59,15 +59,21 @@ Boolean ChannelSlotMuted(UInt8 slot)
 
 void ChannelMuteToggleCurrent(void)
 {
+	if (FrmGetActiveFormID() != ConvoForm || gAppConv.type != VM_CONV_CHANNEL) {
+		FrmCustomAlert(MuteAlert, "Open the channel you want to mute first.", "", "");
+		return;
+	}
+	ChannelMuteToggle(gAppConv.channel);
+}
+
+void ChannelMuteToggle(UInt8 slot)
+{
 	VmChannel c;
 	Char msg[VM_NAME_SIZE + 48];
 	Int16 i;
 
-	if (FrmGetActiveFormID() != ConvoForm || gAppConv.type != VM_CONV_CHANNEL ||
-	    !ChannelsFindSlot(gAppConv.channel, &c)) {
-		FrmCustomAlert(MuteAlert, "Open the channel you want to mute first.", "", "");
+	if (!ChannelsFindSlot(slot, &c))
 		return;
-	}
 	i = FindMute(&c);
 	if (i >= 0) {
 		MemMove(gMutes.ids[i], gMutes.ids[i + 1], (gMutes.count - i - 1) * VM_MUTE_ID_SIZE);

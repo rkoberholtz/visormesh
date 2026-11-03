@@ -94,6 +94,15 @@ UInt8 ScopesForChannel(UInt8 slot, UInt8 key[VM_SCOPE_KEY_SIZE])
 
 void ChannelScopeChooseCurrent(void)
 {
+	if (FrmGetActiveFormID() != ConvoForm || gAppConv.type != VM_CONV_CHANNEL) {
+		Error("Open the channel first.");
+		return;
+	}
+	ChannelScopeChoose(gAppConv.channel);
+}
+
+void ChannelScopeChoose(UInt8 slot)
+{
 	VmChannel c;
 	FormType *form, *prev;
 	ListType *list;
@@ -101,11 +110,8 @@ void ChannelScopeChooseCurrent(void)
 	UInt16 n, k;
 	ChanScope *cs;
 
-	if (FrmGetActiveFormID() != ConvoForm || gAppConv.type != VM_CONV_CHANNEL ||
-	    !ChannelsFindSlot(gAppConv.channel, &c)) {
-		Error("Open the channel first.");
+	if (!ChannelsFindSlot(slot, &c))
 		return;
-	}
 	i = FindChannel(&c);
 	StrCopy(gItems[0], "Radio default");
 	StrCopy(gItems[1], "No scope");

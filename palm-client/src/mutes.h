@@ -17,5 +17,7 @@ Boolean ChannelSlotMuted(UInt8 slot) VM_SECT3;
 
 /* Options > Mute Channel: toggles the channel on screen and says which way it went. */
 void    ChannelMuteToggleCurrent(void) VM_SECT3;
+/* The same for any channel (Home's tap-and-hold). */
+void    ChannelMuteToggle(UInt8 slot) VM_SECT3;
 
 #endif

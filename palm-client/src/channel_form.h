@@ -7,5 +7,7 @@
 Boolean ChannelFormHandleEvent(EventType *event) VM_SECT2;
 /* Options > Leave Channel: asks, then empties the open channel's slot. */
 void    ChannelLeaveCurrent(void) VM_SECT2;
+/* The same for any channel (Home's tap-and-hold); goes back to Home. */
+void    ChannelLeave(UInt8 slot) VM_SECT2;
 
 #endif

@@ -98,6 +98,7 @@
 #define HomeScroll            1502
 #define HomeContactsButton    1503
 #define HomeNodeButton        1504
+#define HomeActionList        1505   /* tap-and-hold popup (home_form.c) */
 
 #define ConvoForm             1600
 #define ConvoGadget           1601

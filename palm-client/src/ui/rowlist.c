@@ -1,6 +1,9 @@
 #include <PalmOS.h>
 #include "rowlist.h"
 
+#define RL_HOLD_TICKS (SysTicksPerSecond() / 2)   /* pen still this long: a hold */
+#define RL_HOLD_SLOP  3                          /* pixels the pen may wander */
+
 /* In the second code segment: see sections.h for the rules. */
 static void GetBounds(const RowList *list, RectangleType *r) VM_SECT2;
 static UInt16 MaxTop(const RowList *list) VM_SECT2;
@@ -31,6 +34,7 @@ void RowListInit(RowList *list, UInt16 gadgetId, UInt16 scrollId, Coord rowH,
 	list->top = 0;
 	list->draw = draw;
 	list->selectable = selectable;
+	list->hold = NULL;
 	list->ctx = ctx;
 }
 
@@ -96,8 +100,9 @@ Boolean RowListHandleEvent(RowList *list, EventType *event, Int16 *tapped)
 {
 	RectangleType area, rowR;
 	UInt16 row, visible;
-	Boolean penDown, inRow;
+	Boolean penDown, inRow, held = false;
 	Coord x, y;
+	UInt32 start;
 
 	switch (event->eType) {
 	case sclRepeatEvent:
@@ -131,14 +136,29 @@ Boolean RowListHandleEvent(RowList *list, EventType *event, Int16 *tapped)
 		                area.extent.x, list->rowH);
 		WinInvertRectangle(&rowR, 0);
 		inRow = true;
+		start = TimGetTicks();
 		do {
 			EvtGetPen(&x, &y, &penDown);
+			if (held)
+				continue;    /* waiting for the pen to lift */
+			if (list->hold && penDown &&
+			    (x - event->screenX > RL_HOLD_SLOP || event->screenX - x > RL_HOLD_SLOP ||
+			     y - event->screenY > RL_HOLD_SLOP || event->screenY - y > RL_HOLD_SLOP))
+				start = 0;   /* moved: no longer a hold */
+			if (list->hold && start && inRow && TimGetTicks() - start >= RL_HOLD_TICKS) {
+				held = true;
+				WinInvertRectangle(&rowR, 0);   /* unhighlight: the cue to lift */
+				continue;
+			}
 			if (RctPtInRectangle(x, y, &rowR) != inRow) {
 				inRow = !inRow;
 				WinInvertRectangle(&rowR, 0);
 			}
 		} while (penDown);
-		if (inRow) {
+		if (held) {
+			if (!list->hold(row, &rowR, list->ctx))
+				*tapped = (Int16)row;
+		} else if (inRow) {
 			WinInvertRectangle(&rowR, 0);
 			*tapped = (Int16)row;
 		}

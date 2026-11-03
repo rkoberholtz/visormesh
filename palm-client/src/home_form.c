@@ -1,7 +1,8 @@
 /*
  * Home: the conversation list, MeshTerm's chat picker. Channels in slot
  * order, then direct conversations (most recent first). Each row: marker,
- * name, unread badge or failed mark, age, preview. Tap to open.
+ * name, unread badge or failed mark, age, preview. Tap to open; tap and hold
+ * a channel for its actions (mute, scope, leave).
  */
 #include <PalmOS.h>
 #include "resources.h"
@@ -12,6 +13,9 @@
 #include "ui/text.h"
 #include "ui/rowlist.h"
 #include "home_form.h"
+#include "mutes.h"
+#include "scopes.h"
+#include "channel_form.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
@@ -20,6 +24,7 @@ static void DrawTitleStatus(void) VM_SECT2;
 static void ShowStatus(const Char *text) VM_SECT2;
 static void TitleRight(const Char *text) VM_SECT2;
 static void Rebuild(Boolean draw) VM_SECT2;
+static Boolean Hold(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 
 #define HOME_MAX_ROWS 64
 #define NAME_X     8
@@ -63,6 +68,50 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 		DrawCut(r->preview, x + PREVIEW_X, y, right - (x + PREVIEW_X));
 	}
 	FntSetFont(old);
+}
+
+#define HOLD_ITEMS   3
+#define HOLD_LIST_X  28
+#define HOLD_LIST_H  (HOLD_ITEMS * 11 + 2)   /* stdFont rows and the frame */
+
+/* Tap and hold on a channel: a popup of its actions beside the row. DMs open as a tap. */
+static Boolean Hold(UInt16 row, const RectangleType *b, void *ctx)
+{
+	const VmConvRow *r = &gRows[row];
+	FormType *form = FrmGetActiveForm();
+	ListType *list;
+	Char *items[HOLD_ITEMS];
+	Coord y;
+	UInt8 slot;
+
+	if (r->kind != VM_ROW_CONV || r->conv.type != VM_CONV_CHANNEL)
+		return false;
+	slot = r->conv.channel;
+	items[0] = r->muted ? "Unmute" : "Mute";
+	items[1] = "Channel Scope...";
+	items[2] = "Leave Channel";
+	/* below the row, or above it near the bottom of the list */
+	y = b->topLeft.y + b->extent.y;
+	if (y + HOLD_LIST_H > b->topLeft.y + RowListVisibleRows(&gList) * gList.rowH)
+		y = b->topLeft.y - HOLD_LIST_H;
+	list = FrmGetObjectPtr(form, FrmGetObjectIndex(form, HomeActionList));
+	LstSetListChoices(list, items, HOLD_ITEMS);
+	LstSetHeight(list, HOLD_ITEMS);
+	LstSetPosition(list, HOLD_LIST_X, y);
+	LstSetSelection(list, noListSelection);
+	switch (LstPopupList(list)) {
+	case 0:
+		ChannelMuteToggle(slot);
+		Rebuild(true);
+		break;
+	case 1:
+		ChannelScopeChoose(slot);
+		break;
+	case 2:
+		ChannelLeave(slot);
+		break;
+	}
+	return true;
 }
 
 static Boolean Selectable(UInt16 row, void *ctx)
@@ -132,6 +181,7 @@ Boolean HomeFormHandleEvent(EventType *event)
 		if (!gRows)
 			return false;
 		RowListInit(&gList, HomeGadget, HomeScroll, VM_ROW_H, DrawRow, Selectable, NULL);
+		gList.hold = Hold;
 		Rebuild(false);
 		FrmDrawForm(FrmGetActiveForm());
 		RowListDraw(&gList);

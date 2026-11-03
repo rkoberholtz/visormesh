@@ -12,6 +12,8 @@
 
 typedef void    (*RowDrawFn)(UInt16 row, const RectangleType *bounds, void *ctx);
 typedef Boolean (*RowSelectableFn)(UInt16 row, void *ctx);
+/* A tap-and-hold on a selectable row (bounds: where it is). Returns false to treat it as a tap. */
+typedef Boolean (*RowHoldFn)(UInt16 row, const RectangleType *bounds, void *ctx);
 
 typedef struct {
 	UInt16          gadgetId;
@@ -21,6 +23,7 @@ typedef struct {
 	UInt16          top;          /* first visible row */
 	RowDrawFn       draw;
 	RowSelectableFn selectable;   /* NULL = every row can be tapped */
+	RowHoldFn       hold;         /* NULL = holding is a tap; set after RowListInit */
 	void           *ctx;
 } RowList;
 
@@ -37,7 +40,9 @@ void   RowListDraw(RowList *list) VM_SECT2;
 /*
  * Handles pen taps in the list, scroll-bar moves and the page buttons. Returns
  * true if it used the event; a tap on a selectable row also sets *tapped to the
- * row (and returns true), otherwise *tapped is left alone.
+ * row (and returns true), otherwise *tapped is left alone. With a hold
+ * callback, keeping the pen still on a row for RL_HOLD_TICKS unhighlights it
+ * (the cue to lift), and lifting the pen calls the callback.
  */
 Boolean RowListHandleEvent(RowList *list, EventType *event, Int16 *tapped) VM_SECT2;
 
