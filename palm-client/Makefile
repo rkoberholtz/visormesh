@@ -3,6 +3,7 @@
 #   make           build build/visormesh.prc (in Docker if the toolchain isn't installed)
 #   make test      run the host-side protocol tests
 #   make install   install the .prc over the USB cradle (press HotSync when asked)
+#   make shots     fetch screenshots taken on the Visor into build/shots/ (HotSync)
 #   make editor    copy the SDK headers to .sdk/ and write compile_flags.txt for clangd
 #   make clean
 
@@ -10,7 +11,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c src/shots.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -93,6 +94,16 @@ install: all
 	@echo "Press the HotSync button on the Visor cradle..."
 	$(PILOT_XFER) -p $(PORT) -i build/$(APP).prc
 
+# Screenshots taken on the Visor (Options > Screenshot) into build/shots/ as PNGs.
+# Press HotSync when asked; the database stays on the Visor (converted ones are skipped).
+shots: | build
+	@if pgrep -f tools/visor_bridge.py >/dev/null; then \
+	  echo "Stopping visor_bridge.py (it would grab the Visor during HotSync)"; \
+	  pkill -f tools/visor_bridge.py; sleep 1; fi
+	@echo "Press the HotSync button on the Visor cradle..."
+	cd build && $(PILOT_XFER) -p $(PORT) -f VisorMeshShots
+	python3 tools/shots.py build/VisorMeshShots.pdb build/shots
+
 # The basemap (tools/make_map.py; OSM data cached in tools/map-cache). `make map`
 # downloads on the first run; MAP_ARGS passes options, e.g. MAP_ARGS="--max-zoom 12".
 map: | build
@@ -118,4 +129,4 @@ editor: image
 	  -Wno-ignored-attributes -Wno-pragma-once-outside-header > compile_flags.txt
 	find .sdk/sdk-3.5 -type d | sed 's|^|-I|' >> compile_flags.txt
 
-.PHONY: all test image install clean editor map install-map
+.PHONY: all test image install clean editor map install-map shots

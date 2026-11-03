@@ -33,6 +33,8 @@ BEGIN
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
   END
 END
 
@@ -56,6 +58,8 @@ BEGIN
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
   END
 END
 
@@ -83,6 +87,8 @@ BEGIN
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "P"
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "S"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
   END
 END
 

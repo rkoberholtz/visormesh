@@ -22,6 +22,7 @@
 #include "preview_form.h"
 #include "channel_form.h"
 #include "bgcheck.h"
+#include "shots.h"
 #include "ui/draw.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
@@ -57,6 +58,8 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuMuteChannel: ChannelMuteToggleCurrent();   return true;
 	case MainMenuChannelScope: ChannelScopeChooseCurrent(); return true;
 	case MainMenuScopes:      ScopesFormOpen(FrmGetActiveFormID()); return true;
+	case MainMenuShot:        ShotCapture();                return true;   /* the menu has gone by now */
+	case MainMenuShotLater:   ShotLater(5);                 return true;
 	}
 	return false;
 }
@@ -207,6 +210,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		ChannelsClose();
 		MessagesClose();
 		UiFontRelease();
+		ShotCancel();
 		BgSetAppOpen(false);
 		BgScheduleIfIdle();
 	}

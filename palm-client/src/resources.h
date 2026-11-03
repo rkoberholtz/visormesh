@@ -28,6 +28,8 @@
 #define MainMenuScopes     1011
 #define MainMenuMap        1012
 #define HomeMenuBar        1013   /* Go, Channel (Add), Options */
+#define MainMenuShot       1015
+#define MainMenuShotLater  1016
 #define ConvoChanMenuBar   1014   /* Go, Channel (Add, Leave, Mute, Scope), Options */
 #define MainLinkGroup     1
 
