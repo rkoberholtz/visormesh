@@ -2,8 +2,8 @@
  * Home: the conversation list, MeshTerm's chat picker. Channels in slot
  * order, then direct conversations (most recent first). Each row: marker,
  * name, unread badge or failed mark, age, preview. Tap to open; tap and hold
- * for a channel's actions (mute, scope, leave) or a DM's (pin, info, reset
- * path, remove).
+ * for its actions: pin, then a channel's mute, scope and leave, or a DM's
+ * contact info, reset path and remove.
  */
 #include <PalmOS.h>
 #include "resources.h"
@@ -20,6 +20,7 @@
 #include "contacts.h"
 #include "contact_form.h"
 #include "pins.h"
+#include "channels.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
@@ -103,19 +104,27 @@ static Boolean HoldChannel(const VmConvRow *r, const RectangleType *b)
 {
 	Char *items[HOLD_MAX];
 	UInt8 slot = r->conv.channel;
+	VmChannel ch;
 
-	items[0] = r->muted ? "Unmute" : "Mute";
-	items[1] = "Channel Scope...";
-	items[2] = "Leave Channel";
-	switch (PopupActions(b, items, 3)) {
+	if (!ChannelsFindSlot(slot, &ch))
+		return false;
+	items[0] = r->pinned ? "Unpin" : "Pin";
+	items[1] = r->muted ? "Unmute" : "Mute";
+	items[2] = "Channel Scope...";
+	items[3] = "Leave Channel";
+	switch (PopupActions(b, items, 4)) {
 	case 0:
+		if (PinToggle(VM_CONV_CHANNEL, ch.secret))
+			Rebuild(true);
+		break;
+	case 1:
 		ChannelMuteToggle(slot);
 		Rebuild(true);
 		break;
-	case 1:
+	case 2:
 		ChannelScopeChoose(slot);
 		break;
-	case 2:
+	case 3:
 		ChannelLeave(slot);
 		break;
 	}
@@ -135,7 +144,7 @@ static Boolean HoldDirect(const VmConvRow *r, const RectangleType *b)
 	items[3] = "Remove Contact";
 	switch (PopupActions(b, items, known ? 4 : 1)) {
 	case 0:
-		if (DirectPinToggle(r->conv.key))
+		if (PinToggle(VM_CONV_DIRECT, r->conv.key))
 			Rebuild(true);
 		break;
 	case 1:

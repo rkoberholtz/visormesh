@@ -1,6 +1,6 @@
 /*
- * The conversation list: channels (slot order) then direct conversations
- * (pinned first, then most recent first), with unread counts, last activity and a preview,
+ * The conversation list: pinned conversations (pins.h), channels (slot
+ * order), then direct conversations (most recent first), with unread counts, last activity and a preview,
  * built from the channel cache, the contacts and one pass over the messages.
  */
 #ifndef VM_CONVOS_H
@@ -24,11 +24,11 @@ typedef struct {
 	Boolean failed;               /* the newest outgoing message here wasn't delivered */
 	UInt32  lastOut;              /* when that message was stored (Unix seconds) */
 	Boolean muted;                /* a muted channel (mutes.h) */
-	Boolean pinned;               /* a pinned direct conversation (pins.h) */
+	Boolean pinned;               /* pinned (pins.h): listed in the Pinned section */
 	Char    preview[VM_PREVIEW_LEN];
 } VmConvRow;
 
-/* Fills rows (sections included); returns how many. */
+/* Fills rows (sections included, empty ones left out); returns how many. */
 UInt16 ConvosBuild(VmConvRow *rows, UInt16 max) VM_SECT2;
 /* Total unread messages across conversations. */
 UInt16 ConvosUnread(const VmConvRow *rows, UInt16 n) VM_SECT2;

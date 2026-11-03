@@ -153,8 +153,10 @@ UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)
 		conv.channel = ch.idx;
 		ChannelDisplayName(&ch, name, sizeof(name));
 		r = AddConv(rows, &n, max, &conv, ChannelMarker(&ch), name);
-		if (r)
+		if (r) {
 			r->muted = ChannelMuted(&ch);
+			r->pinned = Pinned(VM_CONV_CHANNEL, ch.secret);
+		}
 	}
 
 	AddSection(rows, &n, max, "Direct");
@@ -200,19 +202,15 @@ UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)
 	}
 
 	for (i = directStart; i < n; i++)
-		rows[i].pinned = DirectPinned(rows[i].conv.key);
-	/*
-	 * direct: pinned first, then most recent first; those without messages
-	 * keep their (alphabetical) order
-	 */
+		rows[i].pinned = Pinned(VM_CONV_DIRECT, rows[i].conv.key);
+	/* direct: most recent first; those without messages keep their (alphabetical) order */
 	for (i = directStart + 1; i < n; i++) {
 		tmp = rows[i];
-		for (j = i; j > directStart && (rows[j - 1].pinned < tmp.pinned ||
-		     (rows[j - 1].pinned == tmp.pinned && rows[j - 1].last < tmp.last)); j--)
+		for (j = i; j > directStart && rows[j - 1].last < tmp.last; j--)
 			rows[j] = rows[j - 1];
 		rows[j] = tmp;
 	}
-	return n;
+	return PinsGroup(rows, n, max);
 }
 
 UInt16 ConvosUnread(const VmConvRow *rows, UInt16 n)
