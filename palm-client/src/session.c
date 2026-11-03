@@ -110,7 +110,8 @@ static void HandlePush(void)
  */
 static Err WaitForAny(const UInt8 *codes, UInt16 n, Int32 timeout)
 {
-	UInt32 deadline = TimGetTicks() + timeout;
+	UInt32 deadline = TimGetTicks() + (timeout > 0 ? timeout : 0);
+	Int32 left;
 	UInt16 i;
 	Err err;
 
@@ -130,10 +131,12 @@ static Err WaitForAny(const UInt8 *codes, UInt16 n, Int32 timeout)
 				HandlePush();
 			/* stray replies are ignored */
 		}
-		if (TimGetTicks() >= deadline)
+		/* the time left, read once: a negative timeout would mean wait forever */
+		left = (Int32)(deadline - TimGetTicks());
+		if (left <= 0)
 			return vmErrNoReply;
 		gRxPos = 0;
-		gRxLen = TransportRecv(gRx, sizeof(gRx), deadline - TimGetTicks(), &err);
+		gRxLen = TransportRecv(gRx, sizeof(gRx), left, &err);
 	}
 }
 
