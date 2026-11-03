@@ -7,6 +7,7 @@
 #include "messages.h"
 #include "convos.h"
 #include "mutes.h"
+#include "pins.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static void HexPrefix(const UInt8 *p, Char *out) VM_SECT2;
@@ -198,10 +199,16 @@ UInt16 ConvosBuild(VmConvRow *rows, UInt16 max)
 		MessagesRelease(i);
 	}
 
-	/* direct: most recent first; those without messages keep their (alphabetical) order */
+	for (i = directStart; i < n; i++)
+		rows[i].pinned = DirectPinned(rows[i].conv.key);
+	/*
+	 * direct: pinned first, then most recent first; those without messages
+	 * keep their (alphabetical) order
+	 */
 	for (i = directStart + 1; i < n; i++) {
 		tmp = rows[i];
-		for (j = i; j > directStart && rows[j - 1].last < tmp.last; j--)
+		for (j = i; j > directStart && (rows[j - 1].pinned < tmp.pinned ||
+		     (rows[j - 1].pinned == tmp.pinned && rows[j - 1].last < tmp.last)); j--)
 			rows[j] = rows[j - 1];
 		rows[j] = tmp;
 	}

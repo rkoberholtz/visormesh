@@ -2,7 +2,7 @@
  * Home: the conversation list, MeshTerm's chat picker. Channels in slot
  * order, then direct conversations (most recent first). Each row: marker,
  * name, unread badge or failed mark, age, preview. Tap to open; tap and hold
- * for a channel's actions (mute, scope, leave) or a contact's (info, reset
+ * for a channel's actions (mute, scope, leave) or a DM's (pin, info, reset
  * path, remove).
  */
 #include <PalmOS.h>
@@ -19,6 +19,7 @@
 #include "channel_form.h"
 #include "contacts.h"
 #include "contact_form.h"
+#include "pins.h"
 
 /* In the second code segment: see sections.h for the rules. */
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
@@ -27,7 +28,7 @@ static void DrawTitleStatus(void) VM_SECT2;
 static void ShowStatus(const Char *text) VM_SECT2;
 static void TitleRight(const Char *text) VM_SECT2;
 static void Rebuild(Boolean draw) VM_SECT2;
-static Int16 PopupActions(const RectangleType *b, Char **items) VM_SECT2;
+static Int16 PopupActions(const RectangleType *b, Char **items, UInt16 n) VM_SECT2;
 static Boolean HoldChannel(const VmConvRow *r, const RectangleType *b) VM_SECT2;
 static Boolean HoldDirect(const VmConvRow *r, const RectangleType *b) VM_SECT2;
 static Boolean Hold(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
@@ -76,12 +77,12 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 	FntSetFont(old);
 }
 
-#define HOLD_ITEMS   3
+#define HOLD_MAX     4
 #define HOLD_LIST_X  28
-#define HOLD_LIST_H  (HOLD_ITEMS * 11 + 2)   /* stdFont rows and the frame */
+#define HOLD_LIST_H(n) ((n) * 11 + 2)   /* stdFont rows and the frame */
 
 /* Shows the popup beside the row (below it, or above near the bottom of the list); returns the pick. */
-static Int16 PopupActions(const RectangleType *b, Char **items)
+static Int16 PopupActions(const RectangleType *b, Char **items, UInt16 n)
 {
 	FormType *form = FrmGetActiveForm();
 	ListType *list = FrmGetObjectPtr(form, FrmGetObjectIndex(form, HomeActionList));
@@ -89,10 +90,10 @@ static Int16 PopupActions(const RectangleType *b, Char **items)
 	Coord y = b->topLeft.y + b->extent.y;
 
 	FrmGetObjectBounds(form, FrmGetObjectIndex(form, HomeGadget), &area);
-	if (y + HOLD_LIST_H > area.topLeft.y + area.extent.y)
-		y = b->topLeft.y - HOLD_LIST_H;
-	LstSetListChoices(list, items, HOLD_ITEMS);
-	LstSetHeight(list, HOLD_ITEMS);
+	if (y + HOLD_LIST_H(n) > area.topLeft.y + area.extent.y)
+		y = b->topLeft.y - HOLD_LIST_H(n);
+	LstSetListChoices(list, items, n);
+	LstSetHeight(list, n);
 	LstSetPosition(list, HOLD_LIST_X, y);
 	LstSetSelection(list, noListSelection);
 	return LstPopupList(list);
@@ -100,13 +101,13 @@ static Int16 PopupActions(const RectangleType *b, Char **items)
 
 static Boolean HoldChannel(const VmConvRow *r, const RectangleType *b)
 {
-	Char *items[HOLD_ITEMS];
+	Char *items[HOLD_MAX];
 	UInt8 slot = r->conv.channel;
 
 	items[0] = r->muted ? "Unmute" : "Mute";
 	items[1] = "Channel Scope...";
 	items[2] = "Leave Channel";
-	switch (PopupActions(b, items)) {
+	switch (PopupActions(b, items, 3)) {
 	case 0:
 		ChannelMuteToggle(slot);
 		Rebuild(true);
@@ -121,25 +122,29 @@ static Boolean HoldChannel(const VmConvRow *r, const RectangleType *b)
 	return true;
 }
 
-/* A sender we have no contact for has nothing to act on: that hold is a tap. */
+/* A sender we have no contact for only gets Pin. */
 static Boolean HoldDirect(const VmConvRow *r, const RectangleType *b)
 {
-	Char *items[HOLD_ITEMS];
+	Char *items[HOLD_MAX];
 	VmContact c;
+	Boolean known = ContactsFindByPrefix(r->conv.key, &c);
 
-	if (!ContactsFindByPrefix(r->conv.key, &c))
-		return false;
-	items[0] = "Contact Info";
-	items[1] = "Reset Path";
-	items[2] = "Remove Contact";
-	switch (PopupActions(b, items)) {
+	items[0] = r->pinned ? "Unpin" : "Pin";
+	items[1] = "Contact Info";
+	items[2] = "Reset Path";
+	items[3] = "Remove Contact";
+	switch (PopupActions(b, items, known ? 4 : 1)) {
 	case 0:
-		ContactFormOpen(&c);
+		if (DirectPinToggle(r->conv.key))
+			Rebuild(true);
 		break;
 	case 1:
-		ContactResetPath(&c);
+		ContactFormOpen(&c);
 		break;
 	case 2:
+		ContactResetPath(&c);
+		break;
+	case 3:
 		if (ContactRemove(&c))
 			Rebuild(true);
 		break;
