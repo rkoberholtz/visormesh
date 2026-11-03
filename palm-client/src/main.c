@@ -194,6 +194,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		return errNone;
 	}
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
+		BgSetAppOpen(true);
 		AppLoadPrefs();
 		UiFontInit(SoundsLargeText());
 		HeardLoad();
@@ -206,6 +207,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		ChannelsClose();
 		MessagesClose();
 		UiFontRelease();
+		BgSetAppOpen(false);
 		BgScheduleIfIdle();
 	}
 	return errNone;

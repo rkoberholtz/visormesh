@@ -27,6 +27,9 @@ void   BgSchedule(void);
 /* BgSchedule unless an alarm is already pending (at exit: keeps the time Preferences showed). */
 void   BgScheduleIfIdle(void);
 
+/* Set while the app runs normally, so alarms that come meanwhile are skipped. */
+void   BgSetAppOpen(Boolean open);
+
 /* Launch codes; no globals needed. */
 void   BgAlarmTriggered(SysAlarmTriggeredParamType *p);
 void   BgDisplayAlarm(void);

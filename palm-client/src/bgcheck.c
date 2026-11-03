@@ -11,6 +11,7 @@
 #define VM_BG_PREFS_ID      6
 #define VM_BG_PREFS_VERSION 1
 #define VM_FTR_BG_KINDS     0    /* feature: sound kinds found by checks, until shown */
+#define VM_FTR_APP_OPEN     1    /* feature: set while the app runs normally */
 #define VM_BG_SYNC_ROUNDS   4    /* SessionSyncMessages takes up to VM_SYNC_MAX per round */
 
 typedef struct {
@@ -23,7 +24,6 @@ typedef struct {
 #define VM_BG_STATUS_VERSION 1
 #define VM_BG_LAUNCHING  1    /* the check started and didn't finish */
 #define VM_BG_LAUNCH_ERR 2    /* SysAppLaunch failed: err */
-#define VM_BG_HOTSYNC    3    /* skipped: HotSync was running */
 #define VM_BG_NO_RADIO   4    /* couldn't connect: err */
 #define VM_BG_DONE       5    /* checked: kinds found */
 
@@ -104,29 +104,32 @@ void BgScheduleIfIdle(void)
 		BgSchedule();
 }
 
+void BgSetAppOpen(Boolean open)
+{
+	if (open)
+		FtrSet(VM_CREATOR, VM_FTR_APP_OPEN, 1);
+	else
+		FtrUnregister(VM_CREATOR, VM_FTR_APP_OPEN);
+}
+
+/*
+ * SysCurAppDatabase can't tell whether the app is open: in this launch it
+ * names the app itself. While HotSync has the USB port, opening it just fails.
+ */
 void BgAlarmTriggered(SysAlarmTriggeredParamType *p)
 {
-	UInt16 card, curCard;
-	LocalID id, curId;
-	UInt32 creator = 0, shown = 0, result;
+	UInt16 card;
+	LocalID id;
+	UInt32 open, shown = 0, result;
 	UInt16 kinds = 0;
-
 	Err err;
 
 	p->purgeAlarm = true;
 	BgSchedule();       /* first, so a failed check doesn't end the chain */
 	if (!FindSelf(&card, &id))
 		return;
-	if (SysCurAppDatabase(&curCard, &curId) == errNone) {
-		if (curId == id)
-			return;     /* the app is open and checks for itself */
-		DmDatabaseInfo(curCard, curId, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-		               NULL, NULL, NULL, &creator);
-	}
-	if (creator == sysFileCSync) {
-		WriteStatus(VM_BG_HOTSYNC, errNone, 0);   /* HotSync has the USB port */
-		return;
-	}
+	if (FtrGet(VM_CREATOR, VM_FTR_APP_OPEN, &open) == errNone)
+		return;         /* the app is open and checks for itself */
 	WriteStatus(VM_BG_LAUNCHING, errNone, 0);     /* BgCheckRun overwrites it */
 	err = SysAppLaunch(card, id, sysAppLaunchFlagNewGlobals, VM_LAUNCH_BGCHECK, &kinds, &result);
 	if (err != errNone)
@@ -222,7 +225,6 @@ void BgStatusText(Char *out)
 		AppendTime(out, st.when);
 		switch (st.stage) {
 		case VM_BG_LAUNCHING:  StrCat(out, " stopped"); break;
-		case VM_BG_HOTSYNC:    StrCat(out, " HotSync"); break;
 		case VM_BG_NO_RADIO:   StrCat(out, " no radio"); break;
 		case VM_BG_LAUNCH_ERR:
 			StrCat(out, " err ");
