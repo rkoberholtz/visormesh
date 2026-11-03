@@ -5,12 +5,13 @@
 #include "contacts.h"
 #include "channels.h"
 #include "messages.h"
+#include "mutes.h"
+#include "convos.h"
 #include "resources.h"
 #include "bgcheck.h"
 
 #define VM_BG_PREFS_ID      6
 #define VM_BG_PREFS_VERSION 1
-#define VM_FTR_BG_KINDS     0    /* feature: sound kinds found by checks, until shown */
 #define VM_FTR_APP_OPEN     1    /* feature: set while the app runs normally */
 #define VM_BG_SYNC_ROUNDS   4    /* SessionSyncMessages takes up to VM_SYNC_MAX per round */
 
@@ -34,6 +35,33 @@ typedef struct {
 	UInt16 err;
 	UInt16 kinds;
 } BgStatus;
+
+/*
+ * New messages found by checks, per conversation, until the alert shows them
+ * (unsaved prefs: the display launch has no globals). Names are looked up
+ * while the check has globals.
+ */
+#define VM_BG_PENDING_ID      7
+#define VM_BG_PENDING_VERSION 1
+#define VM_BG_PENDING_MAX     5      /* conversations listed; the rest count in 'more' */
+#define VM_BG_NAME_LEN        20
+
+typedef struct {
+	VmConv conv;
+	UInt16 count;
+	Char   name[VM_BG_NAME_LEN + 2];   /* even, to keep the entries aligned */
+} BgPendingConv;
+
+typedef struct {
+	UInt16 version;
+	UInt16 total;
+	UInt16 more;     /* messages in conversations past VM_BG_PENDING_MAX */
+	UInt16 n;
+	BgPendingConv convs[VM_BG_PENDING_MAX];
+} BgPending;
+
+static void CountConv(BgPending *pend, const VmConv *conv) VM_SECT4;
+static void AddPending(UInt32 since) VM_SECT4;
 
 /* Everything up to BgCheckRun runs in launches without globals: no globals, no extra segments. */
 
@@ -87,6 +115,28 @@ static void WriteStatus(UInt16 stage, Err err, UInt16 kinds)
 	PrefSetAppPreferences(VM_CREATOR, VM_BG_STATUS_ID, VM_BG_STATUS_VERSION, &st, sizeof(st), false);
 }
 
+static Boolean LoadPending(BgPending *pend)
+{
+	UInt16 size = sizeof(*pend);
+
+	return PrefGetAppPreferences(VM_CREATOR, VM_BG_PENDING_ID, pend, &size, false) != noPreferenceFound &&
+	       size == sizeof(*pend) && pend->version == VM_BG_PENDING_VERSION;
+}
+
+static void SavePending(BgPending *pend)
+{
+	pend->version = VM_BG_PENDING_VERSION;
+	PrefSetAppPreferences(VM_CREATOR, VM_BG_PENDING_ID, VM_BG_PENDING_VERSION, pend, sizeof(*pend), false);
+}
+
+static void ClearPending(void)
+{
+	BgPending pend;
+
+	MemSet(&pend, sizeof(pend), 0);
+	SavePending(&pend);
+}
+
 void BgSchedule(void)
 {
 	UInt16 minutes = BgInterval();
@@ -120,7 +170,7 @@ void BgAlarmTriggered(SysAlarmTriggeredParamType *p)
 {
 	UInt16 card;
 	LocalID id;
-	UInt32 open, shown = 0, result;
+	UInt32 open, result;
 	UInt16 kinds = 0;
 	Err err;
 
@@ -136,57 +186,92 @@ void BgAlarmTriggered(SysAlarmTriggeredParamType *p)
 		WriteStatus(VM_BG_LAUNCH_ERR, err, 0);
 	if (err != errNone || !kinds)
 		return;
-	FtrGet(VM_CREATOR, VM_FTR_BG_KINDS, &shown);
-	FtrSet(VM_CREATOR, VM_FTR_BG_KINDS, shown | kinds);
 	p->purgeAlarm = false;     /* the system sends sysAppLaunchCmdDisplayAlarm next */
-}
-
-/* One line per kind, in priority order. A switch, not a table: a pointer table needs globals. */
-static void AppendKind(Char *text, UInt8 kind)
-{
-	const Char *name;
-
-	switch (kind) {
-	case VM_SND_DIRECT:  name = "Direct message"; break;
-	case VM_SND_MENTION: name = "Mention of you"; break;
-	case VM_SND_ROOM:    name = "Room post"; break;
-	case VM_SND_PRIVATE: name = "Private channel"; break;
-	case VM_SND_HASHTAG: name = "Hashtag channel"; break;
-	case VM_SND_PUBLIC:  name = "Public channel"; break;
-	case VM_SND_CONTACT: name = "New contact"; break;
-	default:             return;
-	}
-	if (text[0])
-		StrCat(text, "\n");
-	StrCat(text, name);
 }
 
 void BgDisplayAlarm(void)
 {
-	UInt32 kinds = 0;
-	UInt16 card;
+	BgPending pend;
+	UInt16 card, i;
 	LocalID id;
-	UInt8 kind;
-	Char text[VM_SND_COUNT * 17];
+	Char text[24 + VM_BG_PENDING_MAX * (VM_BG_NAME_LEN + 9) + 24];
 
-	if (FtrGet(VM_CREATOR, VM_FTR_BG_KINDS, &kinds) != errNone || !kinds)
+	if (!LoadPending(&pend) || !pend.total)
 		return;
-	FtrUnregister(VM_CREATOR, VM_FTR_BG_KINDS);
-	text[0] = 0;
-	for (kind = 0; kind < VM_SND_COUNT; kind++)
-		if (kinds & (1 << kind))
-			AppendKind(text, kind);
+	ClearPending();
+	StrIToA(text, pend.total);
+	StrCat(text, pend.total == 1 ? " new message" : " new messages");
+	for (i = 0; i < pend.n; i++) {
+		StrCat(text, "\n");
+		StrCat(text, pend.convs[i].name);
+		StrCat(text, ": ");
+		StrIToA(text + StrLen(text), pend.convs[i].count);
+	}
+	if (pend.more) {
+		StrCat(text, "\n");
+		StrIToA(text + StrLen(text), pend.more);
+		StrCat(text, " more elsewhere");
+	}
 	if (FrmCustomAlert(BgNewAlert, text, "", "") == 0 && FindSelf(&card, &id))
 		SysUIAppSwitch(card, id, sysAppLaunchCmdNormalLaunch, NULL);
+}
+
+/* ---- with globals (VM_LAUNCH_BGCHECK) ---- */
+
+static void CountConv(BgPending *pend, const VmConv *conv)
+{
+	UInt16 i;
+
+	pend->total++;
+	for (i = 0; i < pend->n; i++)
+		if (ConvEqual(&pend->convs[i].conv, conv)) {
+			pend->convs[i].count++;
+			return;
+		}
+	if (pend->n == VM_BG_PENDING_MAX) {
+		pend->more++;
+		return;
+	}
+	pend->convs[i].conv = *conv;
+	pend->convs[i].count = 1;
+	ConvName(conv, pend->convs[i].name, sizeof(pend->convs[i].name));
+	pend->n++;
+}
+
+/* Adds the messages received since 'since' (outside muted channels) to what the alert will list. */
+static void AddPending(UInt32 since)
+{
+	BgPending pend;
+	const VmMsgHeader *h;
+	VmChannel ch;
+	UInt16 i;
+	Boolean newer;
+
+	if (!LoadPending(&pend))
+		MemSet(&pend, sizeof(pend), 0);
+	for (i = MessagesCount(); i-- > 0; ) {
+		h = MessagesLock(i);
+		if (!h)
+			continue;
+		newer = h->received >= since;
+		if (newer && h->dir == VM_DIR_IN &&
+		    !(h->conv.type == VM_CONV_CHANNEL && ChannelsFindSlot(h->conv.channel, &ch) && ChannelMuted(&ch)))
+			CountConv(&pend, &h->conv);
+		MessagesRelease(i);
+		if (!newer)
+			break;     /* records are in arrival order */
+	}
+	SavePending(&pend);
 }
 
 UInt16 BgCheckRun(void)
 {
 	UInt16 kinds, n;
-
+	UInt32 start;
 	Err err;
 
 	AppLoadPrefs();
+	start = SessionNow();
 	err = SessionConnectLight();
 	if (err == errNone) {
 		for (n = 0; n < VM_BG_SYNC_ROUNDS && SessionMessageWaiting(); n++)
@@ -195,6 +280,8 @@ UInt16 BgCheckRun(void)
 	}
 	kinds = SessionTakeSounds() & SoundsEnabledKinds();
 	SoundsNotify(kinds, NULL);
+	if (kinds)
+		AddPending(start);
 	WriteStatus(err == errNone ? VM_BG_DONE : VM_BG_NO_RADIO, err, kinds);
 	ContactsClose();
 	ChannelsClose();

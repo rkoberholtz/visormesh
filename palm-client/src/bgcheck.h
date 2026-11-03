@@ -5,7 +5,8 @@
  * BgAlarmTriggered sublaunches the app again with new globals
  * (VM_LAUNCH_BGCHECK). That launch connects, pulls what the radio queued,
  * and plays the notification sound. If anything new arrived, the alarm stays
- * for display, and BgDisplayAlarm shows an alert with an Open button.
+ * for display, and BgDisplayAlarm shows an alert with the count per
+ * conversation and an Open button.
  *
  * While the app is open it checks for itself: the alarm keeps coming and is
  * skipped.
