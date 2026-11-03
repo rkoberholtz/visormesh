@@ -271,6 +271,9 @@ UInt16 BgCheckRun(void)
 	Err err;
 
 	AppLoadPrefs();
+	/* the light connect doesn't refresh them, which is what opens them in the app */
+	ChannelsOpen();
+	ContactsOpen();
 	start = SessionNow();
 	err = SessionConnectLight();
 	if (err == errNone) {
