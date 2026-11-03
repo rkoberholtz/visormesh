@@ -101,7 +101,9 @@ shots: | build
 	  echo "Stopping visor_bridge.py (it would grab the Visor during HotSync)"; \
 	  pkill -f tools/visor_bridge.py; sleep 1; fi
 	@echo "Press the HotSync button on the Visor cradle..."
+	rm -f build/VisorMeshShots.pdb
 	cd build && $(PILOT_XFER) -p $(PORT) -f VisorMeshShots
+	@test -f build/VisorMeshShots.pdb || { echo "No VisorMeshShots on the Visor: take a screenshot first (Options > Screenshot)."; exit 1; }
 	python3 tools/shots.py build/VisorMeshShots.pdb build/shots
 
 # The basemap (tools/make_map.py; OSM data cached in tools/map-cache). `make map`

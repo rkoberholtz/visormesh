@@ -21,8 +21,10 @@ void ShotCapture(void)
 	MemHandle h;
 	void *p;
 
-	if (!bmp)
+	if (!bmp) {
+		SndPlaySystemSound(sndError);
 		return;
+	}
 	hdr.width = (UInt16)bmp->width;
 	hdr.height = (UInt16)bmp->height;
 	hdr.rowBytes = bmp->rowBytes;
