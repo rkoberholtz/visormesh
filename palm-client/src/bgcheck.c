@@ -94,6 +94,16 @@ void BgSchedule(void)
 	SetAlarm(minutes ? TimGetSeconds() + (UInt32)minutes * 60 : 0);
 }
 
+void BgScheduleIfIdle(void)
+{
+	UInt16 card;
+	LocalID id;
+	UInt32 ref;
+
+	if (!FindSelf(&card, &id) || AlmGetAlarm(card, id, &ref) <= TimGetSeconds())
+		BgSchedule();
+}
+
 void BgAlarmTriggered(SysAlarmTriggeredParamType *p)
 {
 	UInt16 card, curCard;

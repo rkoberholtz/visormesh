@@ -8,7 +8,7 @@
  * for display, and BgDisplayAlarm shows an alert with an Open button.
  *
  * While the app is open it checks for itself: the alarm keeps coming and is
- * skipped, and exiting sets it N minutes on.
+ * skipped.
  */
 #ifndef VM_BGCHECK_H
 #define VM_BGCHECK_H
@@ -24,6 +24,8 @@ void   BgSetInterval(UInt16 minutes);
 
 /* Sets the next alarm from the interval (clears it when off). */
 void   BgSchedule(void);
+/* BgSchedule unless an alarm is already pending (at exit: keeps the time Preferences showed). */
+void   BgScheduleIfIdle(void);
 
 /* Launch codes; no globals needed. */
 void   BgAlarmTriggered(SysAlarmTriggeredParamType *p);

@@ -206,7 +206,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		ChannelsClose();
 		MessagesClose();
 		UiFontRelease();
-		BgSchedule();
+		BgScheduleIfIdle();
 	}
 	return errNone;
 }
