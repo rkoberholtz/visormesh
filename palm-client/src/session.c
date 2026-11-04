@@ -22,6 +22,8 @@
 #define VM_CLOCK_VALID     1735689600UL     /* 2025-01-01: a radio clock before this was never set */
 #define PALM_EPOCH_OFFSET  2082844800UL   /* 1904-01-01 (Palm) to 1970-01-01 (Unix) */
 
+#define VM_YIELD_SLICE     (SysTicksPerSecond() / 10)   /* how often a connect looks for the user */
+
 static VmFrameDecoder gDecoder;
 static Boolean gConnected = false;
 static Boolean gMsgWaiting = false;
@@ -44,6 +46,18 @@ static UInt16 gRxPos, gRxLen;
 static Int32 gUtcOffsetSecs = 0;      /* local minus UTC */
 
 static void NoteSound(UInt8 kind, const VmMessage *m);
+
+/* How a connect gives way to the user (SessionConnect). */
+#define VM_YIELD_NEVER    0
+#define VM_YIELD_BETWEEN  1    /* before each request: replies to a request are never abandoned */
+#define VM_YIELD_ANYTIME  2    /* also while waiting: the handshake, whose link is closed on cancel */
+static UInt8 gYield = VM_YIELD_NEVER;
+
+/* True if the user tapped or pressed a key; the event stays queued for the app. */
+static Boolean UserWaiting(void)
+{
+	return gYield != VM_YIELD_NEVER && EvtSysEventAvail(true);
+}
 
 /*
  * What the radio's flood-scope override is set to on this connection. It
@@ -135,6 +149,12 @@ static Err WaitForAny(const UInt8 *codes, UInt16 n, Int32 timeout)
 		left = (Int32)(deadline - TimGetTicks());
 		if (left <= 0)
 			return vmErrNoReply;
+		if (gYield == VM_YIELD_ANYTIME) {
+			if (UserWaiting())
+				return vmErrCancelled;
+			if (left > VM_YIELD_SLICE)
+				left = VM_YIELD_SLICE;
+		}
 		gRxPos = 0;
 		gRxLen = TransportRecv(gRx, sizeof(gRx), left, &err);
 	}
@@ -173,6 +193,8 @@ static Err RequestAny(const UInt8 *frame, UInt16 len, const UInt8 *codes, UInt16
 	UInt16 t;
 
 	for (t = 0; t < tries; t++) {
+		if (UserWaiting())
+			return vmErrCancelled;
 		DrainInput();
 		err = TransportSend(frame, len);
 		if (err == serErrTimeOut)
@@ -259,6 +281,7 @@ UInt32 SessionRadioTime(void)
 /* Opens the link and runs DEVICE_QUERY + APP_START; on error the link is closed. */
 static Err OpenAndQuery(void)
 {
+	UInt16 t;
 	Err err;
 
 	SessionDisconnect();
@@ -270,10 +293,13 @@ static Err OpenAndQuery(void)
 	gMsgWaiting = false;
 
 	/* Over USB the Visor only appears to the host after SrmOpen; give the bridge time to attach. */
+	gYield = VM_YIELD_ANYTIME;
 	if (TransportGetPort() == VM_PORT_USB)
-		SysTaskDelay(SysTicksPerSecond());
+		for (t = 0; t < 10 && !UserWaiting(); t++)
+			SysTaskDelay(VM_YIELD_SLICE);
 
-	err = QueryRadio(VM_CONNECT_TRIES);
+	err = UserWaiting() ? vmErrCancelled : QueryRadio(VM_CONNECT_TRIES);
+	gYield = VM_YIELD_BETWEEN;
 	if (err != errNone) {
 		TransportClose();
 		return err;
@@ -287,24 +313,28 @@ Err SessionConnect(void)
 {
 	Err err = OpenAndQuery();
 
-	if (err != errNone)
-		return err;
-	/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
-	SessionSyncClock();
-	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
-		gChanged |= VM_CHANGED_MESSAGES;
-	if (ContactsUpdate() == errNone)
-		gChanged |= VM_CHANGED_CONTACTS;
-	SessionSyncMessages();
-	return errNone;
+	if (err == errNone) {
+		/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
+		SessionSyncClock();
+		if (ChannelsRefresh(gDevice.maxChannels) == errNone)
+			gChanged |= VM_CHANGED_MESSAGES;
+		if (ContactsUpdate() == errNone)
+			gChanged |= VM_CHANGED_CONTACTS;
+		if (SessionSyncMessages() == vmErrCancelled)
+			gMsgWaiting = true;     /* the next poll carries on */
+	}
+	gYield = VM_YIELD_NEVER;
+	return err;
 }
 
+/* Gives way like SessionConnect: a tap in the app in front ends the check early. */
 Err SessionConnectLight(void)
 {
 	Err err = OpenAndQuery();
 
-	if (err == errNone)
-		SessionSyncMessages();
+	if (err == errNone && SessionSyncMessages() == vmErrCancelled)
+		gMsgWaiting = true;
+	gYield = VM_YIELD_NEVER;
 	return err;
 }
 
@@ -344,6 +374,8 @@ Err SessionGetContacts(UInt32 since, SessionContactFn fn, void *ctx, UInt32 *cou
 		return vmErrBadReply;
 
 	for (;;) {
+		if (UserWaiting())
+			return vmErrCancelled;    /* the rest of the list arrives and is drained */
 		err = WaitForAny(codes, 2, VM_REPLY_TIMEOUT);
 		if (err != errNone)
 			return err;

@@ -77,6 +77,8 @@ void AppErrorText(Err err, Char *out)
 		StrCopy(out, "Not connected.");
 	else if (err == vmErrNoModule)
 		StrCopy(out, "No module in the slot.");
+	else if (err == vmErrCancelled)
+		StrCopy(out, "Connect stopped.");
 	else if (err == vmErrLoginFailed)
 		StrCopy(out, "Login refused: wrong password?");
 	else
@@ -93,7 +95,7 @@ Err AppConnect(AppStatusFn status, Boolean quiet)
 	if (status)
 		status("Connecting...");
 	err = SessionConnect();
-	if (err != errNone && !quiet) {
+	if (err != errNone && err != vmErrCancelled && !quiet) {
 		AppErrorText(err, msg);
 		FrmCustomAlert(SettingsErrorAlert, msg, "", "");
 	}

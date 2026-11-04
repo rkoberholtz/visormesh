@@ -15,7 +15,7 @@
 #define VM_PORT_USB     'HsUd'      /* Handspring "USB" driver: the Visor's GENERIC USB port */
 #define VM_PORT_SBLORA  'SbLo'      /* not a Serial Manager port: transport_sb.c */
 
-#define vmErrNoModule   (appErrorClass | 6)   /* no SB-LoRa module answered (session.h has 1-5) */
+#define vmErrNoModule   (appErrorClass | 6)   /* no SB-LoRa module answered (session.h has 1-5 and 7) */
 
 void   TransportSetPort(UInt32 port);   /* takes effect on the next TransportOpen */
 UInt32 TransportGetPort(void);

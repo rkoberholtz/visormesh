@@ -15,6 +15,7 @@
 #define vmErrBadReply  (appErrorClass | 3)   /* reply had the right code but didn't parse */
 #define vmErrTooLong   (appErrorClass | 4)   /* message text over the byte limit */
 #define vmErrLoginFailed (appErrorClass | 5) /* a room/repeater refused the password */
+#define vmErrCancelled (appErrorClass | 7)   /* the user tapped or pressed a key during a connect */
 
 /* What SessionPoll found changed, so the screen on show can redraw. */
 #define VM_CHANGED_MESSAGES  0x0001
@@ -23,7 +24,16 @@
 #define VM_CHANGED_REMOTE    0x0008   /* the admin console has new lines */
 
 
-/* Opens the link and runs DEVICE_QUERY + APP_START. On error the link is closed. */
+/*
+ * Opens the link and runs DEVICE_QUERY + APP_START, then refreshes the clock,
+ * channels and contacts and pulls queued messages. On error the link is closed.
+ *
+ * A connect gives way to the user: a pen tap or key press (left in the queue
+ * for the app) stops it. Before the radio has answered, that's
+ * vmErrCancelled and the link is closed; after, the connection stands and
+ * only the refresh steps left are skipped, between requests so no reply is
+ * lost (the stored copies are kept, and the next poll pulls the messages).
+ */
 Err     SessionConnect(void);
 /*
  * Like SessionConnect without refreshing the channels and contacts (the stored
