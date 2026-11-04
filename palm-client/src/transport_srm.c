@@ -2,7 +2,8 @@
 #include "transport.h"
 
 #define VM_BAUD       115200
-#define VM_SEND_TRIES 5      /* SrmSend attempts for one buffer (USB re-attach) */
+#define VM_SEND_TRIES 8      /* SrmSend attempts for one buffer (USB re-attach) */
+#define VM_SEND_WAIT  (SysTicksPerSecond() / 4)   /* each: 2 s in all */
 
 static UInt16  gPortId;
 static Boolean gPortOpen = false;
@@ -20,16 +21,26 @@ UInt32 TransportGetPort(void)
 
 Err TransportOpen(void)
 {
+	Int32 wait = VM_SEND_WAIT;
+	UInt16 size = sizeof(wait);
 	Err err;
 
 	if (gPort == VM_PORT_SBLORA)
 		return SbTransportOpen();
 	if (gPortOpen)
 		return errNone;
+
 	err = SrmOpen(gPort, VM_BAUD, &gPortId);
-	if (err == errNone)
-		gPortOpen = true;
-	return err;
+	if (err != errNone)
+		return err;
+	gPortOpen = true;
+	/*
+	 * With nothing reading at the other end (the bridge stopped), each SrmSend
+	 * waits out the CTS timeout, 5 s by default: a connect froze for over a
+	 * minute. Short waits let the session look for the user between tries.
+	 */
+	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
+	return errNone;
 }
 
 void TransportClose(void)
