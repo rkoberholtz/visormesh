@@ -60,6 +60,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuScopes:      ScopesFormOpen(FrmGetActiveFormID()); return true;
 	case MainMenuShot:        ShotCapture();                return true;   /* the menu has gone by now */
 	case MainMenuShotLater:   ShotLater(5);                 return true;
+	case MainMenuAbout:       AppAbout();                   return true;
 	}
 	return false;
 }

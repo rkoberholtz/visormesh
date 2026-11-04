@@ -35,6 +35,9 @@ Err  AppConnect(AppStatusFn status, Boolean quiet);
 /* True once the launch-time automatic connect has been tried. */
 extern Boolean gAppAutoConnectTried;
 
+/* Options > About: the app's version and, if connected, the radio's firmware. */
+void AppAbout(void);
+
 /* Short human text for a connect/send error. */
 void AppErrorText(Err err, Char *out);
 

@@ -38,6 +38,8 @@ BEGIN
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
   END
 END
 
@@ -70,6 +72,8 @@ BEGIN
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
   END
 END
 
@@ -111,6 +115,8 @@ BEGIN
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
   END
 END
 
@@ -151,6 +157,8 @@ BEGIN
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
   END
 END
 
@@ -485,6 +493,14 @@ BEGIN
   TITLE "New on the Mesh"
   MESSAGE "^1"
   BUTTONS "Open" "Later"
+END
+
+ALERT ID AboutAlert
+INFORMATION
+BEGIN
+  TITLE "About VisorMesh"
+  MESSAGE "^1"
+  BUTTONS "OK"
 END
 
 ALERT ID PinAlert

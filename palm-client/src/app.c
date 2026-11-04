@@ -101,3 +101,29 @@ Err AppConnect(AppStatusFn status, Boolean quiet)
 	}
 	return err;
 }
+
+void AppAbout(void)
+{
+	const VmDeviceInfo *d = SessionDevice();
+	Char text[120];
+	MemHandle h = DmGetResource('tver', 1);
+
+	StrCopy(text, "VisorMesh ");
+	if (h) {
+		StrCat(text, MemHandleLock(h));
+		MemHandleUnlock(h);
+		DmReleaseResource(h);
+	}
+	StrCat(text, "\nA MeshCore client for the Handspring Visor.\n\n");
+	if (SessionIsConnected()) {
+		StrCat(text, "Radio: ");
+		StrCat(text, d->version);
+		StrCat(text, ", ");
+		StrCat(text, d->buildDate);
+		StrCat(text, "\nCompanion protocol ");
+		StrIToA(text + StrLen(text), d->fwVerCode);
+	} else {
+		StrCat(text, "Radio: not connected");
+	}
+	FrmCustomAlert(AboutAlert, text, "", "");
+}
