@@ -33,10 +33,12 @@ static void Refresh(Boolean toEnd) VM_SECT2;
 static void Send(FormType *form) VM_SECT2;
 static void InsertMention(const Char *sender) VM_SECT2;
 static void Tapped(UInt16 row, Coord penX) VM_SECT2;
+static Boolean AllocLines(void) VM_SECT2;
+static void ShowEarlier(void) VM_SECT2;
 static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
 
-#define MAX_MSGS    40        /* newest messages shown */
-#define MAX_LINES   200
+#define MAX_MSGS    40        /* newest messages shown; "Earlier messages" adds as many again */
+#define LINES_PER   5         /* lines allowed per message shown, on average */
 #define LINE_H      VM_CHIP_H /* chips need the extra 2 px */
 #define TIME_X      2
 #define TEXT_X      (gTxtLarge ? 30 : 26)   /* clear of "HH:MM" in either font */
@@ -45,12 +47,14 @@ static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
 #define L_CHIP  1
 #define L_TEXT  2
 #define L_NEW   3      /* "── new ──" before the first message unread when the screen opened */
+#define L_MORE  4      /* at the top when older messages aren't shown: tap for more */
 #define NO_NEW  0
 
 typedef struct {
 	UInt8  kind;
 	UInt8  first;      /* first text line of a message: draw its time */
 	UInt8  last;       /* last line of a message: draw its SNR / delivery mark */
+	UInt8  suffixLeft; /* ...in the time column, which is free after a message's first line */
 	UInt16 msg;        /* message record */
 	UInt16 off, len;   /* the text on this line */
 	UInt32 day;        /* L_DAY: local day number */
@@ -58,6 +62,7 @@ typedef struct {
 
 static Line   *gLines = NULL;
 static UInt16  gCount = 0;
+static UInt16  gShow = MAX_MSGS;    /* messages shown (the newest) */
 static RowList gList;
 static Char    gTitle[VM_NAME_SIZE + 2];
 static UInt32  gNewFrom = NO_NEW;   /* unique ID of the first message unread at open */
@@ -114,7 +119,7 @@ static void AddLine(UInt8 kind, UInt16 msg, UInt16 off, UInt16 len, Boolean firs
 {
 	Line *l;
 
-	if (gCount >= MAX_LINES)
+	if (gCount >= gShow * LINES_PER)
 		return;
 	l = &gLines[gCount++];
 	l->kind = kind;
@@ -123,29 +128,41 @@ static void AddLine(UInt8 kind, UInt16 msg, UInt16 off, UInt16 len, Boolean firs
 	l->len = len;
 	l->first = first;
 	l->last = last;
+	l->suffixLeft = false;
 	l->day = day;
 }
 
 static void Build(void)
 {
-	UInt16 idx[MAX_MSGS];
+	UInt16 *idx = MemPtrNew(gShow * sizeof(UInt16));
 	UInt16 nIdx = 0, i, n = MessagesCount(), width = TextWidth();
+	Boolean more = false;
 	UInt32 day, lastDay = 0;
 	Char sender[VM_NAME_SIZE + 2], lastSender[VM_NAME_SIZE + 2], suffix[8];
 	FontID old = FntSetFont(vmSmallFont);
 
 	gCount = 0;
 	lastSender[0] = 0;
-	/* the newest MAX_MSGS of this conversation, oldest first */
-	for (i = n; i > 0 && nIdx < MAX_MSGS; i--) {
+	if (!idx) {
+		FntSetFont(old);
+		return;
+	}
+	/* the newest gShow of this conversation, oldest first, and whether there are older ones */
+	for (i = n; i > 0 && !more; i--) {
 		const VmMsgHeader *h = MessagesLock(i - 1);
 
 		if (h) {
-			if (ConvEqual(&h->conv, &gAppConv))
-				idx[nIdx++] = i - 1;
+			if (ConvEqual(&h->conv, &gAppConv)) {
+				if (nIdx < gShow)
+					idx[nIdx++] = i - 1;
+				else
+					more = true;
+			}
 			MessagesRelease(i - 1);
 		}
 	}
+	if (more && nIdx)
+		AddLine(L_MORE, idx[nIdx - 1], 0, 0, false, false, 0);
 	while (nIdx > 0) {
 		UInt16 m = idx[--nIdx], off = 0, len, used;
 		Boolean firstText = true;
@@ -176,19 +193,24 @@ static void Build(void)
 			firstText = false;
 			off += used;
 		} while (off < h->textLen && used > 0);
-		/* the SNR / mark goes after the last line if it fits, else on a line of its own */
+		/* the SNR / mark goes after the last line if it fits, else in its time column, else on a line of its own */
 		SuffixOf(h, suffix);
 		if (suffix[0] && gCount > 0) {
 			Line *l = &gLines[gCount - 1];
 			Int16 lineW = TxtWidth(text + l->off, l->len, TxtSmallWidth);
 
-			if (lineW + 4 + TxtWidth(suffix, StrLen(suffix), TxtSmallWidth) > (Int16)width)
-				AddLine(L_TEXT, m, h->textLen, 0, false, false, 0);
+			if (lineW + 4 + TxtWidth(suffix, StrLen(suffix), TxtSmallWidth) > (Int16)width) {
+				if (!l->first && l->kind == L_TEXT)
+					l->suffixLeft = true;
+				else
+					AddLine(L_TEXT, m, h->textLen, 0, false, false, 0);
+			}
 		}
 		if (gCount > 0)
 			gLines[gCount - 1].last = true;
 		MessagesRelease(m);
 	}
+	MemPtrFree(idx);
 	FntSetFont(old);
 }
 
@@ -261,6 +283,8 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 	}
 	if (l->kind == L_NEW) {
 		DrawSection("new", x, y, b->extent.x);
+	} else if (l->kind == L_MORE) {
+		DrawSection("tap for earlier messages", x, y, b->extent.x);
 	} else if (l->kind == L_DAY) {
 		TimSecondsToDateTime(l->day * 86400UL, &dt);
 		StrPrintF(buf, "%s %s %u", kDays[DayOfWeek(dt.month, dt.day, dt.year)], kMonths[dt.month - 1], dt.day);
@@ -280,7 +304,8 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 		if (l->last) {
 			SuffixOf(h, buf);
 			if (buf[0])
-				WinDrawChars(buf, StrLen(buf), x + TEXT_X + FntCharsWidth(text, l->len) + (l->len ? 4 : 0), y);
+				WinDrawChars(buf, StrLen(buf), l->suffixLeft ? x + TIME_X :
+				             x + TEXT_X + FntCharsWidth(text, l->len) + (l->len ? 4 : 0), y);
 		}
 	}
 	MessagesRelease(l->msg);
@@ -436,12 +461,43 @@ static Boolean TappedEmoji(UInt16 row, Coord penX)
  * Tap an emoji to see it enlarged, a failed message of ours to retry it, or
  * someone's channel message to reply to them.
  */
+/* Room for the lines of gShow messages. */
+static Boolean AllocLines(void)
+{
+	Line *p = MemPtrNew(sizeof(Line) * gShow * LINES_PER);
+
+	if (!p)
+		return false;
+	if (gLines)
+		MemPtrFree(gLines);
+	gLines = p;
+	return true;
+}
+
+/* Shows MAX_MSGS more older messages, staying at the top. */
+static void ShowEarlier(void)
+{
+	gShow += MAX_MSGS;
+	if (gShow > VM_MAX_MESSAGES || !AllocLines()) {
+		gShow -= MAX_MSGS;
+		return;
+	}
+	Build();
+	RowListSetCount(&gList, gCount);
+	RowListScrollTo(&gList, 0);
+	RowListDraw(&gList);
+}
+
 static void Tapped(UInt16 row, Coord penX)
 {
 	const VmMsgHeader *h;
 	Boolean failed, reply;
 	Char sender[VM_NAME_SIZE];
 
+	if (gLines[row].kind == L_MORE) {
+		ShowEarlier();
+		return;
+	}
 	if (TappedEmoji(row, penX))
 		return;
 	h = MessagesLock(gLines[row].msg);
@@ -467,9 +523,8 @@ Boolean ConvoFormHandleEvent(EventType *event)
 
 	switch (event->eType) {
 	case frmOpenEvent:
-		if (!gLines)
-			gLines = MemPtrNew(sizeof(Line) * MAX_LINES);
-		if (!gLines)
+		gShow = MAX_MSGS;
+		if (!AllocLines())
 			return false;
 		ConvName(&gAppConv, gTitle, VM_NAME_SIZE);
 		FrmCopyTitle(form, gTitle);
