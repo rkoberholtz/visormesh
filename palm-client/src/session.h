@@ -42,6 +42,8 @@ Err     SessionConnect(void);
 Err     SessionConnectLight(void);
 void    SessionDisconnect(void);
 Boolean SessionIsConnected(void);
+/* True once after the radio stopped answering a command and the session closed itself; clears it. */
+Boolean SessionTakeLost(void);
 Boolean SessionMessageWaiting(void);
 
 /* What the radio last reported (valid while connected). */

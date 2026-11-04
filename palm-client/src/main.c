@@ -201,6 +201,13 @@ static void AppEventLoop(void)
 	Err err;
 
 	do {
+		if (SessionTakeLost()) {
+			/* the radio stopped answering: show offline and keep trying, as after a wake */
+			gWantConnection = true;
+			gRetries = 0;
+			gRetryAt = TimGetTicks() + 2 * SysTicksPerSecond();
+			FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
+		}
 		EvtGetEvent(&event, EventTimeout());
 		CheckWake();
 		if (event.eType == nilEvent) {

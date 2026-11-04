@@ -416,6 +416,7 @@ static void Send(FormType *form)
 	FldDelete(field, 0, FldGetTextLength(field));
 	DrawCounter();
 	Refresh(true);
+	DrawStatus();       /* offline now if the radio didn't answer */
 	if (err == vmErrNoReply || (err != errNone && err != vmErrRadio)) {
 		AppErrorText(err, msg);
 		FrmCustomAlert(SettingsErrorAlert, msg, "", "");

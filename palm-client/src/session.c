@@ -31,6 +31,8 @@
 
 static VmFrameDecoder gDecoder;
 static Boolean gConnected = false;
+static Boolean gLost = false;         /* the radio stopped answering: see SessionTakeLost */
+static UInt32  gHeardAt = 0;          /* ticks when the radio last sent anything */
 static Boolean gMsgWaiting = false;
 static UInt16  gChanged = 0;
 static VmDeviceInfo gDevice;
@@ -162,6 +164,8 @@ static Err WaitForAny(const UInt8 *codes, UInt16 n, Int32 timeout)
 		}
 		gRxPos = 0;
 		gRxLen = TransportRecv(gRx, sizeof(gRx), left, &err);
+		if (gRxLen)
+			gHeardAt = TimGetTicks();
 	}
 }
 
@@ -183,6 +187,7 @@ static void DrainInput(void)
 		gRxLen = TransportRecv(gRx, sizeof(gRx), 0, &err);
 		if (gRxLen == 0)
 			break;
+		gHeardAt = TimGetTicks();
 	}
 	VmDecoderReset(&gDecoder);
 }
@@ -205,12 +210,24 @@ static Err RequestAny(const UInt8 *frame, UInt16 len, const UInt8 *codes, UInt16
 		if (err == serErrTimeOut)
 			continue;
 		if (err != errNone)
-			return err;
+			break;
 		err = WaitForAny(codes, n, VM_REPLY_TIMEOUT);
 		if (err != vmErrNoReply)
 			return err;
 	}
-	return err == serErrTimeOut ? vmErrNoReply : err;
+	if (err == serErrTimeOut)
+		err = vmErrNoReply;
+	/*
+	 * The radio itself always answers at once, so the link is gone (the bridge
+	 * stopped, a cable pulled): offline, rather than "online" with every
+	 * command failing. gConnected first, so the disconnect sends nothing.
+	 */
+	if (gConnected) {
+		gConnected = false;
+		gLost = true;
+		SessionDisconnect();
+	}
+	return err;
 }
 
 static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
@@ -310,6 +327,7 @@ static Err OpenAndQuery(void)
 		return err;
 	}
 	gConnected = true;
+	gHeardAt = TimGetTicks();
 	gScopeMode = VM_SCOPE_UNKNOWN;
 	return errNone;
 }
@@ -490,7 +508,7 @@ const VmConv *SessionSoundConv(UInt8 kind)
 Err SessionSyncMessages(void)
 {
 	static const UInt8 codes[] = { VM_RESP_CONTACT_MSG_V3, VM_RESP_CHANNEL_MSG_V3, VM_RESP_NO_MORE_MESSAGES };
-	UInt8 frame[VM_HEADER_LEN + 1];
+	UInt8 frame[VM_HEADER_LEN + 5];
 	UInt16 len = VmBuildSyncNextMessage(frame, sizeof(frame));
 	UInt16 n;
 	VmMessage m;
@@ -566,7 +584,7 @@ static Err ApplyScope(const VmConv *conv)
 
 Err SessionGetDefaultScope(Char *name)
 {
-	UInt8 frame[VM_HEADER_LEN + 1];
+	UInt8 frame[VM_HEADER_LEN + 5];
 	UInt8 key[VM_SCOPE_KEY_SIZE];
 	Err err;
 
@@ -719,12 +737,27 @@ Err SessionRetry(UInt16 index)
 	return SendRecord(index);
 }
 
+/* After a quiet minute, asks the radio the time, so a lost link shows (RequestAny) while idle. */
+#define VM_QUIET_TICKS (60 * SysTicksPerSecond())
+
+static void CheckAlive(void)
+{
+	UInt8 frame[VM_HEADER_LEN + 5];
+	UInt16 len;
+
+	if (TimGetTicks() - gHeardAt < VM_QUIET_TICKS)
+		return;
+	len = VmBuildGetTime(frame, sizeof(frame));
+	Request(frame, len, VM_RESP_CURR_TIME, 1);
+}
+
 UInt16 SessionPoll(void)
 {
 	UInt16 changed;
 
 	if (gConnected) {
 		DrainInput();
+		CheckAlive();
 		if (gMsgWaiting)
 			SessionSyncMessages();
 		if (MessagesExpireAcks(SessionNow()))
@@ -899,6 +932,14 @@ void SessionDisconnect(void)
 Boolean SessionIsConnected(void)
 {
 	return gConnected;
+}
+
+Boolean SessionTakeLost(void)
+{
+	Boolean lost = gLost;
+
+	gLost = false;
+	return lost;
 }
 
 Boolean SessionMessageWaiting(void)
