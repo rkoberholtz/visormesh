@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include "db.h"
 #include "protocol.h"
 #include "session.h"
 #include "channels.h"
@@ -14,28 +15,12 @@ static void RefileMessages(UInt16 oldCount, UInt8 maxChannels) VM_SECT2;
 static Char DB_NAME[] = "VisorMeshChannels";
 static Char kEmpty[] = "";
 #define DB_TYPE     'chan'
-#define DB_CREATOR  'VMsh'
 
 static DmOpenRef gDb = 0;
 
 Err ChannelsOpen(void)
 {
-	LocalID id;
-	Err err;
-
-	if (gDb)
-		return errNone;
-	id = DmFindDatabase(0, DB_NAME);
-	if (!id) {
-		err = DmCreateDatabase(0, DB_NAME, DB_CREATOR, DB_TYPE, false);
-		if (err != errNone)
-			return err;
-		id = DmFindDatabase(0, DB_NAME);
-		if (!id)
-			return DmGetLastErr();
-	}
-	gDb = DmOpenDatabase(0, id, dmModeReadWrite);
-	return gDb ? errNone : DmGetLastErr();
+	return gDb ? errNone : DbOpen(DB_NAME, DB_TYPE, &gDb);
 }
 
 void ChannelsClose(void)

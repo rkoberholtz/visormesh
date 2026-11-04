@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include "db.h"
 #include "protocol.h"
 #include "ui/text.h"
 #include "messages.h"
@@ -14,7 +15,6 @@ static void TagChannel(VmConv *conv) VM_SECT2;
 /* a data array, not a literal: this module is in the second code segment (sections.h) */
 static Char DB_NAME[] = "VisorMeshMessages";
 #define DB_TYPE     'msgs'
-#define DB_CREATOR  'VMsh'
 #define TEXT_MAX    (VM_MAX_FRAME + 1)
 
 static DmOpenRef gDb = 0;
@@ -27,26 +27,7 @@ static UInt32 gNextAckDeadline = 1;
 
 Err MessagesOpen(void)
 {
-	LocalID id;
-	UInt16 attrs;
-	Err err;
-
-	if (gDb)
-		return errNone;
-	id = DmFindDatabase(0, DB_NAME);
-	if (!id) {
-		err = DmCreateDatabase(0, DB_NAME, DB_CREATOR, DB_TYPE, false);
-		if (err != errNone)
-			return err;
-		id = DmFindDatabase(0, DB_NAME);
-		if (!id)
-			return DmGetLastErr();
-		DmDatabaseInfo(0, id, NULL, &attrs, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-		attrs |= dmHdrAttrBackup;
-		DmSetDatabaseInfo(0, id, NULL, &attrs, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	}
-	gDb = DmOpenDatabase(0, id, dmModeReadWrite);
-	return gDb ? errNone : DmGetLastErr();
+	return gDb ? errNone : DbOpen(DB_NAME, DB_TYPE, &gDb);
 }
 
 void MessagesClose(void)

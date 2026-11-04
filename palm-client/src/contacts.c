@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include "db.h"
 #include "protocol.h"
 #include "session.h"
 #include "contacts.h"
@@ -12,33 +13,13 @@ static Err UpsertContact(const VmContact *c, void *ctx) VM_SECT4;
 /* a data array, not a literal: this module is in the second code segment (sections.h) */
 static Char DB_NAME[] = "VisorMeshContacts";
 #define DB_TYPE     'cont'
-#define DB_CREATOR  'VMsh'
 
 static DmOpenRef gDb = 0;
 static UInt32 gLastMod = 0;    /* newest lastmod of the last download in this run; 0: none yet */
 
 Err ContactsOpen(void)
 {
-	LocalID id;
-	UInt16 attrs;
-	Err err;
-
-	if (gDb)
-		return errNone;
-	id = DmFindDatabase(0, DB_NAME);
-	if (!id) {
-		err = DmCreateDatabase(0, DB_NAME, DB_CREATOR, DB_TYPE, false);
-		if (err != errNone)
-			return err;
-		id = DmFindDatabase(0, DB_NAME);
-		if (!id)
-			return DmGetLastErr();
-		DmDatabaseInfo(0, id, NULL, &attrs, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-		attrs |= dmHdrAttrBackup;
-		DmSetDatabaseInfo(0, id, NULL, &attrs, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	}
-	gDb = DmOpenDatabase(0, id, dmModeReadWrite);
-	return gDb ? errNone : DmGetLastErr();
+	return gDb ? errNone : DbOpen(DB_NAME, DB_TYPE, &gDb);
 }
 
 void ContactsClose(void)

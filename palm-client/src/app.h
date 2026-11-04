@@ -19,7 +19,9 @@ void AppOpenConversation(const VmConv *conv);
 
 /*
  * Loads/saves the link choice (USB or serial, so the app reconnects the same way)
- * and the UTC offset (the Visor's clock has no time zone).
+ * and the UTC offset (the Visor's clock has no time zone). AppLoadPrefs also
+ * loads every module's own prefs (sounds, mutes, scopes, pins): the
+ * closed-app check (BgCheckRun) relies on it, so add new ones there.
  */
 void AppLoadPrefs(void);
 void AppSavePrefs(void);

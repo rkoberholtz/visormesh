@@ -1,3 +1,8 @@
+/*
+ * In the first code segment, and it must stay there: the reply-code tables
+ * are static const inside functions, which read as garbage from an extra
+ * segment (sections.h). It's also on the closed-app check's path.
+ */
 #include <PalmOS.h>
 #include "protocol.h"
 #include "transport.h"
