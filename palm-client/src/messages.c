@@ -18,6 +18,12 @@ static Char DB_NAME[] = "VisorMeshMessages";
 #define TEXT_MAX    (VM_MAX_FRAME + 1)
 
 static DmOpenRef gDb = 0;
+/*
+ * The earliest ack deadline of a DM still waiting, so the check each poll
+ * only scans the store when one can have passed. 1 until the first scan
+ * (DMs from before this run may be waiting); 0: none waiting.
+ */
+static UInt32 gNextAckDeadline = 1;
 
 Err MessagesOpen(void)
 {
@@ -218,6 +224,8 @@ void MessagesSetStatus(UInt16 index, UInt8 status, UInt32 ack, UInt32 ackDeadlin
 	hdr.ack = ack;
 	hdr.ackDeadline = ackDeadline;
 	WriteHeader(index, &hdr);
+	if (status == VM_ST_SENT && ack && (!gNextAckDeadline || ackDeadline < gNextAckDeadline))
+		gNextAckDeadline = ackDeadline;
 }
 
 void MessagesBumpAttempt(UInt16 index)
@@ -253,19 +261,24 @@ Boolean MessagesExpireAcks(UInt32 now)
 {
 	VmMsgHeader hdr;
 	UInt16 i, n;
+	UInt32 next = 0;
 	Boolean changed = false;
 
-	if (!gDb)
+	if (!gDb || !gNextAckDeadline || now <= gNextAckDeadline)
 		return false;
 	n = DmNumRecords(gDb);
 	for (i = 0; i < n; i++) {
-		if (ReadHeader(i, &hdr) && hdr.dir == VM_DIR_OUT && hdr.status == VM_ST_SENT &&
-		    hdr.ack != 0 && now > hdr.ackDeadline) {
+		if (!ReadHeader(i, &hdr) || hdr.dir != VM_DIR_OUT || hdr.status != VM_ST_SENT || hdr.ack == 0)
+			continue;
+		if (now > hdr.ackDeadline) {
 			hdr.status = VM_ST_FAILED;
 			WriteHeader(i, &hdr);
 			changed = true;
+		} else if (!next || hdr.ackDeadline < next) {
+			next = hdr.ackDeadline;
 		}
 	}
+	gNextAckDeadline = next;
 	return changed;
 }
 
