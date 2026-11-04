@@ -27,7 +27,6 @@ static void ShowDetails(UInt16 row) VM_SECT2;
 
 #define NAME_X   8
 #define NAME_W   82
-#define HEARD_R  110
 
 static RowList gList;
 
@@ -75,7 +74,7 @@ static UInt16 SelfRows(void)
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 {
 	FontID old = FntSetFont(vmSmallFont);
-	Coord x = b->topLeft.x, y = b->topLeft.y, right = x + b->extent.x;
+	Coord x = b->topLeft.x, y = b->topLeft.y, right = x + b->extent.x, end;
 	Char mark, buf[16];
 	VmContact c;
 
@@ -93,15 +92,20 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 	}
 	mark = ContactTypeGlyph(c.type);
 	WinDrawChars(&mark, 1, x + 1, y);
-	DrawCut(c.name, x + NAME_X, y, NAME_W);
+	/* age at the right; the route only when known (most are flood), so names get the room */
 	if (c.lastAdvert) {
 		UInt32 now = SessionNow();
 
 		TxtFormatAge(buf, now > c.lastAdvert ? now - c.lastAdvert : 0);
-		DrawRight(buf, x + HEARD_R, y);
+		DrawRight(buf, right - 1, y);
 	}
-	ContactFormatRoute(buf, c.outPathLen);
-	DrawRight(buf, right - 1, y);
+	end = right - 1 - FntCharsWidth("000d", 4) - 4;
+	if (c.outPathLen != VM_PATH_UNKNOWN) {
+		ContactFormatRoute(buf, c.outPathLen);
+		DrawRight(buf, end, y);
+		end -= FntCharsWidth(buf, StrLen(buf)) + 4;
+	}
+	DrawCut(c.name, x + NAME_X, y, end - (x + NAME_X));
 	FntSetFont(old);
 }
 
