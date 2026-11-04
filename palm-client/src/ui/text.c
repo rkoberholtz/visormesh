@@ -37,7 +37,8 @@ UInt16 TxtFit(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w)
 
 UInt16 TxtWrap(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w, UInt16 *consumed)
 {
-	UInt16 fit, brk, end, nl;
+	UInt16 fit, brk, end, nl, i, any;
+	Boolean inMention;
 
 	/* a line break in the text ends the line there, if it comes before the wrap point */
 	for (nl = 0; nl < len && s[nl] != '\n' && s[nl] != '\r'; nl++)
@@ -56,9 +57,23 @@ UInt16 TxtWrap(const Char *s, UInt16 len, Int16 maxW, TxtWidthFn w, UInt16 *cons
 	}
 	if (fit == 0)
 		fit = 1;    /* always make progress, even if one character is too wide */
-	/* break after the last space in the part that fits */
-	for (brk = fit; brk > 0 && s[brk] != ' '; brk--)
-		;
+	/*
+	 * Break at the last space in the part that fits, but not inside a
+	 * @[Name] mention (drawn as one chip) unless it's longer than the line.
+	 */
+	for (i = 0, any = 0, brk = 0, inMention = 0; i <= fit; i++) {
+		if (s[i] == ' ' && i > 0) {
+			any = i;
+			if (!inMention)
+				brk = i;
+		} else if (s[i] == '@' && i + 1 < len && s[i + 1] == '[') {
+			inMention = 1;
+		} else if (s[i] == ']') {
+			inMention = 0;
+		}
+	}
+	if (brk == 0)
+		brk = any;
 	if (brk == 0)
 		brk = fit;  /* one word longer than the line: break it */
 	end = brk;

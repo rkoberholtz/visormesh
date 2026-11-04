@@ -55,6 +55,12 @@ static void test_fit_and_wrap(void)
 	n = TxtWrap("abcdef ghij\nk", 13, 5 * 4, Four, &used);  /* the width wraps before the break */
 	CHECK(n == 5 && used == 5);
 
+	/* a mention isn't split, unless it alone is longer than the line */
+	n = TxtWrap("hi @[Ann Lee] ok", 16, 12 * 4, Four, &used);
+	CHECK(n == 2 && used == 3);
+	n = TxtWrap("@[A very long name] x", 21, 10 * 4, Four, &used);
+	CHECK(n == 8 && used == 9);         /* at its last space, as before */
+
 	/* the rest fits */
 	n = TxtWrap("short", 5, 100, Four, &used);
 	CHECK(n == 5 && used == 5);
