@@ -122,7 +122,7 @@ static Boolean gWantConnection = false;   /* we were connected when the Visor sl
  * later (8.5 min in all).
  */
 #define VM_RETRIES   8
-#define VM_STEP_TICKS (SysTicksPerSecond() / 10)
+#define VM_STEP_TICKS (SysTicksPerSecond() / 4)
 static UInt32 gRetryAt = 0;    /* ticks; 0: no retry due */
 static UInt16 gRetries = 0;
 

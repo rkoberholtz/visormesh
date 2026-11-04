@@ -45,7 +45,7 @@ void    SessionDisconnect(void);
 /*
  * A connect in steps, so the app keeps running while it finds the radio
  * (reconnects after a wake or a lost link). Start opens the link; then call
- * Step every tenth of a second or so until it returns something other than
+ * Step a few times a second until it returns something other than
  * vmErrPending: errNone once connected and synced, or the error (link
  * closed). SessionConnect or SessionDisconnect abandons it.
  */

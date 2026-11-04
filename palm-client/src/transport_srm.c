@@ -4,6 +4,7 @@
 #define VM_BAUD       115200
 #define VM_SEND_TRIES 8      /* SrmSend attempts for one buffer (USB re-attach) */
 #define VM_SEND_WAIT  (SysTicksPerSecond() / 4)   /* each: 2 s in all */
+#define VM_ONCE_WAIT  (SysTicksPerSecond() / 10)  /* TransportSendOnce */
 
 static UInt16  gPortId;
 static Boolean gPortOpen = false;
@@ -81,13 +82,20 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 
 Err TransportSendOnce(const UInt8 *buf, UInt16 len)
 {
+	Int32 wait = VM_ONCE_WAIT;
+	UInt16 size = sizeof(wait);
+	UInt32 sent;
 	Err err = errNone;
 
 	if (gPort == VM_PORT_SBLORA)
 		return SbTransportSend(buf, len);
 	if (!gPortOpen)
 		return serErrNotOpen;
-	if (SrmSend(gPortId, (void *)buf, len, &err) == len)
+	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
+	sent = SrmSend(gPortId, (void *)buf, len, &err);
+	wait = VM_SEND_WAIT;
+	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
+	if (sent == len)
 		return errNone;
 	SrmClearErr(gPortId);
 	return err != errNone ? err : serErrTimeOut;
@@ -106,6 +114,9 @@ UInt16 TransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP)
 		return 0;
 	}
 
+	/* without waiting: only if something's there (a read that can't wait still costs the USB driver time) */
+	if (timeoutTicks == 0 && (SrmReceiveCheck(gPortId, &avail) != errNone || avail == 0))
+		return 0;
 	/* Block for the first byte, then take whatever else is already buffered. */
 	n = SrmReceive(gPortId, buf, 1, timeoutTicks, errP);
 	if (n == 0) {
