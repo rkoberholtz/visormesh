@@ -24,5 +24,11 @@ Boolean ContactsFindByPrefixN(const UInt8 *prefix, UInt16 n, VmContact *out) VM_
  * refresh leaves the previous list intact. count (may be NULL) gets the radio's total.
  */
 Err     ContactsRefresh(UInt32 *count) VM_SECT2;
+/*
+ * After a full refresh in this run, downloads only the contacts changed since
+ * (GET_CONTACTS with 'since') and updates them in place; otherwise a full
+ * refresh. Removals on the radio only show at the next full refresh.
+ */
+Err     ContactsUpdate(void) VM_SECT4;
 
 #endif

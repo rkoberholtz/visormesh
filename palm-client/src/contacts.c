@@ -7,6 +7,7 @@
 /* In the second code segment: see sections.h for the rules. */
 static Int16 CompareByName(void *a, void *b, Int16 other, SortRecordInfoPtr ia, SortRecordInfoPtr ib, MemHandle appInfo) VM_SECT2;
 static Err AddContact(const VmContact *c, void *ctx) VM_SECT2;
+static Err UpsertContact(const VmContact *c, void *ctx) VM_SECT4;
 
 /* a data array, not a literal: this module is in the second code segment (sections.h) */
 static Char DB_NAME[] = "VisorMeshContacts";
@@ -14,6 +15,7 @@ static Char DB_NAME[] = "VisorMeshContacts";
 #define DB_CREATOR  'VMsh'
 
 static DmOpenRef gDb = 0;
+static UInt32 gLastMod = 0;    /* newest lastmod of the last download in this run; 0: none yet */
 
 Err ContactsOpen(void)
 {
@@ -142,5 +144,53 @@ Err ContactsRefresh(UInt32 *count)
 	for (i = 0; i < oldCount; i++)
 		DmRemoveRecord(gDb, 0);
 	DmQuickSort(gDb, CompareByName, 0);
+	gLastMod = lastMod;
 	return errNone;
+}
+
+/* SessionGetContacts callback for ContactsUpdate: replaces the record with the same key, or adds one. */
+static Err UpsertContact(const VmContact *c, void *ctx)
+{
+	UInt16 i, n = DmNumRecords(gDb), index = dmMaxRecordIndex;
+	VmContact copy = *c;
+	MemHandle h;
+
+	TxtUtf8NameToPalm(copy.name, sizeof(copy.name));
+	for (i = 0; i < n; i++) {
+		h = DmQueryRecord(gDb, i);
+		if (h && MemCmp(((const VmContact *)MemHandleLock(h))->pubKey, c->pubKey, VM_PUB_KEY_SIZE) == 0) {
+			MemHandleUnlock(h);
+			index = i;
+			break;
+		}
+		if (h)
+			MemHandleUnlock(h);
+	}
+	h = index == dmMaxRecordIndex ? DmNewRecord(gDb, &index, sizeof(VmContact)) : DmGetRecord(gDb, index);
+	if (!h)
+		return DmGetLastErr();
+	DmWrite(MemHandleLock(h), 0, &copy, sizeof(VmContact));
+	MemHandleUnlock(h);
+	DmReleaseRecord(gDb, index, true);
+	(*(UInt16 *)ctx)++;
+	return errNone;
+}
+
+Err ContactsUpdate(void)
+{
+	UInt32 total, lastMod = 0;
+	UInt16 changed = 0;
+	Err err;
+
+	if (!gLastMod)
+		return ContactsRefresh(NULL);
+	err = ContactsOpen();
+	if (err != errNone)
+		return err;
+	err = SessionGetContacts(gLastMod, UpsertContact, &changed, &total, &lastMod);
+	if (changed)
+		DmQuickSort(gDb, CompareByName, 0);    /* a new or renamed contact */
+	if (err == errNone && lastMod > gLastMod)
+		gLastMod = lastMod;
+	return err;
 }

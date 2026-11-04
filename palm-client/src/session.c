@@ -293,7 +293,7 @@ Err SessionConnect(void)
 	SessionSyncClock();
 	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
 		gChanged |= VM_CHANGED_MESSAGES;
-	if (ContactsRefresh(NULL) == errNone)
+	if (ContactsUpdate() == errNone)
 		gChanged |= VM_CHANGED_CONTACTS;
 	SessionSyncMessages();
 	return errNone;
