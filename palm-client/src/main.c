@@ -24,6 +24,7 @@
 #include "bgcheck.h"
 #include "shots.h"
 #include "ui/draw.h"
+#include "ui/title.h"
 
 #define VM_MIN_ROM_VERSION sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 #define VM_POLL_TICKS      (SysTicksPerSecond() / 2)
@@ -41,6 +42,8 @@ static Err RomVersionCompatible(UInt32 required, UInt16 launchFlags)
 		FrmAlert(RomIncompatibleAlert);
 	return sysErrRomIncompatible;
 }
+
+static void Connect(Boolean retry);
 
 /* Go, Channel and Options commands, whichever screen's menu they're on; Edit is the form's. */
 static Boolean HandleMenu(UInt16 itemID)
@@ -61,6 +64,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuShot:        ShotCapture();                return true;   /* the menu has gone by now */
 	case MainMenuShotLater:   ShotLater(5);                 return true;
 	case MainMenuAbout:       AppAbout();                   return true;
+	case MainMenuConnect:     Connect(false);               return true;
 	}
 	return false;
 }
@@ -111,6 +115,47 @@ static Boolean AppHandleEvent(EventType *event)
 static UInt32  gLastSecs = 0, gLastTicks = 0;
 static Boolean gWantConnection = false;   /* we were connected when the Visor slept */
 
+/*
+ * After a wake the connect often fails (the USB link isn't back yet) or a tap
+ * stops it, so it's tried again 2, 4, 8 ... 256 s later (8.5 min in all).
+ */
+#define VM_RETRIES 8
+static UInt32 gRetryAt = 0;    /* ticks; 0: no retry due */
+static UInt16 gRetries = 0;
+
+/* Shows progress in the title on Home and conversations; retry: quietly, again later if it fails. */
+static void Connect(Boolean retry)
+{
+	UInt16 formId = FrmGetActiveFormID();
+	Err err;
+
+	gRetryAt = 0;
+	err = AppConnect(formId == HomeForm || formId == ConvoForm ? TitleStatus : NULL, retry);
+	if (err == errNone) {
+		gWantConnection = false;
+		gRetries = 0;
+	} else if (retry && gRetries < VM_RETRIES) {
+		gRetries++;
+		gRetryAt = TimGetTicks() + ((UInt32)SysTicksPerSecond() << gRetries);
+		if (!gRetryAt)
+			gRetryAt = 1;
+	}
+	FrmUpdateForm(formId, VM_UPDATE_DATA);
+}
+
+/* How long to wait for an event: poll while connected, wake for a retry that's due. */
+static Int32 EventTimeout(void)
+{
+	Int32 left;
+
+	if (SessionIsConnected())
+		return VM_POLL_TICKS;
+	if (!gRetryAt)
+		return evtWaitForever;
+	left = (Int32)(gRetryAt - TimGetTicks());
+	return left > 1 ? left : 1;
+}
+
 static void CheckWake(void)
 {
 	UInt32 secs = TimGetSeconds(), ticks = TimGetTicks();
@@ -122,9 +167,8 @@ static void CheckWake(void)
 		if (wall - run > VM_SLEEP_GAP_SECS && (SessionIsConnected() || gWantConnection)) {
 			gWantConnection = true;
 			SessionDisconnect();
-			if (AppConnect(NULL, true) == errNone)
-				gWantConnection = false;
-			FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
+			gRetries = 0;
+			Connect(true);
 			secs = TimGetSeconds();
 			ticks = TimGetTicks();
 		}
@@ -157,9 +201,11 @@ static void AppEventLoop(void)
 	Err err;
 
 	do {
-		EvtGetEvent(&event, SessionIsConnected() ? VM_POLL_TICKS : evtWaitForever);
+		EvtGetEvent(&event, EventTimeout());
 		CheckWake();
 		if (event.eType == nilEvent) {
+			if (gRetryAt && !SessionIsConnected() && (Int32)(TimGetTicks() - gRetryAt) >= 0)
+				Connect(true);
 			Poll();
 			continue;
 		}

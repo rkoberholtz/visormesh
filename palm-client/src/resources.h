@@ -31,6 +31,7 @@
 #define MainMenuShot       1015
 #define MainMenuShotLater  1016
 #define MainMenuAbout      1019
+#define MainMenuConnect    1021   /* also a tap on "offline" in the title */
 #define AboutAlert         1020
 #define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */
 #define ConvoMenuBar       1017   /* Go, Edit, Options: a DM, the console */

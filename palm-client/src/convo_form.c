@@ -12,6 +12,7 @@
 #include "convos.h"
 #include "app.h"
 #include "ui/draw.h"
+#include "ui/title.h"
 #include "ui/text.h"
 #include "ui/rowlist.h"
 #include "ui/emoji.h"
@@ -27,6 +28,7 @@ static void Build(void) VM_SECT2;
 static Int16 TextWithMentions(const Char *text, UInt16 len, Coord x, Coord y, Coord hitX) VM_SECT2;
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static void DrawCounter(void) VM_SECT2;
+static void DrawStatus(void) VM_SECT2;
 static UInt32 FirstUnread(void) VM_SECT2;
 static void ScrollToNew(void) VM_SECT2;
 static void Refresh(Boolean toEnd) VM_SECT2;
@@ -65,6 +67,8 @@ static UInt16  gCount = 0;
 static UInt16  gShow = MAX_MSGS;    /* messages shown (the newest) */
 static RowList gList;
 static Char    gTitle[VM_NAME_SIZE + 2];
+static Coord   gTitleEnd;       /* where the title's tab ends */
+static Boolean gShownOnline;
 static UInt32  gNewFrom = NO_NEW;   /* unique ID of the first message unread at open */
 
 static const Char *kDays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -334,6 +338,17 @@ static void DrawCounter(void)
 	FntSetFont(old);
 }
 
+/* Online or offline at the right of the title; redraws the title if "Connecting..." covered its end. */
+static void DrawStatus(void)
+{
+	Boolean over = TitleStatusLeft() < gTitleEnd;
+
+	gShownOnline = SessionIsConnected();
+	TitleConnState("");
+	if (over)
+		FrmCopyTitle(FrmGetActiveForm(), gTitle);
+}
+
 /* The oldest unread message of this conversation, or NO_NEW. */
 static UInt32 FirstUnread(void)
 {
@@ -527,7 +542,9 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		if (!AllocLines())
 			return false;
 		ConvName(&gAppConv, gTitle, VM_NAME_SIZE);
+		gTitleEnd = TitleFit(gTitle);
 		FrmCopyTitle(form, gTitle);
+		TitleStatusReset();
 		RowListInit(&gList, ConvoGadget, ConvoScroll, LINE_H, DrawLine, NULL, NULL);
 		gNewFrom = FirstUnread();
 		Build();
@@ -537,6 +554,7 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		FrmDrawForm(form);
 		RowListDraw(&gList);
 		DrawCounter();
+		DrawStatus();
 		FrmSetFocus(form, FrmGetObjectIndex(form, ConvoField));
 		return true;
 
@@ -555,9 +573,12 @@ Boolean ConvoFormHandleEvent(EventType *event)
 			FrmDrawForm(form);
 			RowListDraw(&gList);
 			DrawCounter();
+			TitleStatusReset();
+			DrawStatus();
 			return true;
 		}
 		Refresh(gList.top + RowListVisibleRows(&gList) >= gCount);   /* follow new messages if at the end */
+		DrawStatus();
 		return true;
 
 	case fldChangedEvent:
@@ -573,6 +594,11 @@ Boolean ConvoFormHandleEvent(EventType *event)
 			FrmGotoForm(HomeForm);
 			return true;
 		}
+		break;
+
+	case penDownEvent:
+		if (TitleStatusTapped(event))
+			return true;
 		break;
 
 	case keyDownEvent:
@@ -596,6 +622,9 @@ Boolean ConvoFormHandleEvent(EventType *event)
 
 void ConvoFormIdle(void)
 {
-	if (gLines)
+	if (gLines) {
 		DrawCounter();
+		if (SessionIsConnected() != gShownOnline)
+			DrawStatus();
+	}
 }
