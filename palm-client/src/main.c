@@ -212,6 +212,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		UiFontRelease();
 		ShotCancel();
 		BgSetAppOpen(false);
+		if (SessionDevice()->fwVerCode)
+			BgRadioSeen();      /* the radio's back: check at the normal interval */
 		BgScheduleIfIdle();
 	}
 	return errNone;

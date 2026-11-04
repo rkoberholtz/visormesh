@@ -23,8 +23,10 @@
 UInt16 BgInterval(void);
 void   BgSetInterval(UInt16 minutes);
 
-/* Sets the next alarm from the interval (clears it when off). */
+/* Sets the next alarm from the interval (clears it when off), spaced out after checks without a radio. */
 void   BgSchedule(void);
+/* After the app reached the radio itself: ends the spacing-out after checks that found none. */
+void   BgRadioSeen(void);
 /* BgSchedule unless an alarm is already pending (at exit: keeps the time Preferences showed). */
 void   BgScheduleIfIdle(void);
 

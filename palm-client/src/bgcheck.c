@@ -22,7 +22,7 @@ typedef struct {
 
 /* What the last check did, for Preferences (unsaved prefs: not backed up). */
 #define VM_BG_STATUS_ID      6
-#define VM_BG_STATUS_VERSION 1
+#define VM_BG_STATUS_VERSION 2
 #define VM_BG_LAUNCHING  1    /* the check started and didn't finish */
 #define VM_BG_LAUNCH_ERR 2    /* SysAppLaunch failed: err */
 #define VM_BG_NO_RADIO   4    /* couldn't connect: err */
@@ -34,7 +34,11 @@ typedef struct {
 	UInt32 when;     /* TimGetSeconds */
 	UInt16 err;
 	UInt16 kinds;
+	UInt16 misses;   /* checks in a row that found no radio: they space out (BgSchedule) */
 } BgStatus;
+
+#define VM_BG_MAX_BACKOFF 4     /* at most 16 times the interval... */
+#define VM_BG_MAX_MINUTES 60    /* ...and no more than an hour, unless the interval is longer */
 
 /*
  * New messages found by checks, per conversation, until the alert shows them
@@ -103,15 +107,26 @@ static void SetAlarm(UInt32 when)
 		AlmSetAlarm(card, id, 0, when, true);
 }
 
+static Boolean ReadStatus(BgStatus *st)
+{
+	UInt16 size = sizeof(*st);
+
+	return PrefGetAppPreferences(VM_CREATOR, VM_BG_STATUS_ID, st, &size, false) != noPreferenceFound &&
+	       size == sizeof(*st) && st->version == VM_BG_STATUS_VERSION;
+}
+
+/* Keeps the count of checks without a radio: up one for VM_BG_NO_RADIO, cleared by VM_BG_DONE. */
 static void WriteStatus(UInt16 stage, Err err, UInt16 kinds)
 {
 	BgStatus st;
+	UInt16 misses = ReadStatus(&st) ? st.misses : 0;
 
 	st.version = VM_BG_STATUS_VERSION;
 	st.stage = stage;
 	st.when = TimGetSeconds();
 	st.err = err;
 	st.kinds = kinds;
+	st.misses = stage == VM_BG_NO_RADIO ? misses + 1 : stage == VM_BG_DONE ? 0 : misses;
 	PrefSetAppPreferences(VM_CREATOR, VM_BG_STATUS_ID, VM_BG_STATUS_VERSION, &st, sizeof(st), false);
 }
 
@@ -137,11 +152,28 @@ static void ClearPending(void)
 	SavePending(&pend);
 }
 
+/*
+ * Without a radio (out of the cradle, say) each check wakes the Visor and
+ * holds the port for seconds, so after misses the gap doubles, up to an hour.
+ */
 void BgSchedule(void)
 {
-	UInt16 minutes = BgInterval();
+	UInt16 minutes = BgInterval(), shift;
+	UInt32 delay;
+	BgStatus st;
 
-	SetAlarm(minutes ? TimGetSeconds() + (UInt32)minutes * 60 : 0);
+	if (!minutes) {
+		SetAlarm(0);
+		return;
+	}
+	delay = minutes;
+	if (ReadStatus(&st) && st.misses) {
+		shift = st.misses < VM_BG_MAX_BACKOFF ? st.misses : VM_BG_MAX_BACKOFF;
+		delay <<= shift;
+		if (delay > VM_BG_MAX_MINUTES)
+			delay = minutes > VM_BG_MAX_MINUTES ? minutes : VM_BG_MAX_MINUTES;
+	}
+	SetAlarm(TimGetSeconds() + delay * 60);
 }
 
 void BgScheduleIfIdle(void)
@@ -152,6 +184,17 @@ void BgScheduleIfIdle(void)
 
 	if (!FindSelf(&card, &id) || AlmGetAlarm(card, id, &ref) <= TimGetSeconds())
 		BgSchedule();
+}
+
+void BgRadioSeen(void)
+{
+	BgStatus st;
+
+	if (!ReadStatus(&st) || !st.misses)
+		return;
+	st.misses = 0;
+	PrefSetAppPreferences(VM_CREATOR, VM_BG_STATUS_ID, VM_BG_STATUS_VERSION, &st, sizeof(st), false);
+	BgSchedule();
 }
 
 void BgSetAppOpen(Boolean open)
@@ -184,6 +227,7 @@ void BgAlarmTriggered(SysAlarmTriggeredParamType *p)
 	err = SysAppLaunch(card, id, sysAppLaunchFlagNewGlobals, VM_LAUNCH_BGCHECK, &kinds, &result);
 	if (err != errNone)
 		WriteStatus(VM_BG_LAUNCH_ERR, err, 0);
+	BgSchedule();       /* again: a miss (or a radio found again) changes the gap */
 	if (err != errNone || !kinds)
 		return;
 	p->purgeAlarm = false;     /* the system sends sysAppLaunchCmdDisplayAlarm next */
@@ -304,13 +348,12 @@ static void AppendTime(Char *out, UInt32 secs)
 void BgStatusText(Char *out)
 {
 	BgStatus st;
-	UInt16 size = sizeof(st), card, n, kind;
+	UInt16 card, n, kind;
 	LocalID id;
 	UInt32 ref, next = 0;
 
 	out[0] = 0;
-	if (PrefGetAppPreferences(VM_CREATOR, VM_BG_STATUS_ID, &st, &size, false) != noPreferenceFound &&
-	    size == sizeof(st) && st.version == VM_BG_STATUS_VERSION) {
+	if (ReadStatus(&st)) {
 		StrCopy(out, "Last ");
 		AppendTime(out, st.when);
 		switch (st.stage) {
