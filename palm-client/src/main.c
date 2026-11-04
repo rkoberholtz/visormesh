@@ -43,7 +43,7 @@ static Err RomVersionCompatible(UInt32 required, UInt16 launchFlags)
 	return sysErrRomIncompatible;
 }
 
-static void Connect(Boolean retry);
+static void Connect(void);
 
 /* Go, Channel and Options commands, whichever screen's menu they're on; Edit is the form's. */
 static Boolean HandleMenu(UInt16 itemID)
@@ -64,7 +64,7 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuShot:        ShotCapture();                return true;   /* the menu has gone by now */
 	case MainMenuShotLater:   ShotLater(5);                 return true;
 	case MainMenuAbout:       AppAbout();                   return true;
-	case MainMenuConnect:     Connect(false);               return true;
+	case MainMenuConnect:     Connect();                    return true;
 	}
 	return false;
 }
@@ -116,38 +116,83 @@ static UInt32  gLastSecs = 0, gLastTicks = 0;
 static Boolean gWantConnection = false;   /* we were connected when the Visor slept */
 
 /*
- * After a wake the connect often fails (the USB link isn't back yet) or a tap
- * stops it, so it's tried again 2, 4, 8 ... 256 s later (8.5 min in all).
+ * Reconnects after a wake or a lost link run in steps (SessionConnectStep on
+ * idle events), so the app stays usable meanwhile. One that fails (the USB
+ * link isn't back yet, the bridge is stopped) is tried again 2, 4, 8 ... 256 s
+ * later (8.5 min in all).
  */
-#define VM_RETRIES 8
+#define VM_RETRIES   8
+#define VM_STEP_TICKS (SysTicksPerSecond() / 10)
 static UInt32 gRetryAt = 0;    /* ticks; 0: no retry due */
 static UInt16 gRetries = 0;
 
-/* Shows progress in the title on Home and conversations; retry: quietly, again later if it fails. */
-static void Connect(Boolean retry)
+static void ScheduleRetry(void)
 {
-	UInt16 formId = FrmGetActiveFormID();
-	Err err;
+	if (gRetries >= VM_RETRIES)
+		return;
+	gRetries++;
+	gRetryAt = TimGetTicks() + ((UInt32)SysTicksPerSecond() << gRetries);
+	if (!gRetryAt)
+		gRetryAt = 1;
+}
 
-	gRetryAt = 0;
-	err = AppConnect(formId == HomeForm || formId == ConvoForm ? TitleStatus : NULL, retry);
+static void Reconnected(Err err)
+{
 	if (err == errNone) {
 		gWantConnection = false;
 		gRetries = 0;
-	} else if (retry && gRetries < VM_RETRIES) {
-		gRetries++;
-		gRetryAt = TimGetTicks() + ((UInt32)SysTicksPerSecond() << gRetries);
-		if (!gRetryAt)
-			gRetryAt = 1;
+	} else {
+		ScheduleRetry();
+	}
+	FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
+}
+
+static void StartReconnect(void)
+{
+	Err err;
+
+	gRetryAt = 0;
+	err = SessionConnectStart();
+	if (err == vmErrPending)
+		FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);    /* "connecting" */
+	else
+		Reconnected(err);
+}
+
+/* On idle events: the next reconnect step, or a retry that's due. */
+static void StepReconnect(void)
+{
+	Err err;
+
+	if (SessionConnecting()) {
+		err = SessionConnectStep();
+		if (err != vmErrPending)
+			Reconnected(err);
+	} else if (gRetryAt && !SessionIsConnected() && (Int32)(TimGetTicks() - gRetryAt) >= 0) {
+		StartReconnect();
+	}
+}
+
+/* Options > Connect, or a tap on "offline": in one go, with progress in the title on Home and conversations. */
+static void Connect(void)
+{
+	UInt16 formId = FrmGetActiveFormID();
+
+	gRetryAt = 0;
+	if (AppConnect(formId == HomeForm || formId == ConvoForm ? TitleStatus : NULL, false) == errNone) {
+		gWantConnection = false;
+		gRetries = 0;
 	}
 	FrmUpdateForm(formId, VM_UPDATE_DATA);
 }
 
-/* How long to wait for an event: poll while connected, wake for a retry that's due. */
+/* How long to wait for an event: poll while connected, step a reconnect, wake for a retry that's due. */
 static Int32 EventTimeout(void)
 {
 	Int32 left;
 
+	if (SessionConnecting())
+		return VM_STEP_TICKS;
 	if (SessionIsConnected())
 		return VM_POLL_TICKS;
 	if (!gRetryAt)
@@ -164,13 +209,10 @@ static void CheckWake(void)
 	if (gLastSecs) {
 		wall = (Int32)(secs - gLastSecs);
 		run = (Int32)((ticks - gLastTicks) / SysTicksPerSecond());
-		if (wall - run > VM_SLEEP_GAP_SECS && (SessionIsConnected() || gWantConnection)) {
+		if (wall - run > VM_SLEEP_GAP_SECS && (SessionIsConnected() || SessionConnecting() || gWantConnection)) {
 			gWantConnection = true;
-			SessionDisconnect();
 			gRetries = 0;
-			Connect(true);
-			secs = TimGetSeconds();
-			ticks = TimGetTicks();
+			StartReconnect();
 		}
 	}
 	gLastSecs = secs;
@@ -211,8 +253,7 @@ static void AppEventLoop(void)
 		EvtGetEvent(&event, EventTimeout());
 		CheckWake();
 		if (event.eType == nilEvent) {
-			if (gRetryAt && !SessionIsConnected() && (Int32)(TimGetTicks() - gRetryAt) >= 0)
-				Connect(true);
+			StepReconnect();
 			Poll();
 			continue;
 		}

@@ -79,6 +79,20 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 	return serErrTimeOut;
 }
 
+Err TransportSendOnce(const UInt8 *buf, UInt16 len)
+{
+	Err err = errNone;
+
+	if (gPort == VM_PORT_SBLORA)
+		return SbTransportSend(buf, len);
+	if (!gPortOpen)
+		return serErrNotOpen;
+	if (SrmSend(gPortId, (void *)buf, len, &err) == len)
+		return errNone;
+	SrmClearErr(gPortId);
+	return err != errNone ? err : serErrTimeOut;
+}
+
 UInt16 TransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP)
 {
 	UInt32 avail = 0;

@@ -53,6 +53,7 @@ static UInt16 gRxPos, gRxLen;
 static Int32 gUtcOffsetSecs = 0;      /* local minus UTC */
 
 static void NoteSound(UInt8 kind, const VmMessage *m);
+static void SetConnected(void);
 
 /* How a connect gives way to the user (SessionConnect). */
 #define VM_YIELD_NEVER    0
@@ -235,19 +236,12 @@ static Err Request(const UInt8 *frame, UInt16 len, UInt8 code, UInt16 tries)
 	return RequestAny(frame, len, &code, 1, tries);
 }
 
-/* DEVICE_QUERY + APP_START into gDevice/gSelf. The first request gets extra tries (USB attach). */
-static Err QueryRadio(UInt16 firstTries)
+/* APP_START into gSelf. */
+static Err StartApp(void)
 {
 	UInt8 frame[VM_HEADER_LEN + 8 + VM_NAME_SIZE];
 	UInt16 len;
 	Err err;
-
-	len = VmBuildDeviceQuery(frame, sizeof(frame));
-	err = Request(frame, len, VM_RESP_DEVICE_INFO, firstTries);
-	if (err == errNone && !VmParseDeviceInfo(gDecoder.payload, gDecoder.len, &gDevice))
-		err = vmErrBadReply;
-	if (err != errNone)
-		return err;
 
 	len = VmBuildAppStart(frame, sizeof(frame), VM_APP_NAME);
 	err = Request(frame, len, VM_RESP_SELF_INFO, 1);
@@ -256,6 +250,20 @@ static Err QueryRadio(UInt16 firstTries)
 	if (err == errNone)
 		TxtUtf8NameToPalm(gSelf.name, sizeof(gSelf.name));
 	return err;
+}
+
+/* DEVICE_QUERY + APP_START into gDevice/gSelf. The first request gets extra tries (USB attach). */
+static Err QueryRadio(UInt16 firstTries)
+{
+	UInt8 frame[VM_HEADER_LEN + 2];
+	UInt16 len;
+	Err err;
+
+	len = VmBuildDeviceQuery(frame, sizeof(frame));
+	err = Request(frame, len, VM_RESP_DEVICE_INFO, firstTries);
+	if (err == errNone && !VmParseDeviceInfo(gDecoder.payload, gDecoder.len, &gDevice))
+		err = vmErrBadReply;
+	return err == errNone ? StartApp() : err;
 }
 
 /* Sets the radio's clock from ours if it's behind (the firmware only lets it move forward). */
@@ -326,28 +334,133 @@ static Err OpenAndQuery(void)
 		TransportClose();
 		return err;
 	}
+	SetConnected();
+	return errNone;
+}
+
+static void SetConnected(void)
+{
 	gConnected = true;
 	gHeardAt = TimGetTicks();
 	gScopeMode = VM_SCOPE_UNKNOWN;
-	return errNone;
+}
+
+/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
+static void SyncAll(void)
+{
+	SessionSyncClock();
+	if (ChannelsRefresh(gDevice.maxChannels) == errNone)
+		gChanged |= VM_CHANGED_MESSAGES;
+	if (ContactsUpdate() == errNone)
+		gChanged |= VM_CHANGED_CONTACTS;
+	if (SessionSyncMessages() == vmErrCancelled)
+		gMsgWaiting = true;     /* the next poll carries on */
 }
 
 Err SessionConnect(void)
 {
 	Err err = OpenAndQuery();
 
-	if (err == errNone) {
-		/* Best effort: the connection stands even if one of these fails; the stored copies stay. */
-		SessionSyncClock();
-		if (ChannelsRefresh(gDevice.maxChannels) == errNone)
-			gChanged |= VM_CHANGED_MESSAGES;
-		if (ContactsUpdate() == errNone)
-			gChanged |= VM_CHANGED_CONTACTS;
-		if (SessionSyncMessages() == vmErrCancelled)
-			gMsgWaiting = true;     /* the next poll carries on */
-	}
+	if (err == errNone)
+		SyncAll();
 	gYield = VM_YIELD_NEVER;
 	return err;
+}
+
+/*
+ * The stepped connect. Only finding the radio is in steps: with no bridge or
+ * radio that's where the time goes (each send waits, each reply times out).
+ * Once DEVICE_INFO arrives the rest takes a moment and gives way between
+ * requests, as SessionConnect does.
+ */
+#define STEP_NONE    0
+#define STEP_ATTACH  1    /* link open, giving the USB host time to attach */
+#define STEP_QUERY   2    /* DEVICE_QUERY sent */
+static UInt8  gStep = STEP_NONE;
+static UInt16 gStepTries;
+static UInt32 gStepAt;            /* ticks: the attach wait or the reply wait ends */
+
+/* Whether a reply with this code came in, without waiting; pushes are handled, other frames dropped. */
+static Boolean ReplyArrived(UInt8 code)
+{
+	Err err;
+
+	for (;;) {
+		while (gRxPos < gRxLen) {
+			if (!VmDecoderFeed(&gDecoder, gRx[gRxPos++]) || gDecoder.len == 0)
+				continue;
+			if (gDecoder.payload[0] == code)
+				return true;
+			if (VM_IS_PUSH(gDecoder.payload[0]))
+				HandlePush();
+		}
+		gRxPos = 0;
+		gRxLen = TransportRecv(gRx, sizeof(gRx), 0, &err);
+		if (gRxLen == 0)
+			return false;
+		gHeardAt = TimGetTicks();
+	}
+}
+
+Err SessionConnectStart(void)
+{
+	Err err;
+
+	SessionDisconnect();
+	err = TransportOpen();
+	if (err != errNone)
+		return err;
+	VmDecoderReset(&gDecoder);
+	gRxPos = gRxLen = 0;
+	gMsgWaiting = false;
+	gStep = STEP_ATTACH;
+	gStepTries = 0;
+	gStepAt = TimGetTicks() + (TransportGetPort() == VM_PORT_USB ? SysTicksPerSecond() : 0);
+	return vmErrPending;
+}
+
+Err SessionConnectStep(void)
+{
+	UInt8 frame[VM_HEADER_LEN + 2];
+	UInt16 len;
+	Err err;
+
+	if (gStep == STEP_NONE)
+		return serErrNotOpen;
+	if (gStep == STEP_QUERY && ReplyArrived(VM_RESP_DEVICE_INFO)) {
+		gStep = STEP_NONE;
+		err = VmParseDeviceInfo(gDecoder.payload, gDecoder.len, &gDevice) ? errNone : vmErrBadReply;
+		gYield = VM_YIELD_BETWEEN;
+		if (err == errNone)
+			err = StartApp();
+		if (err == errNone) {
+			SetConnected();
+			SyncAll();
+		} else {
+			TransportClose();
+		}
+		gYield = VM_YIELD_NEVER;
+		return err;
+	}
+	if ((Int32)(TimGetTicks() - gStepAt) < 0)
+		return vmErrPending;
+	if (gStepTries >= VM_CONNECT_TRIES) {
+		gStep = STEP_NONE;
+		TransportClose();
+		return vmErrNoReply;
+	}
+	/* a send that fails counts as a try: with no host it fails until the bridge is back */
+	len = VmBuildDeviceQuery(frame, sizeof(frame));
+	TransportSendOnce(frame, len);
+	gStepTries++;
+	gStep = STEP_QUERY;
+	gStepAt = TimGetTicks() + VM_REPLY_TIMEOUT;
+	return vmErrPending;
+}
+
+Boolean SessionConnecting(void)
+{
+	return gStep != STEP_NONE;
 }
 
 /* Gives way like SessionConnect: a tap in the app in front ends the check early. */
@@ -926,6 +1039,7 @@ void SessionDisconnect(void)
 		ApplyScope(NULL);
 	TransportClose();
 	gConnected = false;
+	gStep = STEP_NONE;
 	gLoginCount = 0;          /* the radio keeps room sessions alive, but re-check after a reconnect */
 }
 

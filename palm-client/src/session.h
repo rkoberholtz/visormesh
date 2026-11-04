@@ -16,6 +16,7 @@
 #define vmErrTooLong   (appErrorClass | 4)   /* message text over the byte limit */
 #define vmErrLoginFailed (appErrorClass | 5) /* a room/repeater refused the password */
 #define vmErrCancelled (appErrorClass | 7)   /* the user tapped or pressed a key during a connect */
+#define vmErrPending   (appErrorClass | 8)   /* SessionConnectStep: still connecting */
 
 /* What SessionPoll found changed, so the screen on show can redraw. */
 #define VM_CHANGED_MESSAGES  0x0001
@@ -41,6 +42,16 @@ Err     SessionConnect(void);
  */
 Err     SessionConnectLight(void);
 void    SessionDisconnect(void);
+/*
+ * A connect in steps, so the app keeps running while it finds the radio
+ * (reconnects after a wake or a lost link). Start opens the link; then call
+ * Step every tenth of a second or so until it returns something other than
+ * vmErrPending: errNone once connected and synced, or the error (link
+ * closed). SessionConnect or SessionDisconnect abandons it.
+ */
+Err     SessionConnectStart(void);
+Err     SessionConnectStep(void);
+Boolean SessionConnecting(void);
 Boolean SessionIsConnected(void);
 /* True once after the radio stopped answering a command and the session closed itself; clears it. */
 Boolean SessionTakeLost(void);

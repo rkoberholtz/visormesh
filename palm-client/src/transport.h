@@ -23,6 +23,8 @@ UInt32 TransportGetPort(void);
 Err    TransportOpen(void);
 void   TransportClose(void);
 Err    TransportSend(const UInt8 *buf, UInt16 len);
+/* One short attempt (a fraction of a second), for a reconnect that mustn't hold up the app. */
+Err    TransportSendOnce(const UInt8 *buf, UInt16 len);
 
 /*
  * Waits up to timeoutTicks for data, then returns whatever is available,

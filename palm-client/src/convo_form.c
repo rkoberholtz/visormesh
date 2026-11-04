@@ -29,6 +29,7 @@ static Int16 TextWithMentions(const Char *text, UInt16 len, Coord x, Coord y, Co
 static void DrawLine(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 static void DrawCounter(void) VM_SECT2;
 static void DrawStatus(void) VM_SECT2;
+static UInt8 ConnState(void) VM_SECT2;
 static UInt32 FirstUnread(void) VM_SECT2;
 static void ScrollToNew(void) VM_SECT2;
 static void Refresh(Boolean toEnd) VM_SECT2;
@@ -68,7 +69,7 @@ static UInt16  gShow = MAX_MSGS;    /* messages shown (the newest) */
 static RowList gList;
 static Char    gTitle[VM_NAME_SIZE + 2];
 static Coord   gTitleEnd;       /* where the title's tab ends */
-static Boolean gShownOnline;
+static UInt8   gShownState;     /* what DrawStatus showed: ConnState() */
 static UInt32  gNewFrom = NO_NEW;   /* unique ID of the first message unread at open */
 
 static const Char *kDays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -338,12 +339,17 @@ static void DrawCounter(void)
 	FntSetFont(old);
 }
 
+static UInt8 ConnState(void)
+{
+	return SessionIsConnected() ? 1 : SessionConnecting() ? 2 : 0;
+}
+
 /* Online or offline at the right of the title; redraws the title if "Connecting..." covered its end. */
 static void DrawStatus(void)
 {
 	Boolean over = TitleStatusLeft() < gTitleEnd;
 
-	gShownOnline = SessionIsConnected();
+	gShownState = ConnState();
 	TitleConnState("");
 	if (over)
 		FrmCopyTitle(FrmGetActiveForm(), gTitle);
@@ -625,7 +631,7 @@ void ConvoFormIdle(void)
 {
 	if (gLines) {
 		DrawCounter();
-		if (SessionIsConnected() != gShownOnline)
+		if (ConnState() != gShownState)
 			DrawStatus();
 	}
 }

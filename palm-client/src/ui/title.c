@@ -40,7 +40,7 @@ void TitleConnState(const Char *prefix)
 	Char buf[24];
 
 	StrCopy(buf, prefix);
-	StrCat(buf, SessionIsConnected() ? "online" : "offline");
+	StrCat(buf, SessionIsConnected() ? "online" : SessionConnecting() ? "connecting" : "offline");
 	TitleStatus(buf);
 }
 
@@ -53,7 +53,7 @@ Boolean TitleStatusTapped(const EventType *event)
 {
 	EventType e;
 
-	if (event->eType != penDownEvent || SessionIsConnected() ||
+	if (event->eType != penDownEvent || SessionIsConnected() || SessionConnecting() ||
 	    event->screenY > 12 || event->screenX < gLeft - 4)
 		return false;
 	MemSet(&e, sizeof(e), 0);
@@ -66,7 +66,7 @@ Boolean TitleStatusTapped(const EventType *event)
 Coord TitleFit(Char *title)
 {
 	FontID old = FntSetFont(vmSmallFont);
-	Int16 maxW = 158 - FntCharsWidth("offline", 7) - 4 - TITLE_PAD;
+	Int16 maxW = 158 - FntCharsWidth("connecting", 10) - 4 - TITLE_PAD;
 	Int16 w = maxW, len = StrLen(title);
 	Boolean fits;
 
