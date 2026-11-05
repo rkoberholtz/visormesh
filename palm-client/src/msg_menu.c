@@ -9,6 +9,7 @@
 #include "ui/text.h"
 #include "ui/emoji.h"
 #include "info_fmt.h"
+#include "blocks.h"
 #include "msg_menu.h"
 
 static Int16   Popup(const RectangleType *b, UInt16 listId, UInt16 areaId, Char **items, UInt16 n) VM_SECT3;
@@ -24,7 +25,8 @@ static Boolean Matches(const VmReact *r, const UInt8 *hash, const Char *name, Bo
 #define ACT_DM      2
 #define ACT_PATH    3
 #define ACT_RETRY   4
-#define ACT_MAX     5
+#define ACT_BLOCK   5
+#define ACT_MAX     6
 #define LIST_X      28
 #define LIST_H(n)   ((n) * 11 + 2)   /* stdFont rows and the frame */
 #define QUOTE_CHARS 10
@@ -75,6 +77,8 @@ UInt16 MsgMenuOpen(UInt16 msg, const RectangleType *b, UInt16 listId, UInt16 are
 	Int16 pick;
 	Boolean mine, channel, room, failed;
 	Char name[VM_NAME_SIZE];
+	UInt8 key[6];
+	VmContact c;
 
 	if (!h)
 		return MSG_MENU_NONE;
@@ -83,6 +87,7 @@ UInt16 MsgMenuOpen(UInt16 msg, const RectangleType *b, UInt16 listId, UInt16 are
 	room = !channel && !mine && h->sender[0];   /* a room post: rooms have no reactions */
 	failed = mine && h->status == VM_ST_FAILED;
 	NameOf(h, name);
+	MemMove(key, h->conv.key, sizeof(key));
 	MessagesRelease(msg);
 
 	if (!mine && !room) {
@@ -103,6 +108,10 @@ UInt16 MsgMenuOpen(UInt16 msg, const RectangleType *b, UInt16 listId, UInt16 are
 		items[n] = "Retry";
 		acts[n++] = ACT_RETRY;
 	}
+	if (!mine && !room && (!channel || name[0])) {
+		items[n] = "Block Sender";
+		acts[n++] = ACT_BLOCK;
+	}
 	pick = Popup(b, listId, areaId, items, n);
 	if (pick < 0 || pick >= (Int16)n)
 		return MSG_MENU_NONE;
@@ -114,6 +123,13 @@ UInt16 MsgMenuOpen(UInt16 msg, const RectangleType *b, UInt16 listId, UInt16 are
 	case ACT_RETRY:
 		SessionRetry(msg);
 		return MSG_MENU_REFRESH;
+	case ACT_BLOCK:
+		/* a channel sender by name; a DM's by its contact */
+		if (channel)
+			BlocksAskName(name);
+		else if (ContactsFindByPrefix(key, &c))
+			BlocksToggleContact(&c);
+		break;
 	}
 	return MSG_MENU_NONE;
 }

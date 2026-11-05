@@ -21,6 +21,7 @@
 #include "reaction_fmt.h"
 #include "protocol2.h"
 #include "packets_form.h"
+#include "blocks.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -654,6 +655,8 @@ Err SessionSyncMessages(void)
 			gChanged |= VM_CHANGED_REMOTE;
 			continue;
 		}
+		if (BlocksMessage(&m))
+			continue;           /* blocked (blocks.h): dropped, reactions too */
 		if (ReactionsTake(&m, SessionNow())) {
 			gChanged |= VM_CHANGED_MESSAGES;
 			continue;

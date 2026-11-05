@@ -750,7 +750,7 @@ CONFIRMATION
 DEFAULTBUTTON 1
 BEGIN
   TITLE "Block"
-  MESSAGE "Hide messages and reactions from ^1? Unblock under Contacts > Blocked Senders."
+  MESSAGE "Drop new messages and reactions from ^1? Ones already here stay. Unblock under Contacts > Blocked Senders."
   BUTTONS "Block" "Cancel"
 END
 
@@ -759,7 +759,7 @@ CONFIRMATION
 DEFAULTBUTTON 1
 BEGIN
   TITLE "Unblock"
-  MESSAGE "Show messages from ^1 again?"
+  MESSAGE "Take new messages from ^1 again?"
   BUTTONS "Unblock" "Cancel"
 END
 
