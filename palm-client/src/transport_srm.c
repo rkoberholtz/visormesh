@@ -2,9 +2,8 @@
 #include "transport.h"
 
 #define VM_BAUD       115200
-#define VM_SEND_TRIES 8      /* SrmSend attempts for one buffer (USB re-attach) */
-#define VM_SEND_WAIT  (SysTicksPerSecond() / 4)   /* each: 2 s in all */
-#define VM_ONCE_WAIT  (SysTicksPerSecond() / 10)  /* TransportSendOnce */
+#define VM_SEND_TRIES 5      /* SrmSend attempts for one buffer (USB re-attach) */
+#define VM_HOST_WAIT  SysTicksPerSecond()   /* for the USB host to come back (TransportSend) */
 
 static UInt16  gPortId;
 static Boolean gPortOpen = false;
@@ -22,8 +21,6 @@ UInt32 TransportGetPort(void)
 
 Err TransportOpen(void)
 {
-	Int32 wait = VM_SEND_WAIT;
-	UInt16 size = sizeof(wait);
 	Err err;
 
 	if (gPort == VM_PORT_SBLORA)
@@ -32,16 +29,31 @@ Err TransportOpen(void)
 		return errNone;
 
 	err = SrmOpen(gPort, VM_BAUD, &gPortId);
-	if (err != errNone)
-		return err;
-	gPortOpen = true;
-	/*
-	 * With nothing reading at the other end (the bridge stopped), each SrmSend
-	 * waits out the CTS timeout, 5 s by default: a connect froze for over a
-	 * minute. Short waits let the session look for the user between tries.
-	 */
-	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
-	return errNone;
+	if (err == errNone)
+		gPortOpen = true;
+	return err;
+}
+
+/*
+ * Over USB, CTS is on while the host reads what the Visor sends (the bridge
+ * running) and off while nothing does. Then SrmSend blocks for 10 s whatever
+ * the CTS timeout is set to (measured on the Neo), so don't send at all.
+ * Waits up to wait ticks for it; any other port, or no status, counts as yes.
+ */
+static Boolean HostReading(Int32 wait)
+{
+	UInt32 status, until = TimGetTicks() + wait;
+	UInt16 lineErrs;
+
+	if (gPort != VM_PORT_USB)
+		return true;
+	for (;;) {
+		if (SrmGetStatus(gPortId, &status, &lineErrs) != errNone || (status & srmStatusCtsOn))
+			return true;
+		if ((Int32)(TimGetTicks() - until) >= 0)
+			return false;
+		SysTaskDelay(SysTicksPerSecond() / 20);
+	}
 }
 
 void TransportClose(void)
@@ -63,6 +75,8 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 		return SbTransportSend(buf, len);
 	if (!gPortOpen)
 		return serErrNotOpen;
+	if (!HostReading(VM_HOST_WAIT))
+		return serErrTimeOut;
 	/*
 	 * Over USB, SrmSend can time out while the host re-attaches and still
 	 * deliver the bytes it accepted, so only ever resend the remainder;
@@ -82,20 +96,15 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 
 Err TransportSendOnce(const UInt8 *buf, UInt16 len)
 {
-	Int32 wait = VM_ONCE_WAIT;
-	UInt16 size = sizeof(wait);
-	UInt32 sent;
 	Err err = errNone;
 
 	if (gPort == VM_PORT_SBLORA)
 		return SbTransportSend(buf, len);
 	if (!gPortOpen)
 		return serErrNotOpen;
-	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
-	sent = SrmSend(gPortId, (void *)buf, len, &err);
-	wait = VM_SEND_WAIT;
-	SrmControl(gPortId, srmCtlSetCtsTimeout, &wait, &size);
-	if (sent == len)
+	if (!HostReading(0))
+		return serErrTimeOut;
+	if (SrmSend(gPortId, (void *)buf, len, &err) == len)
 		return errNone;
 	SrmClearErr(gPortId);
 	return err != errNone ? err : serErrTimeOut;
