@@ -2,8 +2,8 @@
 #define VM_PREVIEW_FORM_H
 
 #include <PalmOS.h>
-#include "sections.h"   /* this module is in the second code segment */
+#include "sections.h"   /* this module is in the fourth code segment */
 
-Boolean FontPreviewFormHandleEvent(EventType *event) VM_SECT2;
+Boolean FontPreviewFormHandleEvent(EventType *event) VM_SECT4;
 
 #endif

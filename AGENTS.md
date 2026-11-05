@@ -40,12 +40,12 @@ make map      # Map basemap PDB (tools/make_map.py); install-map is the user's, 
 
 The app is C for GCC 2.95 (prc-tools-remix) and PilRC, against the Palm OS 3.5 SDK, on a 68k with 16 grays at 160×160.
 
-**Code segments.** The code is more than one 32 KB code resource, so modules live in `vmcode2`–`vmcode4`. Read `src/sections.h` before adding code; the rules are there. In short:
+**Code segments.** The code is more than one 32 KB code resource, so modules live in `vmcode2`–`vmcode5`. Read `src/sections.h` before adding code; the rules are there. In short:
 
 - Put `VM_SECT2/3/4` on a module's header prototypes, and on its static functions' forward declarations at the top of the file. The function body sits under its declaration.
 - Never share an `extern const` table across files. The other file addresses it as data, but it's in code. Shared tables must not be const.
 - A `static const` table inside a function in an extra segment reads as garbage on the device. File-level static const is fine. Otherwise compute the value or use a resource.
-- `vmcode2` is nearly full (29.3 KB as of 2026-11-03). Put new code in `vmcode3` or `vmcode4`.
+- `vmcode2` holds the core screens (23.6 KB as of 2026-11-05, after Node, Settings, Font Preview and Add Channel moved to `vmcode4`). Put new code in `vmcode5` (or `vmcode3`), and keep `vmcode2` for small hooks.
 
 **Launches without globals.** Alarm, display-alarm, reset and sync-notify launch codes run without globals (no A5), and the extra segments aren't loaded. Code on those paths must be in segment 1 and touch no globals and no `VM_SECT*` functions. Check the disassembly when in doubt. A pointer table needs relocations: use a `switch`. `src/bgcheck.c` shows the pattern: it sublaunches the app with `sysAppLaunchFlagNewGlobals` for the real work.
 

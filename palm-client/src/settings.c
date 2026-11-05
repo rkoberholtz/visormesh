@@ -11,22 +11,22 @@
 #include "settings.h"
 #include "app.h"
 
-/* In the second code segment: see sections.h for the rules. */
-static void *GetObject(FormType *form, UInt16 id) VM_SECT2;
-static void SetFieldText(FormType *form, UInt16 id, const Char *text) VM_SECT2;
-static const Char *GetFieldText(FormType *form, UInt16 id) VM_SECT2;
-static void SetStatus(FormType *form, const Char *text) VM_SECT2;
-static void ShowError(const Char *msg) VM_SECT2;
-static void SelectHashSize(FormType *form, UInt8 bytes) VM_SECT2;
-static UInt8 SelectedHashSize(FormType *form) VM_SECT2;
-static void SetRadioFields(FormType *form, UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr) VM_SECT2;
-static Int16 FindPreset(UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr) VM_SECT2;
-static void FormatUtcOffset(Char *out, Int16 minutes) VM_SECT2;
-static Boolean ParseUtcOffset(const Char *s, Int16 *minutes) VM_SECT2;
-static void InitForm(FormType *form) VM_SECT2;
-static void ApplyPreset(FormType *form, UInt16 index) VM_SECT2;
-static Boolean Send(FormType *form, const UInt8 *frame, UInt16 len, const Char *what) VM_SECT2;
-static Boolean Save(FormType *form) VM_SECT2;
+/* In the fourth code segment: see sections.h for the rules. */
+static void *GetObject(FormType *form, UInt16 id) VM_SECT4;
+static void SetFieldText(FormType *form, UInt16 id, const Char *text) VM_SECT4;
+static const Char *GetFieldText(FormType *form, UInt16 id) VM_SECT4;
+static void SetStatus(FormType *form, const Char *text) VM_SECT4;
+static void ShowError(const Char *msg) VM_SECT4;
+static void SelectHashSize(FormType *form, UInt8 bytes) VM_SECT4;
+static UInt8 SelectedHashSize(FormType *form) VM_SECT4;
+static void SetRadioFields(FormType *form, UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr) VM_SECT4;
+static Int16 FindPreset(UInt32 freqKHz, UInt32 bwHz, UInt8 sf, UInt8 cr) VM_SECT4;
+static void FormatUtcOffset(Char *out, Int16 minutes) VM_SECT4;
+static Boolean ParseUtcOffset(const Char *s, Int16 *minutes) VM_SECT4;
+static void InitForm(FormType *form) VM_SECT4;
+static void ApplyPreset(FormType *form, UInt16 index) VM_SECT4;
+static Boolean Send(FormType *form, const UInt8 *frame, UInt16 len, const Char *what) VM_SECT4;
+static Boolean Save(FormType *form) VM_SECT4;
 
 #define CUSTOM_LABEL "Custom"
 

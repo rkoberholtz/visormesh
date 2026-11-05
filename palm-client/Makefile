@@ -11,7 +11,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/title.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c src/shots.c src/db.c src/reaction_fmt.c src/reactions.c src/rxpath.c src/msg_menu.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/title.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c src/shots.c src/db.c src/reaction_fmt.c src/reactions.c src/rxpath.c src/msg_menu.c src/protocol2.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -83,6 +83,8 @@ test: | build
 	build/test_map
 	gcc -std=c99 -Wall -Wextra -o build/test_reactions tests/test_reactions.c src/reaction_fmt.c src/rxpath.c src/sha256.c
 	build/test_reactions
+	gcc -std=c99 -Wall -Wextra -o build/test_protocol2 tests/test_protocol2.c src/protocol2.c src/protocol.c
+	build/test_protocol2
 
 build:
 	mkdir -p build
