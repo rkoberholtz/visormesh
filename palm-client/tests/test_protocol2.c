@@ -141,8 +141,22 @@ static void test_hashtag(void)
 	CHECK(!VmHashtagAt(t, (UInt16)strlen(t), 5, out, 5));               /* too long for out */
 }
 
+static void test_neighbour(void)
+{
+	UInt8 k[4];
+	UInt32 secs;
+	Int16 snr;
+
+	CHECK(VmParseNeighbour("a1B2c3d4:120:-14", 16, k, &secs, &snr) && k[1] == 0xb2 && secs == 120 && snr == -14);
+	CHECK(VmParseNeighbour("a1b2c3d4:5:22\nffff", 13, k, &secs, &snr) && snr == 22);
+	CHECK(!VmParseNeighbour("-none-", 6, k, &secs, &snr));
+	CHECK(!VmParseNeighbour("a1b2c3d4:x:1", 12, k, &secs, &snr));
+	CHECK(!VmParseNeighbour("a1b2c3d4:12:1z", 14, k, &secs, &snr));
+}
+
 int main(void)
 {
+	test_neighbour();
 	test_trace();
 	test_stats();
 	test_route();

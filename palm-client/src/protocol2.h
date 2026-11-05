@@ -109,4 +109,11 @@ Boolean VmShareParse(const Char *s, UInt16 len, VmShare *out) VM_SECT5;
  */
 Boolean VmHashtagAt(const Char *text, UInt16 len, UInt16 k, Char *out, UInt16 size) VM_SECT5;
 
+/*
+ * One line of a repeater's "neighbors" reply, "a1b2c3d4:120:-14": a
+ * neighbour's first 4 key bytes, seconds since heard, SNR in quarter dB.
+ * len stops at the line's end; returns false if it isn't one.
+ */
+Boolean VmParseNeighbour(const Char *s, UInt16 len, UInt8 *prefix4, UInt32 *secsAgo, Int16 *snrQ) VM_SECT5;
+
 #endif

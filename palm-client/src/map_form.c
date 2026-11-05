@@ -5,6 +5,7 @@
 #include "contact_form.h"
 #include "session.h"
 #include "map_geo.h"
+#include "neigh.h"
 #include "map_form.h"
 #include "ui/draw.h"
 #include "ui/text.h"
@@ -16,6 +17,8 @@ static BitmapType *Tile(UInt16 rec) VM_SECT4;
 static void ClampCenter(void) VM_SECT4;
 static void Draw(void) VM_SECT4;
 static void DrawNodes(const RectangleType *r, Int32 vx, Int32 vy) VM_SECT4;
+static Int16 NodeByKey(const UInt8 *key) VM_SECT4;
+static void DrawNeighbours(const RectangleType *r, Int32 vx, Int32 vy) VM_SECT4;
 static void DrawInfo(const RectangleType *r) VM_SECT4;
 static void DrawFooter(void) VM_SECT4;
 static void Halo(const Char *s, UInt16 len, Coord x, Coord y) VM_SECT4;
@@ -40,6 +43,7 @@ typedef struct {
 	UInt8  type;
 	Boolean direct;            /* a 0-hop neighbour */
 	UInt32 lastAdvert;
+	UInt8  key[4];             /* for the neighbour lines (neigh.h) */
 	Char   name[NAME_LEN + 1];
 } MapNode;
 
@@ -179,6 +183,7 @@ static void LoadNodes(void)
 		n->type = c.type;
 		n->direct = c.outPathLen != 0xFF && (c.outPathLen & 0x3F) == 0;
 		n->lastAdvert = c.lastAdvert;
+		MemMove(n->key, c.pubKey, 4);
 		StrNCopy(n->name, c.name, NAME_LEN);
 		n->name[NAME_LEN] = 0;
 		gNodeCount++;
@@ -241,6 +246,50 @@ static void Halo(const Char *s, UInt16 len, Coord x, Coord y)
 	WinPaintChars(s, len, x, y + 1);
 	WinSetTextColor(WinRGBToIndex(&black));
 	WinPaintChars(s, len, x, y);
+}
+
+static Int16 NodeByKey(const UInt8 *key)
+{
+	UInt16 i;
+
+	for (i = 0; i < gNodeCount; i++)
+		if (MemCmp(gNodes[i].key, key, 4) == 0)
+			return (Int16)i;
+	return -1;
+}
+
+/*
+ * The last neighbour list a repeater's console showed: a line to each
+ * neighbour with a position, solid if the repeater hears it well (SNR 0 dB
+ * or better), grey if not. Draw has set the clip to the map.
+ */
+static void DrawNeighbours(const RectangleType *r, Int32 vx, Int32 vy)
+{
+	VmNeighbour list[VM_NEIGH_MAX];
+	UInt8 rep[6];
+	UInt16 n = NeighGet(rep, list), i;
+	Int16 from, to;
+	Int32 x0, y0, x1, y1;
+
+	if (n == 0 || (from = NodeByKey(rep)) < 0)
+		return;
+	VmMapToZoom(&gH, gZi, gNodes[from].wx, gNodes[from].wy, &x0, &y0);
+	x0 += r->topLeft.x - vx;
+	y0 += r->topLeft.y - vy;
+	for (i = 0; i < n; i++) {
+		if ((to = NodeByKey(list[i].prefix)) < 0)
+			continue;
+		VmMapToZoom(&gH, gZi, gNodes[to].wx, gNodes[to].wy, &x1, &y1);
+		x1 += r->topLeft.x - vx;
+		y1 += r->topLeft.y - vy;
+		/* far off-screen ends would overflow Coord */
+		if (x1 < -2000 || x1 > 2000 || y1 < -2000 || y1 > 2000 || x0 < -2000 || x0 > 2000 || y0 < -2000 || y0 > 2000)
+			continue;
+		if (list[i].snrQ >= 0)
+			WinDrawLine((Coord)x0, (Coord)y0, (Coord)x1, (Coord)y1);
+		else
+			WinDrawGrayLine((Coord)x0, (Coord)y0, (Coord)x1, (Coord)y1);
+	}
 }
 
 static void DrawNodes(const RectangleType *r, Int32 vx, Int32 vy)
@@ -366,6 +415,7 @@ static void Draw(void)
 				WinEraseRectangle(&t, 0);
 		}
 	}
+	DrawNeighbours(&r, vx, vy);
 	DrawNodes(&r, vx, vy);
 	DrawInfo(&r);
 	WinResetClip();

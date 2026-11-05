@@ -352,6 +352,7 @@ BEGIN
   BUTTON "Cmds" ID RemoteCmdsButton AT (PREVRIGHT+3 PREVTOP 28 12)
   BUTTON "Done" ID RemoteDoneButton AT (PREVRIGHT+3 PREVTOP 27 12)
   LIST "Read settings" "ver" "clock" "clock sync" "neighbors" "advert" "advert.zerohop"
+       "region" "region get..." "region allowf..." "region denyf..." "region save"
        "stats-core" "stats-radio" "stats-packets" "get acl" "clear stats"
        "set name..." "set tx..." "set radio..." "set repeat..." "set advert.interval..."
        "set flood.advert.interval..." "set flood.max..." "set guest.password..." "password..."

@@ -5,6 +5,7 @@
 #include "ui/fontmetrics.h"
 #include "app.h"
 #include "remote.h"
+#include "neigh.h"
 
 /* In an extra code segment (VM_SECT3): see sections.h for the rules. */
 static void AddLine(UInt8 kind, const Char *text, UInt16 len) VM_SECT3;
@@ -235,6 +236,8 @@ Boolean RemoteOnCli(const UInt8 *prefix6, const UInt8 *utf8, UInt16 len)
 		return false;
 	n = TxtUtf8ToPalm(utf8, len, text, sizeof(text));
 	AddText(VM_RL_REPLY, text, n);
+	if (NeighNote(prefix6, text, n))
+		AddText(VM_RL_NOTE, "(on the Map for 30 min)", 23);
 	if (gPending == REQ_CLI)
 		Done();
 	return true;

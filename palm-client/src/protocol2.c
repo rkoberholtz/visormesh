@@ -14,6 +14,7 @@ static Boolean Prefix(const Char *s, UInt16 len, const Char *p) VM_SECT5;
 static UInt16 Unescape(const Char *s, UInt16 len, UInt8 *out, UInt16 max) VM_SECT5;
 static Boolean HexBytes(const Char *s, UInt16 len, UInt8 *out, UInt16 n) VM_SECT5;
 static Boolean TagChar(Char c) VM_SECT5;
+static Boolean Number(const Char *s, UInt16 len, UInt16 *i, Int32 *out) VM_SECT5;
 
 static UInt16 Get16(const UInt8 *p)
 {
@@ -430,5 +431,41 @@ Boolean VmHashtagAt(const Char *text, UInt16 len, UInt16 k, Char *out, UInt16 si
 	for (i = start; i < end; i++)
 		out[i - start] = (Char)(text[i] >= 'A' && text[i] <= 'Z' ? text[i] + 32 : text[i]);
 	out[end - start] = 0;
+	return 1;
+}
+
+/* Optional '-', digits, from *i; leaves *i after them. */
+static Boolean Number(const Char *s, UInt16 len, UInt16 *i, Int32 *out)
+{
+	Boolean neg = 0, any = 0;
+	Int32 v = 0;
+
+	if (*i < len && s[*i] == '-') {
+		neg = 1;
+		(*i)++;
+	}
+	while (*i < len && s[*i] >= '0' && s[*i] <= '9') {
+		v = v * 10 + (s[*i] - '0');
+		(*i)++;
+		any = 1;
+	}
+	*out = neg ? -v : v;
+	return any;
+}
+
+Boolean VmParseNeighbour(const Char *s, UInt16 len, UInt8 *prefix4, UInt32 *secsAgo, Int16 *snrQ)
+{
+	UInt16 i = 9;
+	Int32 secs, snr;
+
+	if (len < 13 || s[8] != ':' || !HexBytes(s, 8, prefix4, 4))
+		return 0;
+	if (!Number(s, len, &i, &secs) || secs < 0 || i >= len || s[i] != ':')
+		return 0;
+	i++;
+	if (!Number(s, len, &i, &snr) || i != len)
+		return 0;
+	*secsAgo = (UInt32)secs;
+	*snrQ = (Int16)snr;
 	return 1;
 }
