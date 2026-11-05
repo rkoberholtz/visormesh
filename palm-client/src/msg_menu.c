@@ -244,6 +244,8 @@ static void PathDetails(UInt16 msg)
 		case VM_ST_ACKED:   StrCat(text, "Delivered"); break;
 		case VM_ST_FAILED:  StrCat(text, "Not delivered"); break;
 		}
+		if (hdr.conv.type == VM_CONV_DIRECT && hdr.attempt)
+			StrPrintF(text + StrLen(text), "\nTry %u", hdr.attempt + 1);
 		FrmCustomAlert(PathAlert, text, "", "");
 		return;
 	}

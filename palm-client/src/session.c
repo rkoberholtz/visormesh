@@ -834,6 +834,88 @@ static Err SendRecord(UInt16 index)
 	return errNone;
 }
 
+/*
+ * DMs sent this session are tried again by themselves when no ack comes, as
+ * MeshCore One does: up to 4 tries on the contact's route, then the route is
+ * reset and one more goes as a flood (which also finds a new route). With no
+ * route to begin with, every try is a flood, so only 2.
+ */
+#define VM_AUTO_MAX       8
+#define VM_AUTO_DIRECT    4      /* tries on a route: attempt numbers 0-3 */
+#define VM_AUTO_FLOODONLY 2
+static UInt32 gAutoId[VM_AUTO_MAX];     /* message unique IDs; 0 = free */
+static UInt8  gAutoFlooded[VM_AUTO_MAX];
+
+static void AutoTrack(UInt16 index)
+{
+	UInt16 i;
+
+	for (i = 0; i < VM_AUTO_MAX; i++) {
+		if (!gAutoId[i]) {
+			gAutoId[i] = MessagesUniqueId(index);
+			gAutoFlooded[i] = 0;
+			return;
+		}
+	}
+}
+
+/* The record of a unique ID, looking from the newest (they're recent). */
+static Boolean AutoFind(UInt32 id, UInt16 *index)
+{
+	UInt16 i = MessagesCount();
+
+	while (i > 0)
+		if (MessagesUniqueId(--i) == id) {
+			*index = i;
+			return true;
+		}
+	return false;
+}
+
+/* After acks time out: tries again the tracked DMs that failed, or gives up on them. */
+static void AutoRetry(void)
+{
+	const VmMsgHeader *hdr;
+	VmMsgHeader h;
+	VmContact c;
+	Boolean routed;
+	UInt16 i, index;
+
+	for (i = 0; i < VM_AUTO_MAX && gConnected; i++) {
+		if (!gAutoId[i])
+			continue;
+		if (!AutoFind(gAutoId[i], &index) || !(hdr = MessagesLock(index))) {
+			gAutoId[i] = 0;
+			continue;
+		}
+		h = *hdr;
+		MessagesRelease(index);
+		if (h.status == VM_ST_ACKED) {
+			gAutoId[i] = 0;
+			continue;
+		}
+		if (h.status != VM_ST_FAILED)
+			continue;           /* still waiting */
+		routed = ContactsFindByPrefix(h.conv.key, &c) && c.outPathLen != VM_PATH_UNKNOWN;
+		if (h.attempt + 1 < (routed ? VM_AUTO_DIRECT : VM_AUTO_FLOODONLY) && h.attempt < 3) {
+			MessagesBumpAttempt(index);
+			SendRecord(index);
+		} else if (routed && !gAutoFlooded[i]) {
+			/* the route seems broken: flood, and the answer brings a new route */
+			gAutoFlooded[i] = 1;
+			if (SessionKeyCommand(VM_CMD_RESET_PATH, c.pubKey) == errNone) {
+				gChanged |= VM_CHANGED_CONTACTS;
+				SendRecord(index);
+			} else {
+				gAutoId[i] = 0;
+			}
+		} else {
+			gAutoId[i] = 0;     /* stays failed: Retry is the user's */
+		}
+		gChanged |= VM_CHANGED_MESSAGES;
+	}
+}
+
 Err SessionSend(const VmConv *conv, const Char *text, UInt16 *index)
 {
 	Err err;
@@ -843,7 +925,10 @@ Err SessionSend(const VmConv *conv, const Char *text, UInt16 *index)
 	err = MessagesAddOutgoing(conv, text, SessionNow(), index);
 	if (err != errNone)
 		return err;
-	return SendRecord(*index);
+	err = SendRecord(*index);
+	if (err == errNone && conv->type == VM_CONV_DIRECT)
+		AutoTrack(*index);
+	return err;
 }
 
 Err SessionSendReaction(const VmConv *conv, const UInt8 *hash, const Char *target, Char glyph)
@@ -976,8 +1061,10 @@ UInt16 SessionPoll(void)
 		CheckAlive();
 		if (gMsgWaiting)
 			SessionSyncMessages();
-		if (MessagesExpireAcks(SessionNow()))
+		if (MessagesExpireAcks(SessionNow())) {
 			gChanged |= VM_CHANGED_MESSAGES;
+			AutoRetry();
+		}
 	}
 	changed = gChanged;
 	gChanged = 0;
