@@ -30,5 +30,7 @@ Err     ContactsRefresh(UInt32 *count) VM_SECT2;
  * refresh. Removals on the radio only show at the next full refresh.
  */
 Err     ContactsUpdate(void) VM_SECT4;
+/* A companion by its exact name (a channel message names its sender only that way). */
+Boolean ContactsFindByName(const Char *name, VmContact *out) VM_SECT4;
 
 #endif

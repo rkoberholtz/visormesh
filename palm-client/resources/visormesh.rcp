@@ -66,6 +66,8 @@ BEGIN
   END
   PULLDOWN "Options"
   BEGIN
+    MENUITEM "Message Actions..." ID MainMenuMessage "Y"
+    MENUITEM "-" AUTOID
     MENUITEM "Connect" ID MainMenuConnect
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "Preferences..." ID MainMenuSounds "R"
@@ -153,6 +155,8 @@ BEGIN
   END
   PULLDOWN "Options"
   BEGIN
+    MENUITEM "Message Actions..." ID MainMenuMessage "Y"
+    MENUITEM "-" AUTOID
     MENUITEM "Connect" ID MainMenuConnect
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
     MENUITEM "Preferences..." ID MainMenuSounds "R"
@@ -193,6 +197,7 @@ BEGIN
   BUTTON "Send" ID ConvoSendButton AT (1 147 AUTO AUTO)
   BUTTON "Back" ID ConvoBackButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
   GRAFFITISTATEINDICATOR AT (150 148)
+  LIST "" ID ConvoActionList AT (28 16 80 AUTO) NONUSABLE VISIBLEITEMS 5
 END
 
 /* Node: this radio's details, connection and settings */
@@ -331,6 +336,22 @@ BEGIN
   TITLE "Send Advert"
   MESSAGE "Let other nodes add you. Zero-hop reaches only nodes that hear you directly; flood goes through repeaters."
   BUTTONS "Zero-hop" "Flood" "Cancel"
+END
+
+ALERT ID PathAlert
+INFORMATION
+BEGIN
+  TITLE "Message Path"
+  MESSAGE "^1"
+  BUTTONS "OK"
+END
+
+ALERT ID ReactionsAlert
+INFORMATION
+BEGIN
+  TITLE "Reactions"
+  MESSAGE "^1"
+  BUTTONS "OK"
 END
 
 ALERT ID RetryAlert

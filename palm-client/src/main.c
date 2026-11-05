@@ -4,6 +4,7 @@
 #include "contacts.h"
 #include "channels.h"
 #include "messages.h"
+#include "reactions.h"
 #include "app.h"
 #include "home_form.h"
 #include "convo_form.h"
@@ -304,6 +305,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		ContactsClose();
 		ChannelsClose();
 		MessagesClose();
+		ReactionsClose();
 		UiFontRelease();
 		ShotCancel();
 		BgSetAppOpen(false);

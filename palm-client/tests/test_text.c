@@ -164,13 +164,16 @@ static void test_to_utf8(void)
 	UInt8 out[16];
 	char back[16];
 	static const char cafe[] = { 'c', 'a', 'f', (char)0xE9 };
-	static const char quotes[] = { (char)0x93, 'h', 'i', (char)0x94, (char)0x85 };
+	static const char emoji[] = { GLYPH_HEART, 'h', 'i', GLYPH_THUMBS, (char)0x85 };
+	static const UInt8 heart[] = { 0xE2, 0x9D, 0xA4, 0xEF, 0xB8, 0x8F };
+	static const UInt8 thumbs[] = { 0xF0, 0x9F, 0x91, 0x8D };
 
 	CHECK(TxtPalmToUtf8(cafe, 4, out, sizeof(out)) == 5 && out[3] == 0xC3 && out[4] == 0xA9);
-	CHECK(TxtPalmToUtf8(quotes, 5, out, sizeof(out)) == 11);
-	CHECK(out[0] == 0xE2 && out[1] == 0x80 && out[2] == 0x9C);          /* U+201C */
-	/* back to the Visor's charset: the quotes as ASCII (the font has no curly ones), the ellipsis kept */
-	CHECK(TxtUtf8ToPalm(out, 11, back, sizeof(back)) == 5 && memcmp(back, "\"hi\"", 4) == 0 && back[4] == GLYPH_ELLIPSIS);
+	/* the emoji glyphs go out as the emoji they show (the font draws them in cp1252's quote slots) */
+	CHECK(TxtPalmToUtf8(emoji, 5, out, sizeof(out)) == 15);
+	CHECK(memcmp(out, heart, 6) == 0 && memcmp(out + 8, thumbs, 4) == 0);
+	CHECK(out[12] == 0xE2 && out[13] == 0x80 && out[14] == 0xA6);       /* U+2026 */
+	CHECK(TxtUtf8ToPalm(out, 15, back, sizeof(back)) == 5 && memcmp(back, emoji, 5) == 0);
 	/* doesn't fit: nothing rather than a cut character */
 	CHECK(TxtPalmToUtf8(cafe, 4, out, 4) == 0);
 }

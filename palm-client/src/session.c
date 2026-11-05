@@ -16,6 +16,9 @@
 #include "sounds.h"
 #include "mutes.h"
 #include "scopes.h"
+#include "rxpath.h"
+#include "reactions.h"
+#include "reaction_fmt.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -116,8 +119,10 @@ static void HandlePush(void)
 	} else if (code == VM_PUSH_LOG_RX) {
 		VmRxLog rx;
 
-		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx))
+		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx)) {
 			HeardRecord(&rx, SessionNow());
+			RxPathNote(&rx, SessionNow());
+		}
 	} else if (code == VM_PUSH_ADVERT || code == VM_PUSH_NEW_ADVERT || code == VM_PUSH_PATH_UPDATED) {
 		/* NEW_ADVERT is the radio's first sight of a node (MyMesh::onDiscoveredContact is_new) */
 		if (code == VM_PUSH_NEW_ADVERT)
@@ -625,6 +630,7 @@ Err SessionSyncMessages(void)
 	UInt16 len = VmBuildSyncNextMessage(frame, sizeof(frame));
 	UInt16 n;
 	VmMessage m;
+	VmMsgExtra ex;
 	Err err;
 
 	if (!gConnected)
@@ -645,7 +651,12 @@ Err SessionSyncMessages(void)
 			gChanged |= VM_CHANGED_REMOTE;
 			continue;
 		}
-		if (MessagesAddIncoming(&m, SessionNow()) == errNone) {
+		if (ReactionsTake(&m, SessionNow())) {
+			gChanged |= VM_CHANGED_MESSAGES;
+			continue;
+		}
+		MessageExtraFor(&m, SessionNow(), &ex);
+		if (MessagesAddIncoming(&m, &ex, SessionNow()) == errNone) {
 			UInt8 kind = MessageSound(&m);
 
 			gChanged |= VM_CHANGED_MESSAGES;
@@ -830,6 +841,43 @@ Err SessionSend(const VmConv *conv, const Char *text, UInt16 *index)
 	if (err != errNone)
 		return err;
 	return SendRecord(*index);
+}
+
+Err SessionSendReaction(const VmConv *conv, const UInt8 *hash, const Char *target, Char glyph)
+{
+	static const UInt8 dmCodes[] = { VM_RESP_SENT };
+	UInt8 frame[VM_HEADER_LEN + 13 + VM_MAX_DM_TEXT];
+	UInt8 text[VM_MAX_DM_TEXT], name[VM_NAME_SIZE * 2], emoji[8];
+	UInt16 len, n, nameLen = 0, emojiLen;
+	Boolean channel = conv->type == VM_CONV_CHANNEL;
+	UInt32 now = SessionNow();
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	emojiLen = TxtPalmToUtf8(&glyph, 1, emoji, sizeof(emoji));
+	if (channel)
+		nameLen = TxtPalmToUtf8(target, StrLen(target), name, sizeof(name));
+	n = VmReactBuild(channel, name, nameLen, emoji, emojiLen, hash, text,
+	                 channel ? VM_MAX_CHANNEL_TEXT : VM_MAX_DM_TEXT);
+	if (n == 0 || emojiLen == 0 || (channel && nameLen == 0))
+		return vmErrTooLong;
+	err = ApplyScope(conv);
+	if (err != errNone)
+		return err;
+	/* one try: a repeated send would go out twice; no ack is waited for */
+	if (channel) {
+		len = VmBuildSendChannelTxt(frame, sizeof(frame), conv->channel, now, text, n);
+		err = Request(frame, len, VM_RESP_OK, 1);
+	} else {
+		len = VmBuildSendTxt(frame, sizeof(frame), conv->key, now, 0, text, n);
+		err = RequestAny(frame, len, dmCodes, 1, 1);
+	}
+	if (err == errNone) {
+		ReactionsAddMine(conv, hash, target, glyph, now);
+		gChanged |= VM_CHANGED_MESSAGES;
+	}
+	return err;
 }
 
 Err SessionRetry(UInt16 index)

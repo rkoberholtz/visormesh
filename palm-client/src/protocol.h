@@ -274,8 +274,17 @@ typedef struct {
 	UInt8   advertKey[6];   /* the advertiser (any hop count), if isAdvert */
 	UInt8   fromLen;        /* 0 = not known */
 	UInt8   from[6];
+	Boolean flood;
+	UInt8   hashSize;       /* bytes per path hash */
+	UInt8   pathBytes;      /* kept in path: the first VM_RX_PATH_MAX */
+	UInt8   path[16];       /* flood: the repeaters it came through, first to last */
+	UInt8   payloadLen;     /* kept in payload, up to 8: tells copies of one packet apart */
+	UInt8   payload[8];
 } VmRxLog;
-#define VM_PAYLOAD_ADVERT 4
+#define VM_RX_PATH_MAX     16
+#define VM_PAYLOAD_TXT     2
+#define VM_PAYLOAD_ADVERT  4
+#define VM_PAYLOAD_GRP_TXT 5
 Boolean VmParseRxLog(const UInt8 *p, UInt16 len, VmRxLog *out) VM_SECT2;
 
 /* PUSH_LOGIN_SUCCESS / PUSH_LOGIN_FAIL: which node (key prefix) and, on success, whether we're admin. */

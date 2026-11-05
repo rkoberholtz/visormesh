@@ -5,6 +5,7 @@
 #include "contacts.h"
 #include "channels.h"
 #include "messages.h"
+#include "reactions.h"
 #include "mutes.h"
 #include "convos.h"
 #include "resources.h"
@@ -333,6 +334,7 @@ UInt16 BgCheckRun(void)
 	ContactsClose();
 	ChannelsClose();
 	MessagesClose();
+	ReactionsClose();
 	return kinds;
 }
 

@@ -32,6 +32,7 @@
 #define MainMenuShotLater  1016
 #define MainMenuAbout      1019
 #define MainMenuConnect    1021   /* also a tap on "offline" in the title */
+#define MainMenuMessage    1022   /* conversations: the newest message's actions (convo_form.c) */
 #define AboutAlert         1020
 #define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */
 #define ConvoMenuBar       1017   /* Go, Edit, Options: a DM, the console */
@@ -114,6 +115,9 @@
 #define ConvoField            1603
 #define ConvoSendButton       1604
 #define ConvoBackButton       1605
+#define ConvoActionList       1606   /* tap-and-hold popup (msg_menu.c) */
+#define PathAlert             1607
+#define ReactionsAlert        1608
 
 #define AdvertAlert           2004
 #define RetryAlert            2005

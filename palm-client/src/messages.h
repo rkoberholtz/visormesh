@@ -53,19 +53,36 @@ typedef struct {
 	/* text follows, textLen bytes plus a NUL */
 } VmMsgHeader;
 
+/*
+ * Kept after a received message's text (records from before it have none):
+ * its reaction hash, worked out from the UTF-8 as received, and the
+ * repeaters it came through when the radio's RX log showed them (rxpath.h).
+ */
+typedef struct {
+	UInt8  hasHash;
+	UInt8  hash[5];      /* VM_REACT_HASH_BYTES */
+	UInt8  hasPath;
+	UInt8  hashSize;     /* bytes per repeater hash */
+	UInt8  pathBytes;    /* in path: the first VM_RX_PATH_MAX */
+	UInt8  hops;
+	UInt8  path[VM_RX_PATH_MAX];
+} VmMsgExtra;
+
 Err     MessagesOpen(void) VM_SECT2;
 void    MessagesClose(void) VM_SECT2;
 UInt16  MessagesCount(void) VM_SECT2;
 /* Locks record i; returns its header (text right after it). Call MessagesRelease(i) when done. */
 const VmMsgHeader *MessagesLock(UInt16 i) VM_SECT2;
 void    MessagesRelease(UInt16 i) VM_SECT2;
+/* Record i's trailer; false if it has none. */
+Boolean MessagesExtra(UInt16 i, VmMsgExtra *ex) VM_SECT2;
 /* Record i's unique ID (0 if none): unlike the index, it stays put when old messages drop off. */
 UInt32  MessagesUniqueId(UInt16 i) VM_SECT2;
 
 Boolean ConvEqual(const VmConv *a, const VmConv *b) VM_SECT2;
 
-/* Stores a received message (converting its UTF-8 text). Returns its index. */
-Err     MessagesAddIncoming(const VmMessage *m, UInt32 now) VM_SECT2;
+/* Stores a received message (converting its UTF-8 text), with ex after it if given. */
+Err     MessagesAddIncoming(const VmMessage *m, const VmMsgExtra *ex, UInt32 now) VM_SECT2;
 /* Stores an outgoing message as pending; *index is its record. */
 Err     MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16 *index) VM_SECT2;
 void    MessagesSetStatus(UInt16 index, UInt8 status, UInt32 ack, UInt32 ackDeadline) VM_SECT2;

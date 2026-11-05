@@ -175,3 +175,16 @@ Err ContactsUpdate(void)
 		gLastMod = lastMod;
 	return err;
 }
+
+Boolean ContactsFindByName(const Char *name, VmContact *out)
+{
+	UInt16 i, n;
+
+	if (ContactsOpen() != errNone)
+		return false;
+	n = DmNumRecords(gDb);
+	for (i = 0; i < n; i++)
+		if (ContactsGet(i, out) && out->type == VM_ADV_TYPE_CHAT && StrCompare(out->name, name) == 0)
+			return true;
+	return false;
+}

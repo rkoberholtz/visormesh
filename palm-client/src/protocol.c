@@ -658,11 +658,17 @@ Boolean VmParseRxLog(const UInt8 *p, UInt16 len, VmRxLog *out)
 		return 0;
 	out->isAdvert = 0;
 	out->fromLen = 0;
+	out->flood = route == 1 || route == 0;
+	out->hashSize = size;
+	out->pathBytes = (UInt8)(pathBytes > VM_RX_PATH_MAX ? VM_RX_PATH_MAX : pathBytes);
+	CopyBytes(out->path, p + i, out->pathBytes);
+	out->payloadLen = (UInt8)(len - i - pathBytes > 8 ? 8 : len - i - pathBytes);
+	CopyBytes(out->payload, p + i + pathBytes, out->payloadLen);
 	if (out->payloadType == VM_PAYLOAD_ADVERT && len >= i + pathBytes + 6) {
 		out->isAdvert = 1;
 		CopyBytes(out->advertKey, p + i + pathBytes, 6);
 	}
-	if (route == 1 || route == 0) {          /* flood: the path is who relayed it, in order */
+	if (out->flood) {                        /* the path is who relayed it, in order */
 		if (out->hops > 0) {
 			out->fromLen = size;
 			CopyBytes(out->from, p + i + pathBytes - size, size);

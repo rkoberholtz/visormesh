@@ -12,5 +12,10 @@
 
 /* Shows c if it's one of the font's emoji (or GLYPH_EMOJI); false if it isn't one. */
 Boolean EmojiShow(Char c) VM_SECT3;
+/* The emoji's name (out: EMOJI_NAME_SIZE); false if c isn't one. */
+#define EMOJI_NAME_SIZE 24
+Boolean EmojiName(Char c, Char *out) VM_SECT3;
+/* A grid of the font's emoji to pick one from; 0 if cancelled. */
+Char    EmojiPick(void) VM_SECT3;
 
 #endif

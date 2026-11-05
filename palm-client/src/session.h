@@ -125,6 +125,12 @@ Err     SessionGetChannel(UInt8 slot, VmChannel *out);
 Err     SessionSend(const VmConv *conv, const Char *text, UInt16 *index);
 /* Sends a failed message again (next attempt number). */
 Err     SessionRetry(UInt16 index);
+/*
+ * Sends an emoji reaction (reaction_fmt.h) to the message with this hash;
+ * target is its sender, for a channel. Not a chat message: it's kept in
+ * the reaction store once the radio takes it.
+ */
+Err     SessionSendReaction(const VmConv *conv, const UInt8 *hash, const Char *target, Char glyph);
 Err     SessionSendAdvert(Boolean flood);
 
 /*

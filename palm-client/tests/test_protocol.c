@@ -302,6 +302,10 @@ static void test_rx_log(void)
 	CHECK(VmParseRxLog(text1, sizeof(text1), &rx) && !rx.isAdvert && rx.hops == 1 && rx.fromLen == 1 && rx.from[0] == 0xcc);
 	CHECK(VmParseRxLog(direct, sizeof(direct), &rx) && rx.fromLen == 0);
 	CHECK(!VmParseRxLog(advert2, 7, &rx));       /* path cut off */
+	CHECK(VmParseRxLog(advert2, sizeof(advert2), &rx) && rx.flood && rx.hashSize == 2 && rx.pathBytes == 4);
+	CHECK(rx.path[0] == 0xaa && rx.path[3] == 0xbb && rx.payloadLen == 6 && rx.payload[0] == 0x9b);
+	CHECK(VmParseRxLog(text1, sizeof(text1), &rx) && rx.payloadLen == 3 && rx.payload[2] == 9);
+	CHECK(VmParseRxLog(direct, sizeof(direct), &rx) && !rx.flood);
 }
 
 static void test_remote(void)

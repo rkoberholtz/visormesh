@@ -7,7 +7,7 @@
 #include "channels.h"
 
 /* In the second code segment: see sections.h for the rules. */
-static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index) VM_SECT2;
+static Err Append(const VmMsgHeader *hdr, const Char *text, const VmMsgExtra *ex, UInt16 *index) VM_SECT2;
 static void WriteHeader(UInt16 i, const VmMsgHeader *hdr) VM_SECT2;
 static Boolean ReadHeader(UInt16 i, VmMsgHeader *hdr) VM_SECT2;
 static void TagChannel(VmConv *conv) VM_SECT2;
@@ -58,6 +58,23 @@ void MessagesRelease(UInt16 i)
 		MemHandleUnlock(h);
 }
 
+Boolean MessagesExtra(UInt16 i, VmMsgExtra *ex)
+{
+	MemHandle h = gDb ? DmQueryRecord(gDb, i) : NULL;
+	const VmMsgHeader *p;
+	Boolean has = false;
+
+	if (!h)
+		return false;
+	p = MemHandleLock(h);
+	if (MemHandleSize(h) >= sizeof(VmMsgHeader) + p->textLen + 1 + sizeof(VmMsgExtra)) {
+		MemMove(ex, (const UInt8 *)(p + 1) + p->textLen + 1, sizeof(VmMsgExtra));
+		has = true;
+	}
+	MemHandleUnlock(h);
+	return has;
+}
+
 UInt32 MessagesUniqueId(UInt16 i)
 {
 	UInt32 id;
@@ -86,10 +103,10 @@ static void TagChannel(VmConv *conv)
 		MemMove(conv->key, c.secret, sizeof(conv->key));
 }
 
-static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index)
+static Err Append(const VmMsgHeader *hdr, const Char *text, const VmMsgExtra *ex, UInt16 *index)
 {
 	UInt16 i = dmMaxRecordIndex;
-	UInt32 size = sizeof(VmMsgHeader) + hdr->textLen + 1;
+	UInt32 size = sizeof(VmMsgHeader) + hdr->textLen + 1 + (ex ? sizeof(VmMsgExtra) : 0);
 	MemHandle h;
 	UInt8 *p;
 
@@ -102,6 +119,8 @@ static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index)
 	DmWrite(p, 0, hdr, sizeof(VmMsgHeader));
 	DmWrite(p, sizeof(VmMsgHeader), text, hdr->textLen);
 	DmSet(p, sizeof(VmMsgHeader) + hdr->textLen, 1, 0);
+	if (ex)
+		DmWrite(p, sizeof(VmMsgHeader) + hdr->textLen + 1, ex, sizeof(VmMsgExtra));
 	MemHandleUnlock(h);
 	DmReleaseRecord(gDb, i, true);
 	if (index)
@@ -109,7 +128,7 @@ static Err Append(const VmMsgHeader *hdr, const Char *text, UInt16 *index)
 	return errNone;
 }
 
-Err MessagesAddIncoming(const VmMessage *m, UInt32 now)
+Err MessagesAddIncoming(const VmMessage *m, const VmMsgExtra *ex, UInt32 now)
 {
 	VmMsgHeader hdr;
 	Char text[TEXT_MAX];
@@ -150,7 +169,7 @@ Err MessagesAddIncoming(const VmMessage *m, UInt32 now)
 	hdr.timestamp = m->timestamp;
 	hdr.received = now;
 	hdr.textLen = len - skip;
-	return Append(&hdr, text + skip, NULL);
+	return Append(&hdr, text + skip, ex, NULL);
 }
 
 Err MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16 *index)
@@ -169,7 +188,7 @@ Err MessagesAddOutgoing(const VmConv *conv, const Char *text, UInt32 now, UInt16
 	hdr.timestamp = now;
 	hdr.received = now;
 	hdr.textLen = StrLen(text);
-	return Append(&hdr, text, index);
+	return Append(&hdr, text, NULL, index);
 }
 
 /* Rewrites part of a record's header in place. */

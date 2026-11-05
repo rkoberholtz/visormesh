@@ -4,6 +4,8 @@
 
 /* In the second code segment: see sections.h for the rules. */
 static Char MapUnicode(UInt32 cp) VM_SECT2;
+static UInt32 EmojiCodepoint(UInt8 c) VM_SECT2;
+static Boolean PutUtf8(UInt32 cp, UInt8 *out, UInt16 *o, UInt16 outSize) VM_SECT2;
 
 Boolean gTxtLarge = 0;
 
@@ -269,32 +271,62 @@ static UInt16 kCp1252[32] = {   /* not const: sections.h */
 	0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178
 };
 
+/* The emoji glyphs' own code points (MapUnicode's main ones), 0 for the rest. */
+static UInt32 EmojiCodepoint(UInt8 c)
+{
+	switch (c) {
+	case (UInt8)GLYPH_THUMBS:  return 0x1F44D;
+	case (UInt8)GLYPH_LAUGH:   return 0x1F602;
+	case (UInt8)GLYPH_HEART:   return 0x2764;
+	case (UInt8)GLYPH_CRY:     return 0x1F622;
+	case (UInt8)GLYPH_PRAY:    return 0x1F64F;
+	case (UInt8)GLYPH_WAVE:    return 0x1F44B;
+	case (UInt8)GLYPH_FIRE:    return 0x1F525;
+	case (UInt8)GLYPH_PARTY:   return 0x1F389;
+	case (UInt8)GLYPH_THINK:   return 0x1F914;
+	case (UInt8)GLYPH_EYES:    return 0x1F440;
+	case (UInt8)GLYPH_DISH:    return 0x1F4E1;
+	case (UInt8)GLYPH_HUNDRED: return 0x1F4AF;
+	}
+	return 0;
+}
+
+/* Appends cp as UTF-8; false if it doesn't fit. */
+static Boolean PutUtf8(UInt32 cp, UInt8 *out, UInt16 *o, UInt16 outSize)
+{
+	UInt16 n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4, k;
+
+	if (*o + n > outSize)
+		return 0;
+	if (n == 1) {
+		out[(*o)++] = (UInt8)cp;
+		return 1;
+	}
+	/* lead byte: 110xxxxx, 1110xxxx or 11110xxx */
+	out[(*o)++] = (UInt8)((0xF00 >> n) | (cp >> (6 * (n - 1))));
+	for (k = n - 1; k > 0; k--)
+		out[(*o)++] = (UInt8)(0x80 | ((cp >> (6 * (k - 1))) & 0x3F));
+	return 1;
+}
+
 UInt16 TxtPalmToUtf8(const Char *in, UInt16 inLen, UInt8 *out, UInt16 outSize)
 {
 	UInt16 i, o = 0;
 
 	for (i = 0; i < inLen; i++) {
 		UInt8 c = (UInt8)in[i];
-		UInt16 cp = c;
+		UInt32 cp = c;
 
-		if (c >= 0x80 && c < 0xA0)
-			cp = kCp1252[c - 0x80] ? kCp1252[c - 0x80] : '?';
-		if (cp < 0x80) {
-			if (o + 1 > outSize)
-				return 0;
-			out[o++] = (UInt8)cp;
-		} else if (cp < 0x800) {
-			if (o + 2 > outSize)
-				return 0;
-			out[o++] = (UInt8)(0xC0 | (cp >> 6));
-			out[o++] = (UInt8)(0x80 | (cp & 0x3F));
-		} else {
-			if (o + 3 > outSize)
-				return 0;
-			out[o++] = (UInt8)(0xE0 | (cp >> 12));
-			out[o++] = (UInt8)(0x80 | ((cp >> 6) & 0x3F));
-			out[o++] = (UInt8)(0x80 | (cp & 0x3F));
+		if (c >= 0x80 && c < 0xA0) {
+			cp = EmojiCodepoint(c);
+			if (!cp)
+				cp = kCp1252[c - 0x80] ? kCp1252[c - 0x80] : '?';
 		}
+		if (!PutUtf8(cp, out, &o, outSize))
+			return 0;
+		/* the red heart is U+2764 U+FE0F; without the selector it's a text heart */
+		if (cp == 0x2764 && !PutUtf8(0xFE0F, out, &o, outSize))
+			return 0;
 	}
 	return o;
 }

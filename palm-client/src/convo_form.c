@@ -16,6 +16,7 @@
 #include "ui/text.h"
 #include "ui/rowlist.h"
 #include "ui/emoji.h"
+#include "msg_menu.h"
 #include "convo_form.h"
 
 /* In the second code segment: see sections.h for the rules. */
@@ -39,6 +40,8 @@ static void Tapped(UInt16 row, Coord penX) VM_SECT2;
 static Boolean AllocLines(void) VM_SECT2;
 static void ShowEarlier(void) VM_SECT2;
 static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
+static void MessageMenu(UInt16 msg, const RectangleType *b) VM_SECT2;
+static Boolean Hold(UInt16 row, const RectangleType *b, void *ctx) VM_SECT2;
 
 #define MAX_MSGS    40        /* newest messages shown; "Earlier messages" adds as many again */
 #define LINES_PER   5         /* lines allowed per message shown, on average */
@@ -51,6 +54,7 @@ static Boolean TappedEmoji(UInt16 row, Coord penX) VM_SECT2;
 #define L_TEXT  2
 #define L_NEW   3      /* "── new ──" before the first message unread when the screen opened */
 #define L_MORE  4      /* at the top when older messages aren't shown: tap for more */
+#define L_REACT 5      /* under a message: its reactions (off, len: in msg_menu's summaries) */
 #define NO_NEW  0
 
 typedef struct {
@@ -142,12 +146,14 @@ static void Build(void)
 	UInt16 *idx = MemPtrNew(gShow * sizeof(UInt16));
 	UInt16 nIdx = 0, i, n = MessagesCount(), width = TextWidth();
 	Boolean more = false;
+	Int16 react;
 	UInt32 day, lastDay = 0;
 	Char sender[VM_NAME_SIZE + 2], lastSender[VM_NAME_SIZE + 2], suffix[8];
 	FontID old = FntSetFont(vmSmallFont);
 
 	gCount = 0;
 	lastSender[0] = 0;
+	MsgReactLoad();
 	if (!idx) {
 		FntSetFont(old);
 		return;
@@ -214,6 +220,9 @@ static void Build(void)
 		if (gCount > 0)
 			gLines[gCount - 1].last = true;
 		MessagesRelease(m);
+		react = MsgReactSummary(m, &len);
+		if (react >= 0)
+			AddLine(L_REACT, m, (UInt16)react, len, false, false, 0);
 	}
 	MemPtrFree(idx);
 	FntSetFont(old);
@@ -297,6 +306,8 @@ static void DrawLine(UInt16 row, const RectangleType *b, void *ctx)
 	} else if (l->kind == L_CHIP) {
 		SenderOf(h, buf, sizeof(buf));
 		DrawChip(buf, x + 1, b->topLeft.y);
+	} else if (l->kind == L_REACT) {
+		WinDrawChars(MsgReactText(l->off), l->len, x + TEXT_X, y);
 	} else {
 		const Char *text = (const Char *)(h + 1) + l->off;
 
@@ -520,6 +531,10 @@ static void Tapped(UInt16 row, Coord penX)
 		ShowEarlier();
 		return;
 	}
+	if (gLines[row].kind == L_REACT) {
+		MsgReactWho(gLines[row].msg);
+		return;
+	}
 	if (TappedEmoji(row, penX))
 		return;
 	h = MessagesLock(gLines[row].msg);
@@ -538,6 +553,29 @@ static void Tapped(UInt16 row, Coord penX)
 	}
 }
 
+/* The actions popup for a message (b: its row; NULL from the menu), then what it changed. */
+static void MessageMenu(UInt16 msg, const RectangleType *b)
+{
+	UInt16 r = MsgMenuOpen(msg, b, ConvoActionList, ConvoGadget, ConvoField);
+
+	if (r == MSG_MENU_REFRESH) {
+		Refresh(false);
+		DrawStatus();
+	} else if (r == MSG_MENU_TEXT) {
+		DrawCounter();
+	}
+}
+
+static Boolean Hold(UInt16 row, const RectangleType *b, void *ctx)
+{
+	UInt8 kind = gLines[row].kind;
+
+	if (kind != L_TEXT && kind != L_CHIP && kind != L_REACT)
+		return false;
+	MessageMenu(gLines[row].msg, b);
+	return true;
+}
+
 Boolean ConvoFormHandleEvent(EventType *event)
 {
 	FormType *form = FrmGetActiveForm();
@@ -553,6 +591,7 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		FrmCopyTitle(form, gTitle);
 		TitleStatusReset();
 		RowListInit(&gList, ConvoGadget, ConvoScroll, LINE_H, DrawLine, NULL, NULL);
+		gList.hold = Hold;
 		gNewFrom = FirstUnread();
 		Build();
 		MessagesMarkRead(&gAppConv);
@@ -570,6 +609,7 @@ Boolean ConvoFormHandleEvent(EventType *event)
 			MemPtrFree(gLines);
 			gLines = NULL;
 		}
+		MsgReactFree();
 		return false;
 
 	case frmUpdateEvent:
@@ -606,6 +646,16 @@ Boolean ConvoFormHandleEvent(EventType *event)
 	case penDownEvent:
 		if (TitleStatusTapped(event))
 			return true;
+		break;
+
+	case menuEvent:
+		if (event->data.menu.itemID == MainMenuMessage) {
+			UInt16 msg;
+
+			if (gLines && MsgMenuNewest(&msg))
+				MessageMenu(msg, NULL);
+			return true;
+		}
 		break;
 
 	case keyDownEvent:
