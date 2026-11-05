@@ -20,6 +20,7 @@ static const Char *FieldText(FormType *form, UInt16 id) VM_SECT4;
 static Boolean IsPrivate(FormType *form) VM_SECT4;
 static void ShowKeyField(FormType *form) VM_SECT4;
 static void Error(const Char *msg) VM_SECT4;
+static Boolean HashtagKey(const Char *name, UInt8 *key) VM_SECT4;
 static Boolean Add(FormType *form) VM_SECT4;
 
 static void *GetObject(FormType *form, UInt16 id)
@@ -58,14 +59,27 @@ static void Error(const Char *msg)
 	FrmCustomAlert(SettingsErrorAlert, msg, "", "");
 }
 
-static Boolean Add(FormType *form)
+/* The key for a #hashtag channel: the first 16 bytes of SHA-256 of its exact name, '#' included. */
+static Boolean HashtagKey(const Char *name, UInt8 *key)
 {
-	const Char *typed = FieldText(form, ChannelNameField);
-	Char name[VM_NAME_SIZE + 1], msg[48];
-	UInt8 key[VM_CHANNEL_SECRET_SIZE], utf8[VM_NAME_SIZE], hash[32];
+	UInt8 utf8[VM_NAME_SIZE], hash[32];
+	UInt16 n = TxtPalmToUtf8(name, StrLen(name), utf8, VM_NAME_SIZE - 1);
+
+	if (n == 0)
+		return false;
+	VmSha256(utf8, n, hash);
+	MemMove(key, hash, VM_CHANNEL_SECRET_SIZE);
+	return true;
+}
+
+Boolean ChannelJoin(const Char *name, const UInt8 *secret)
+{
+	UInt8 key[VM_CHANNEL_SECRET_SIZE];
 	UInt8 maxChannels = SessionDevice()->maxChannels;
-	UInt16 n;
+	Char msg[48];
 	Int16 slot;
+	UInt16 i;
+	VmChannel c;
 	VmConv conv;
 	Err err;
 
@@ -73,27 +87,22 @@ static Boolean Add(FormType *form)
 		Error("Connect to the radio first.");
 		return false;
 	}
-	if (!*typed) {
-		Error("Enter a channel name.");
+	if (secret)
+		MemMove(key, secret, sizeof(key));
+	else if (!HashtagKey(name, key)) {
+		Error("That name is too long.");
 		return false;
 	}
-	if (IsPrivate(form)) {
-		StrNCopy(name, typed, VM_NAME_SIZE - 1);
-		name[VM_NAME_SIZE - 1] = 0;
-		if (!VmParseHex(FieldText(form, ChannelKeyField), key, sizeof(key))) {
-			Error("The key is 32 hex digits (0-9, a-f).");
-			return false;
+	MemSet(&conv, sizeof(conv), 0);
+	conv.type = VM_CONV_CHANNEL;
+	ChannelsOpen();     /* opened lazily (AGENTS.md): this can come before Home has shown */
+	/* already joined (perhaps by another name): open it */
+	for (i = 0; i < maxChannels; i++) {
+		if (ChannelsFindSlot((UInt8)i, &c) && MemCmp(c.secret, key, sizeof(key)) == 0) {
+			conv.channel = (UInt8)i;
+			AppOpenConversation(&conv);
+			return true;
 		}
-	} else {
-		/* hashtag: the key is derived from the exact name, '#' included */
-		StrPrintF(name, "%s%s", typed[0] == '#' ? "" : "#", typed);
-		n = TxtPalmToUtf8(name, StrLen(name), utf8, VM_NAME_SIZE - 1);
-		if (n == 0) {
-			Error("That name is too long.");
-			return false;
-		}
-		VmSha256(utf8, n, hash);
-		MemMove(key, hash, sizeof(key));
 	}
 	slot = ChannelsFreeSlot(maxChannels);
 	if (slot < 0) {
@@ -107,11 +116,33 @@ static Boolean Add(FormType *form)
 		Error(msg);
 		return false;
 	}
-	MemSet(&conv, sizeof(conv), 0);
-	conv.type = VM_CONV_CHANNEL;
 	conv.channel = (UInt8)slot;
 	AppOpenConversation(&conv);
 	return true;
+}
+
+static Boolean Add(FormType *form)
+{
+	const Char *typed = FieldText(form, ChannelNameField);
+	Char name[VM_NAME_SIZE + 1];
+	UInt8 key[VM_CHANNEL_SECRET_SIZE];
+
+	if (!*typed) {
+		Error("Enter a channel name.");
+		return false;
+	}
+	if (IsPrivate(form)) {
+		StrNCopy(name, typed, VM_NAME_SIZE - 1);
+		name[VM_NAME_SIZE - 1] = 0;
+		if (!VmParseHex(FieldText(form, ChannelKeyField), key, sizeof(key))) {
+			Error("The key is 32 hex digits (0-9, a-f).");
+			return false;
+		}
+		return ChannelJoin(name, key);
+	}
+	/* hashtag: the key is derived from the exact name, '#' included */
+	StrPrintF(name, "%s%s", typed[0] == '#' ? "" : "#", typed);
+	return ChannelJoin(name, NULL);
 }
 
 Boolean ChannelFormHandleEvent(EventType *event)
