@@ -33,6 +33,16 @@
 #define MainMenuAbout      1019
 #define MainMenuConnect    1021   /* also a tap on "offline" in the title */
 #define MainMenuMessage    1022   /* conversations: the newest message's actions (convo_form.c) */
+#define MainMenuStats      1023   /* Go: Radio Stats */
+#define MainMenuPackets    1024   /* Go: Heard Packets */
+#define MainMenuTrace      1025   /* Go: Trace Path */
+#define MainMenuMention    1026   /* conversations: insert a @mention */
+#define MainMenuBeamChannel 1027  /* Channel: beam it */
+#define ContactsMenuBar    1028   /* Go, Contacts (Beam, Blocked, Stale), Options */
+#define MainMenuStale      1029
+#define MainMenuBlocked    1030
+#define MainMenuBeamSelf   1031
+#define MainStatsButton    1040
 #define AboutAlert         1020
 #define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */
 #define ConvoMenuBar       1017   /* Go, Edit, Options: a DM, the console */
@@ -67,6 +77,7 @@
 #define ContactsRefreshButton 1303
 #define ContactsDoneButton    1304
 #define ContactsAddButton     1305
+#define ContactsBlockedList   1306   /* Contacts > Blocked Senders popup */
 
 #define ContactForm           1800
 #define ContactGadget         1801
@@ -116,6 +127,7 @@
 #define ConvoSendButton       1604
 #define ConvoBackButton       1605
 #define ConvoActionList       1606   /* tap-and-hold popup (msg_menu.c) */
+#define ConvoMentionList      1609   /* "@" or Options > Insert Mention (mention.c) */
 #define PathAlert             1607
 #define ReactionsAlert        1608
 
@@ -173,6 +185,42 @@
 #define MapOutButton          2503
 #define MapInButton           2504
 #define MapAlert              2505
+
+#define StatsForm             2600
+#define StatsDoneButton       2601
+
+#define PacketsForm           2700
+#define PacketsGadget         2701
+#define PacketsScroll         2702
+#define PacketsDoneButton     2703
+#define PacketsAllPush        2704
+#define PacketsMsgPush        2705
+#define PacketsAdvertPush     2706
+#define PacketsFilterGroup    6
+#define PacketAlert           2707
+
+#define TraceForm             2800
+#define TraceField            2801
+#define TraceAddButton        2802
+#define TraceHopList          2803
+#define TraceRoundCheck       2804
+#define TraceGadget           2805
+#define TraceScroll           2806
+#define TraceGoButton         2807
+#define TraceRouteButton      2808
+#define TraceDoneButton       2809
+#define TraceForLabel         2810
+#define TraceRouteAlert       2811
+#define PingAlert             2812
+
+#define StaleAlert            2900
+#define StaleConfirmAlert     2901
+#define BlockAlert            2902
+#define UnblockAlert          2903
+#define InboxContactAlert     2904
+#define InboxChannelAlert     2905
+#define HashtagAlert          2906
+#define NoteAlert             2907   /* a plain message with an OK button (^1) */
 
 #define SmallFontRes          1000
 #define LargeFontRes          1001

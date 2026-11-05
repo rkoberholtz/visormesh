@@ -8,6 +8,7 @@
 #include "app.h"
 #include "ui/text.h"
 #include "ui/emoji.h"
+#include "info_fmt.h"
 #include "msg_menu.h"
 
 static Int16   Popup(const RectangleType *b, UInt16 listId, UInt16 areaId, Char **items, UInt16 n) VM_SECT3;
@@ -16,7 +17,6 @@ static UInt16  React(UInt16 msg) VM_SECT3;
 static UInt16  Reply(UInt16 msg, UInt16 fieldId) VM_SECT3;
 static void    SendDm(const Char *name) VM_SECT3;
 static void    PathDetails(UInt16 msg) VM_SECT3;
-static void    AppendClock(Char *out, const Char *label, UInt32 utc) VM_SECT3;
 static Boolean Matches(const VmReact *r, const UInt8 *hash, const Char *name, Boolean channel) VM_SECT3;
 
 #define ACT_REACT   0
@@ -220,29 +220,14 @@ static void SendDm(const Char *name)
 	AppOpenConversation(&conv);
 }
 
-/* "label HH:MM:SS" in local time, and the date if it isn't today. */
-static void AppendClock(Char *out, const Char *label, UInt32 utc)
-{
-	DateTimeType dt, now;
-
-	TimSecondsToDateTime(SessionLocalPalm(utc), &dt);
-	TimSecondsToDateTime(SessionLocalPalm(SessionNow()), &now);
-	out += StrLen(out);
-	if (dt.year != now.year || dt.month != now.month || dt.day != now.day)
-		StrPrintF(out, "%s %u/%u %02u:%02u:%02u", label, dt.month, dt.day, dt.hour, dt.minute, dt.second);
-	else
-		StrPrintF(out, "%s %02u:%02u:%02u", label, dt.hour, dt.minute, dt.second);
-}
-
 static void PathDetails(UInt16 msg)
 {
 	const VmMsgHeader *h = MessagesLock(msg);
 	VmMsgHeader hdr;
 	VmMsgExtra ex;
-	VmContact c;
 	Boolean hasEx;
-	Char text[300], hex[8], snr[8];
-	UInt16 i, hops, len;
+	Char text[300], snr[8];
+	UInt16 hops;
 
 	if (!h)
 		return;
@@ -251,7 +236,7 @@ static void PathDetails(UInt16 msg)
 	hasEx = MessagesExtra(msg, &ex);
 	text[0] = 0;
 	if (hdr.dir == VM_DIR_OUT) {
-		AppendClock(text, "Sent", hdr.timestamp);
+		InfoClock(text, sizeof(text), "Sent", hdr.timestamp);
 		StrCat(text, "\n");
 		switch (hdr.status) {
 		case VM_ST_PENDING: StrCat(text, "Waiting for the radio"); break;
@@ -262,9 +247,9 @@ static void PathDetails(UInt16 msg)
 		FrmCustomAlert(PathAlert, text, "", "");
 		return;
 	}
-	AppendClock(text, "Sent", hdr.timestamp);     /* the sender's clock */
+	InfoClock(text, sizeof(text), "Sent", hdr.timestamp);     /* the sender's clock */
 	StrCat(text, "\n");
-	AppendClock(text, "Got", hdr.received);
+	InfoClock(text, sizeof(text), "Got", hdr.received);
 	StrCat(text, "\n");
 	hops = VM_PATH_HOPS(hdr.pathLen);
 	if (hdr.pathLen == VM_PATH_UNKNOWN)
@@ -281,22 +266,7 @@ static void PathDetails(UInt16 msg)
 		StrCat(text, "Repeaters not recorded");
 	} else {
 		StrCat(text, "Via");
-		for (i = 0; i + ex.hashSize <= ex.pathBytes; i += ex.hashSize) {
-			if (StrLen(text) > sizeof(text) - 80) {     /* room for one more entry and the end */
-				StrCat(text, ", ...");
-				break;
-			}
-			TxtHex(ex.path + i, ex.hashSize, hex);
-			StrCat(text, i ? ", " : " ");
-			StrCat(text, hex);
-			if (ContactsFindByPrefixN(ex.path + i, ex.hashSize, &c)) {
-				len = StrLen(text);
-				StrCat(text, " ");
-				StrNCat(text, c.name, len + 1 + 12 + 1);    /* up to 12 of the name */
-			}
-		}
-		if (ex.hops * ex.hashSize > ex.pathBytes)
-			StrPrintF(text + StrLen(text), " +%u more", ex.hops - ex.pathBytes / ex.hashSize);
+		InfoVia(text, sizeof(text), ex.path, ex.pathBytes, ex.hashSize, ex.hops);
 	}
 	FrmCustomAlert(PathAlert, text, "", "");
 }

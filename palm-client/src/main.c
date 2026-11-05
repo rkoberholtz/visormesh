@@ -24,6 +24,8 @@
 #include "channel_form.h"
 #include "bgcheck.h"
 #include "shots.h"
+#include "stats_form.h"
+#include "packets_form.h"
 #include "ui/draw.h"
 #include "ui/title.h"
 
@@ -54,6 +56,8 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuContacts:    FrmGotoForm(ContactsForm);    return true;
 	case MainMenuNode:        FrmGotoForm(MainForm);        return true;
 	case MainMenuMap:         FrmGotoForm(MapForm);         return true;
+	case MainMenuStats:       FrmGotoForm(StatsForm);       return true;
+	case MainMenuPackets:     FrmGotoForm(PacketsForm);     return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
 	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
@@ -101,6 +105,8 @@ static Boolean AppHandleEvent(EventType *event)
 	case SoundsForm:      FrmSetEventHandler(form, SoundsFormHandleEvent);      break;
 	case ScopesForm:      FrmSetEventHandler(form, ScopesFormHandleEvent);      break;
 	case MapForm:         FrmSetEventHandler(form, MapFormHandleEvent);         break;
+	case StatsForm:       FrmSetEventHandler(form, StatsFormHandleEvent);       break;
+	case PacketsForm:     FrmSetEventHandler(form, PacketsFormHandleEvent);     break;
 	}
 	return true;
 }
@@ -236,6 +242,10 @@ static void Poll(void)
 		FrmUpdateForm(formId, VM_UPDATE_DATA);
 	if (formId == ConvoForm)
 		ConvoFormIdle();
+	else if (formId == StatsForm)
+		StatsFormIdle();
+	else if (formId == PacketsForm)
+		PacketsFormIdle();
 }
 
 static void AppEventLoop(void)

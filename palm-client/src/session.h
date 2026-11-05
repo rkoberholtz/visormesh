@@ -9,6 +9,7 @@
 #include <PalmOS.h>
 #include "protocol.h"
 #include "messages.h"
+#include "protocol2.h"
 
 #define vmErrNoReply   (appErrorClass | 1)   /* radio didn't answer in time */
 #define vmErrRadio     (appErrorClass | 2)   /* radio replied RESP_ERR */
@@ -71,6 +72,17 @@ Err     SessionSetDefaultScope(const Char *name);
 Err     SessionAskRegions(const UInt8 *pubKey, Char *names, UInt16 size);
 const VmSelfInfo   *SessionSelf(void);
 
+/*
+ * Sends a request whose reply has this code (safe to repeat: reads, two
+ * tries) and copies up to size bytes of the reply (code byte first).
+ */
+Err     SessionQuery(const UInt8 *frame, UInt16 len, UInt8 code, UInt8 *reply, UInt16 size, UInt16 *got);
+/*
+ * Sends a trace along path (protocol2.h: it must lead back to us) and waits
+ * for its answer: vmErrNoReply if none came in the radio's estimate. tripMs
+ * is from the send to the answer.
+ */
+Err     SessionTrace(const UInt8 *path, UInt16 pathBytes, UInt8 hashSize, VmTrace *out, UInt32 *tripMs);
 /* Sends a complete command frame and requires RESP_OK. */
 Err     SessionCommand(const UInt8 *frame, UInt16 len);
 /*

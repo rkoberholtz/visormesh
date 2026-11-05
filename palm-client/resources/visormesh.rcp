@@ -28,6 +28,44 @@ BEGIN
     MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Connect" ID MainMenuConnect
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
+    MENUITEM "Preferences..." ID MainMenuSounds "R"
+    MENUITEM "-" AUTOID
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
+  END
+END
+
+MENU ID ContactsMenuBar
+BEGIN
+  PULLDOWN "Go"
+  BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
+  END
+  PULLDOWN "Contacts"
+  BEGIN
+    MENUITEM "Beam My Contact" ID MainMenuBeamSelf "B"
+    MENUITEM "Blocked Senders..." ID MainMenuBlocked
+    MENUITEM "Remove Stale Contacts..." ID MainMenuStale
   END
   PULLDOWN "Options"
   BEGIN
@@ -52,6 +90,10 @@ BEGIN
     MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
   END
   PULLDOWN "Edit"
   BEGIN
@@ -67,6 +109,7 @@ BEGIN
   PULLDOWN "Options"
   BEGIN
     MENUITEM "Message Actions..." ID MainMenuMessage "Y"
+    MENUITEM "Insert Mention..." ID MainMenuMention "J"
     MENUITEM "-" AUTOID
     MENUITEM "Connect" ID MainMenuConnect
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
@@ -105,6 +148,10 @@ BEGIN
     MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
   END
   PULLDOWN "Channel"
   BEGIN
@@ -133,6 +180,10 @@ BEGIN
     MENUITEM "Contacts" ID MainMenuContacts "T"
     MENUITEM "Node" ID MainMenuNode "N"
     MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
   END
   PULLDOWN "Edit"
   BEGIN
@@ -152,10 +203,12 @@ BEGIN
     MENUITEM "Leave Channel" ID MainMenuLeaveChannel "L"
     MENUITEM "Mute Channel" ID MainMenuMuteChannel "M"
     MENUITEM "Channel Scope..." ID MainMenuChannelScope "E"
+    MENUITEM "Beam Channel" ID MainMenuBeamChannel "B"
   END
   PULLDOWN "Options"
   BEGIN
     MENUITEM "Message Actions..." ID MainMenuMessage "Y"
+    MENUITEM "Insert Mention..." ID MainMenuMention "J"
     MENUITEM "-" AUTOID
     MENUITEM "Connect" ID MainMenuConnect
     MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
@@ -197,7 +250,8 @@ BEGIN
   BUTTON "Send" ID ConvoSendButton AT (1 147 AUTO AUTO)
   BUTTON "Back" ID ConvoBackButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
   GRAFFITISTATEINDICATOR AT (150 148)
-  LIST "" ID ConvoActionList AT (28 16 80 AUTO) NONUSABLE VISIBLEITEMS 5
+  LIST "" ID ConvoActionList AT (28 16 80 AUTO) NONUSABLE VISIBLEITEMS 6
+  LIST "" ID ConvoMentionList AT (10 16 140 AUTO) NONUSABLE VISIBLEITEMS 8
 END
 
 /* Node: this radio's details, connection and settings */
@@ -225,6 +279,7 @@ BEGIN
 
   BUTTON "Settings" ID MainSettingsButton AT (5 127 AUTO AUTO)
   BUTTON "Advert" ID MainAdvertButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
+  BUTTON "Stats" ID MainStatsButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
   BUTTON "Disconnect" ID MainConnectButton AT (5 145 AUTO AUTO)
   BUTTON "Done" ID MainDoneButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
 END
@@ -232,7 +287,7 @@ END
 FORM ID ContactsForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenuBar
+MENUID ContactsMenuBar
 BEGIN
   TITLE "Contacts            "
   GADGET ID ContactsGadget AT (0 16 153 128)
@@ -240,6 +295,7 @@ BEGIN
   BUTTON "Refresh" ID ContactsRefreshButton AT (1 147 AUTO AUTO)
   BUTTON "Done" ID ContactsDoneButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
   BUTTON "Add" ID ContactsAddButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  LIST "" ID ContactsBlockedList AT (10 16 140 AUTO) NONUSABLE VISIBLEITEMS 8
 END
 
 /* One contact: details and signal history */
@@ -255,7 +311,7 @@ BEGIN
   BUTTON "Message" ID ContactMessageButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
   BUTTON "Login" ID ContactLoginButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
   BUTTON "More" ID ContactMoreButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
-  LIST "Admin Console" "Reset Path" "Remove" ID ContactMoreList AT (90 111 68 AUTO) NONUSABLE VISIBLEITEMS 3
+  LIST "" ID ContactMoreList AT (84 60 74 AUTO) NONUSABLE VISIBLEITEMS 8
 END
 
 FORM ID ContactAddForm AT (0 0 160 160)
@@ -597,4 +653,146 @@ BEGIN
   TITLE "Leave Channel"
   MESSAGE "Remove ^1 from the radio? Its messages stay on the Visor."
   BUTTONS "Leave" "Cancel"
+END
+
+/* Radio Stats: the companion radio's own report (stats_form.c) */
+FORM ID StatsForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "Radio Stats"
+  BUTTON "Done" ID StatsDoneButton AT (1 147 AUTO AUTO)
+END
+
+/* Heard Packets: the radio's RX log (packets_form.c) */
+FORM ID PacketsForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "Heard Packets"
+  GADGET ID PacketsGadget AT (0 16 153 128)
+  SCROLLBAR ID PacketsScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  BUTTON "Done" ID PacketsDoneButton AT (1 147 AUTO AUTO)
+  PUSHBUTTON "All" ID PacketsAllPush AT (60 147 26 12) GROUP PacketsFilterGroup
+  PUSHBUTTON "Chat" ID PacketsMsgPush AT (PREVRIGHT+1 PREVTOP 30 12) GROUP PacketsFilterGroup
+  PUSHBUTTON "Adverts" ID PacketsAdvertPush AT (PREVRIGHT+1 PREVTOP 40 12) GROUP PacketsFilterGroup
+END
+
+ALERT ID PacketAlert
+INFORMATION
+BEGIN
+  TITLE "Packet"
+  MESSAGE "^1"
+  BUTTONS "OK"
+END
+
+/* Trace Path: hops out and back, SNR at each (trace_form.c); for a contact, also its route */
+FORM ID TraceForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID EditMenuBar
+BEGIN
+  TITLE "Trace Path"
+  LABEL "                                        " ID TraceForLabel AT (3 16)
+  LABEL "Hops:" AUTOID AT (3 29) FONT 1
+  FIELD ID TraceField AT (32 29 97 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 60
+  BUTTON "Add" ID TraceAddButton AT (132 28 26 12)
+  CHECKBOX "Round trip (back the same way)" ID TraceRoundCheck AT (1 42 AUTO 12)
+  GADGET ID TraceGadget AT (0 56 153 88)
+  SCROLLBAR ID TraceScroll AT (153 56 7 88) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
+  BUTTON "Trace" ID TraceGoButton AT (1 147 AUTO AUTO)
+  BUTTON "Set Route" ID TraceRouteButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  BUTTON "Done" ID TraceDoneButton AT (PREVRIGHT+5 PREVTOP AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (150 148)
+  LIST "" ID TraceHopList AT (40 16 118 AUTO) NONUSABLE VISIBLEITEMS 10
+END
+
+ALERT ID TraceRouteAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Set Route"
+  MESSAGE "Send to ^1 ^2?"
+  BUTTONS "Set Route" "Cancel"
+END
+
+ALERT ID PingAlert
+INFORMATION
+BEGIN
+  TITLE "Ping"
+  MESSAGE "^1"
+  BUTTONS "OK"
+END
+
+ALERT ID StaleAlert
+CONFIRMATION
+DEFAULTBUTTON 3
+BEGIN
+  TITLE "Remove Stale Contacts"
+  MESSAGE "Remove contacts the radio hasn't heard an advert from in:"
+  BUTTONS "2 weeks" "1 month" "3 months" "Cancel"
+END
+
+ALERT ID StaleConfirmAlert
+WARNING
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Remove Stale Contacts"
+  MESSAGE "Remove ^1 from the radio? Kept: contacts you have messages with, ones never heard (added by key) and ones you're logged into. Their messages stay on the Visor."
+  BUTTONS "Remove" "Cancel"
+END
+
+ALERT ID BlockAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Block"
+  MESSAGE "Hide messages and reactions from ^1? Unblock under Contacts > Blocked Senders."
+  BUTTONS "Block" "Cancel"
+END
+
+ALERT ID UnblockAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Unblock"
+  MESSAGE "Show messages from ^1 again?"
+  BUTTONS "Unblock" "Cancel"
+END
+
+ALERT ID InboxContactAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Contact Received"
+  MESSAGE "Add ^1 (^2) to the radio's contacts?"
+  BUTTONS "Add" "Later" "Discard"
+END
+
+ALERT ID InboxChannelAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Channel Received"
+  MESSAGE "Join ^1?"
+  BUTTONS "Join" "Later" "Discard"
+END
+
+ALERT ID HashtagAlert
+CONFIRMATION
+DEFAULTBUTTON 1
+BEGIN
+  TITLE "Join Channel"
+  MESSAGE "Join ^1? Anyone who knows the name can read it."
+  BUTTONS "Join" "Cancel"
+END
+
+ALERT ID NoteAlert
+INFORMATION
+BEGIN
+  TITLE "VisorMesh"
+  MESSAGE "^1"
+  BUTTONS "OK"
 END

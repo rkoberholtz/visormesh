@@ -19,6 +19,8 @@
 #include "rxpath.h"
 #include "reactions.h"
 #include "reaction_fmt.h"
+#include "protocol2.h"
+#include "packets_form.h"
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
@@ -122,6 +124,7 @@ static void HandlePush(void)
 		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx)) {
 			HeardRecord(&rx, SessionNow());
 			RxPathNote(&rx, SessionNow());
+			PacketsNote(&rx, SessionNow());
 		}
 	} else if (code == VM_PUSH_ADVERT || code == VM_PUSH_NEW_ADVERT || code == VM_PUSH_PATH_UPDATED) {
 		/* NEW_ADVERT is the radio's first sight of a node (MyMesh::onDiscoveredContact is_new) */
@@ -896,6 +899,58 @@ Err SessionRetry(UInt16 index)
 		return errNone;
 	MessagesBumpAttempt(index);
 	return SendRecord(index);
+}
+
+Err SessionQuery(const UInt8 *frame, UInt16 len, UInt8 code, UInt8 *reply, UInt16 size, UInt16 *got)
+{
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	if (len == 0)
+		return vmErrBadReply;
+	err = Request(frame, len, code, 2);
+	if (err != errNone)
+		return err;
+	*got = gDecoder.len < size ? gDecoder.len : size;
+	MemMove(reply, gDecoder.payload, *got);
+	return errNone;
+}
+
+Err SessionTrace(const UInt8 *path, UInt16 pathBytes, UInt8 hashSize, VmTrace *out, UInt32 *tripMs)
+{
+	static const UInt8 sentCode[] = { VM_RESP_SENT };
+	static const UInt8 traceCode[] = { VM_PUSH_TRACE_DATA };
+	UInt8 frame[VM_HEADER_LEN + 10 + VM_TRACE_MAX];
+	UInt32 tag = TimGetTicks() ^ ((UInt32)SysRandom(0) << 16) ^ TimGetSeconds(), start, deadline;
+	UInt16 len = VmBuildTrace(frame, sizeof(frame), tag, hashSize, path, pathBytes);
+	VmSent sent;
+	Err err;
+
+	if (!gConnected)
+		return serErrNotOpen;
+	if (len == 0)
+		return vmErrTooLong;
+	start = TimGetTicks();
+	/* one try: a repeated trace would go out twice */
+	err = RequestAny(frame, len, sentCode, 1, 1);
+	if (err == errNone && !VmParseSent(gDecoder.payload, gDecoder.len, &sent))
+		err = vmErrBadReply;
+	if (err != errNone)
+		return err;
+	/* the radio's estimate for the whole path, plus slack */
+	deadline = start + (sent.timeoutMs + 2000UL) / 1000UL * SysTicksPerSecond();
+	for (;;) {
+		err = WaitForAny(traceCode, 1, (Int32)(deadline - TimGetTicks()));
+		if (err != errNone)
+			return err;
+		if (VmParseTrace(gDecoder.payload, gDecoder.len, out) && out->tag == tag)
+			break;
+		if ((Int32)(TimGetTicks() - deadline) >= 0)
+			return vmErrNoReply;
+	}
+	*tripMs = (TimGetTicks() - start) * 1000UL / SysTicksPerSecond();
+	return errNone;
 }
 
 /* After a quiet minute, asks the radio the time, so a lost link shows (RequestAny) while idle. */

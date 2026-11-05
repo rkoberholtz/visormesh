@@ -217,6 +217,9 @@ Boolean NodeFormHandleEvent(EventType *event)
 		case MainAdvertButton:
 			SendAdvert();
 			return true;
+		case MainStatsButton:
+			FrmGotoForm(StatsForm);
+			return true;
 		case MainDoneButton:
 			FrmGotoForm(HomeForm);
 			return true;
