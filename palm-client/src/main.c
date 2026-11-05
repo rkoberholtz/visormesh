@@ -26,6 +26,10 @@
 #include "shots.h"
 #include "stats_form.h"
 #include "packets_form.h"
+#include "trace_form.h"
+#include "beam.h"
+#include "blocks.h"
+#include "stale.h"
 #include "ui/draw.h"
 #include "ui/title.h"
 
@@ -58,6 +62,19 @@ static Boolean HandleMenu(UInt16 itemID)
 	case MainMenuMap:         FrmGotoForm(MapForm);         return true;
 	case MainMenuStats:       FrmGotoForm(StatsForm);       return true;
 	case MainMenuPackets:     FrmGotoForm(PacketsForm);     return true;
+	case MainMenuTrace:       TraceFormOpen(NULL);          return true;
+	case MainMenuBeamSelf:    BeamSelf();                   return true;
+	case MainMenuBlocked:     BlocksManage(ContactsBlockedList); return true;
+	case MainMenuStale:
+		if (StaleRemove())
+			FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
+		return true;
+	case MainMenuBeamChannel:
+		if (FrmGetActiveFormID() == ConvoForm && gAppConv.type == VM_CONV_CHANNEL)
+			BeamChannel(gAppConv.channel);
+		else
+			FrmCustomAlert(SettingsErrorAlert, "Open the channel you want to beam first.", "", "");
+		return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
 	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
@@ -107,6 +124,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case MapForm:         FrmSetEventHandler(form, MapFormHandleEvent);         break;
 	case StatsForm:       FrmSetEventHandler(form, StatsFormHandleEvent);       break;
 	case PacketsForm:     FrmSetEventHandler(form, PacketsFormHandleEvent);     break;
+	case TraceForm:       FrmSetEventHandler(form, TraceFormHandleEvent);       break;
 	}
 	return true;
 }
@@ -198,6 +216,8 @@ static Int32 EventTimeout(void)
 {
 	Int32 left;
 
+	if (BeamInboxWaiting())
+		return 1;               /* a beam came: ask about it on the next nilEvent */
 	if (SessionConnecting())
 		return VM_STEP_TICKS;
 	if (SessionIsConnected())
@@ -264,6 +284,8 @@ static void AppEventLoop(void)
 		EvtGetEvent(&event, EventTimeout());
 		CheckWake();
 		if (event.eType == nilEvent) {
+			if (BeamInboxWaiting())
+				BeamCheckInbox();
 			StepReconnect();
 			Poll();
 			continue;
@@ -298,13 +320,20 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		return errNone;
 	case sysAppLaunchCmdSystemReset:
 	case sysAppLaunchCmdSyncNotify:     /* installed, which drops the alarm */
+		ExgRegisterData(VM_CREATOR, exgRegExtensionID, VM_BEAM_EXT);   /* beams named *.vmsh come here */
+		BgSchedule();
+		return errNone;
 	case sysAppLaunchCmdTimeChange:
 		BgSchedule();
 		return errNone;
+	case sysAppLaunchCmdExgReceiveData:
+		/* maybe without globals: beam_rx.c only saves it for later */
+		return BeamReceive((ExgSocketPtr)cmdPBP);
 	}
 	if (cmd == sysAppLaunchCmdNormalLaunch) {
 		BgSetAppOpen(true);
 		AppLoadPrefs();
+		BeamInboxNote();
 		UiFontInit(SoundsLargeText());
 		HeardLoad();
 		FrmGotoForm(HomeForm);

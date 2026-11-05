@@ -6,7 +6,8 @@
  * heard the node directly (its own zero-hop adverts, or relaying packets for a
  * repeater) with SNR and RSSI. Message opens the DM; for a room it logs in
  * first if needed. Login asks for the password and opens a room's posts or
- * a repeater's admin console; More has Admin Console, Reset Path and Remove.
+ * a repeater's admin console. More has what suits the type: Admin Console,
+ * Trace / Route, Ping, Reset Path, Block, Beam and Remove.
  */
 #include <PalmOS.h>
 #include "resources.h"
@@ -21,6 +22,9 @@
 #include "ui/rowlist.h"
 #include "contact_form.h"
 #include "remote.h"
+#include "trace_form.h"
+#include "blocks.h"
+#include "beam.h"
 
 /* In an extra code segment (VM_SECT3): see sections.h for the rules. */
 static void *GetObject(FormType *form, UInt16 id) VM_SECT3;
@@ -260,27 +264,76 @@ Boolean ContactRemove(const VmContact *c)
 	return true;
 }
 
+/* More's actions: the ones that suit this contact's type. */
+#define MORE_CONSOLE 0
+#define MORE_TRACE   1
+#define MORE_PING    2
+#define MORE_RESET   3
+#define MORE_BLOCK   4
+#define MORE_BEAM    5
+#define MORE_REMOVE  6
+
 static void More(FormType *form)
 {
 	ListType *list = GetObject(form, ContactMoreList);
-	Int16 pick = LstPopupList(list);
+	Char *items[8];
+	UInt8 acts[8];
+	UInt16 n = 0;
+	UInt8 t = gContact.type;
+	Int16 pick;
 
-	if (pick == 0) {                    /* Admin Console */
-		if (!Connected())
-			return;
-		if (gContact.type != VM_ADV_TYPE_ROOM && gContact.type != VM_ADV_TYPE_REPEATER) {
-			Error("Only repeaters and rooms have an admin console.");
-			return;
-		}
-		if (SessionIsLoggedIn(gContact.pubKey) || Login(form))
+	if (t == VM_ADV_TYPE_ROOM || t == VM_ADV_TYPE_REPEATER) {
+		items[n] = "Admin Console";
+		acts[n++] = MORE_CONSOLE;
+	}
+	items[n] = "Trace / Route";
+	acts[n++] = MORE_TRACE;
+	if (t == VM_ADV_TYPE_REPEATER) {
+		items[n] = "Ping";
+		acts[n++] = MORE_PING;
+	}
+	items[n] = "Reset Path";
+	acts[n++] = MORE_RESET;
+	if (t == VM_ADV_TYPE_CHAT) {
+		items[n] = BlocksIsContact(&gContact) ? "Unblock" : "Block";
+		acts[n++] = MORE_BLOCK;
+	}
+	items[n] = "Beam";
+	acts[n++] = MORE_BEAM;
+	items[n] = "Remove";
+	acts[n++] = MORE_REMOVE;
+	LstSetListChoices(list, items, n);
+	LstSetHeight(list, n);
+	pick = LstPopupList(list);
+	LstSetListChoices(list, NULL, 0);
+	if (pick < 0)
+		return;
+	switch (acts[pick]) {
+	case MORE_CONSOLE:
+		if (Connected() && (SessionIsLoggedIn(gContact.pubKey) || Login(form)))
 			RemoteOpen(&gContact);
-	} else if (pick == 1) {             /* Reset Path */
+		break;
+	case MORE_TRACE:
+		TraceFormOpen(&gContact);
+		break;
+	case MORE_PING:
+		TracePing(&gContact);
+		break;
+	case MORE_RESET:
 		ContactResetPath(&gContact);
 		ReloadContact();
 		RowListDraw(&gList);
-	} else if (pick == 2) {             /* Remove */
+		break;
+	case MORE_BLOCK:
+		BlocksToggleContact(&gContact);
+		break;
+	case MORE_BEAM:
+		BeamContact(&gContact);
+		break;
+	case MORE_REMOVE:
 		if (ContactRemove(&gContact))
 			FrmGotoForm(ContactsForm);
+		break;
 	}
 }
 
