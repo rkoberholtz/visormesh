@@ -17,6 +17,8 @@
 #include "ui/rowlist.h"
 #include "ui/emoji.h"
 #include "msg_menu.h"
+#include "convo_extra.h"
+#include "protocol2.h"
 #include "convo_form.h"
 
 /* In the second code segment: see sections.h for the rules. */
@@ -453,7 +455,7 @@ static void InsertMention(const Char *sender)
 	DrawCounter();
 }
 
-/* An emoji (or its neighbour, they're narrow) under the pen: show it enlarged. */
+/* An emoji (or its neighbour, they're narrow) under the pen: show it enlarged; a #hashtag: join or open it. */
 static Boolean TappedEmoji(UInt16 row, Coord penX)
 {
 	FormType *form = FrmGetActiveForm();
@@ -463,8 +465,9 @@ static Boolean TappedEmoji(UInt16 row, Coord penX)
 	RectangleType b;
 	FontID old;
 	Int16 k;
-	Char c[3];
+	Char c[3], tag[VM_NAME_SIZE];
 	UInt16 n = 0, i;
+	Boolean isTag = false;
 
 	if (l->kind != L_TEXT)
 		return false;
@@ -482,8 +485,13 @@ static Boolean TappedEmoji(UInt16 row, Coord penX)
 			c[n++] = text[k - 1];
 		if (k + 1 < (Int16)l->len)
 			c[n++] = text[k + 1];
+		isTag = VmHashtagAt(text, l->len, (UInt16)k, tag, sizeof(tag));
 	}
 	MessagesRelease(l->msg);
+	if (isTag) {
+		ConvoOpenHashtag(tag);
+		return true;
+	}
 	for (i = 0; i < n; i++)
 		if (EmojiShow(c[i]))
 			return true;
@@ -649,6 +657,11 @@ Boolean ConvoFormHandleEvent(EventType *event)
 		break;
 
 	case menuEvent:
+		if (event->data.menu.itemID == MainMenuMention) {
+			if (ConvoMentionPick(ConvoMentionList, ConvoField, false))
+				DrawCounter();
+			return true;
+		}
 		if (event->data.menu.itemID == MainMenuMessage) {
 			UInt16 msg;
 
@@ -661,6 +674,11 @@ Boolean ConvoFormHandleEvent(EventType *event)
 	case keyDownEvent:
 		if (event->data.keyDown.chr == linefeedChr) {    /* Graffiti return sends */
 			Send(form);
+			return true;
+		}
+		if (event->data.keyDown.chr == '@' && FrmGetFocus(form) == FrmGetObjectIndex(form, ConvoField)) {
+			if (ConvoMentionPick(ConvoMentionList, ConvoField, true))
+				DrawCounter();
 			return true;
 		}
 		break;
