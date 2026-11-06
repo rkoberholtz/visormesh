@@ -732,8 +732,8 @@ CONFIRMATION
 DEFAULTBUTTON 3
 BEGIN
   TITLE "Remove Stale Contacts"
-  MESSAGE "Remove contacts the radio hasn't heard an advert from in:"
-  BUTTONS "2 weeks" "1 month" "3 months" "Cancel"
+  MESSAGE "Remove contacts the radio hasn't heard an advert from in 2 weeks, 1 month or 3 months:"
+  BUTTONS "2 wk" "1 mo" "3 mo" "Cancel"
 END
 
 ALERT ID StaleConfirmAlert
