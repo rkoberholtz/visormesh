@@ -21,8 +21,8 @@ static void Draw(void) VM_SECT5;
 
 #define STATS_EVERY  (5 * SysTicksPerSecond())
 #define NOISE_MAX    60      /* samples: 5 minutes */
-#define GRAPH_TOP    94
-#define GRAPH_H      40
+#define GRAPH_BOTTOM 143     /* just above Done */
+#define GRAPH_MIN_H  16
 
 static VmStats   gStats;
 static VmBattery gBatt;
@@ -79,7 +79,7 @@ static void FormatSecs(Char *out, UInt32 s)
 
 static void DrawText(Coord y, const Char *s)
 {
-	WinDrawChars(s, StrLen(s), 3, y);
+	DrawCut(s, 3, y, 154);    /* never past the edge, whatever the font */
 }
 
 /* The noise floor samples, oldest at the left; the scale fits what's there, at least 10 dB. */
@@ -132,10 +132,13 @@ static void Draw(void)
 	}
 	if (gHasBatt) {
 		StrPrintF(line, "Battery %u.%02u V", gBatt.battMv / 1000, (gBatt.battMv % 1000) / 10);
-		if (gBatt.hasStorage)
-			StrPrintF(line + StrLen(line), ", storage %lu of %lu KB", gBatt.usedKb, gBatt.totalKb);
 		DrawText(y, line);
 		y += step;
+		if (gBatt.hasStorage) {
+			StrPrintF(line, "Storage %lu of %lu KB used", gBatt.usedKb, gBatt.totalKb);
+			DrawText(y, line);
+			y += step;
+		}
 	}
 	if (gStats.hasCore) {
 		FormatSecs(a, gStats.uptimeSecs);
@@ -146,18 +149,21 @@ static void Draw(void)
 		y += step;
 	}
 	if (gStats.hasRadio) {
+		StrPrintF(line, "Noise floor %d dBm", gStats.noiseFloor);
+		DrawText(y, line);
+		y += step;
 		TxtFormatSnr(snr, gStats.lastSnrQ);
-		StrPrintF(line, "Noise %d dBm, last heard %d dBm %s", gStats.noiseFloor, (Int16)gStats.lastRssi, snr);
+		StrPrintF(line, "Last heard %d dBm, %s", (Int16)gStats.lastRssi, snr);
 		DrawText(y, line);
 		y += step;
 		FormatSecs(a, gStats.txAirSecs);
 		FormatSecs(b, gStats.rxAirSecs);
-		StrPrintF(line, "Airtime: sending %s, receiving %s", a, b);
+		StrPrintF(line, "Airtime: sent %s, heard %s", a, b);
 		DrawText(y, line);
 		y += step;
 	}
 	if (gStats.hasPackets) {
-		StrPrintF(line, "Received %lu: %lu flood, %lu direct", gStats.recv, gStats.recvFlood, gStats.recvDirect);
+		StrPrintF(line, "Heard %lu: %lu flood, %lu direct", gStats.recv, gStats.recvFlood, gStats.recvDirect);
 		DrawText(y, line);
 		y += step;
 		StrPrintF(line, "Sent %lu: %lu flood, %lu direct", gStats.sent, gStats.sentFlood, gStats.sentDirect);
@@ -169,8 +175,14 @@ static void Draw(void)
 		FntSetFont(old);
 		return;
 	}
-	DrawSection("noise floor, dBm, last 5 min", 0, GRAPH_TOP - 12, 160);
-	RctSetRectangle(&r, 3, GRAPH_TOP, 130, GRAPH_H);
+	/* the graph takes what the lines leave, which depends on the font */
+	y += 2;
+	if (GRAPH_BOTTOM - (y + 12) < GRAPH_MIN_H) {
+		FntSetFont(old);
+		return;
+	}
+	DrawSection("noise floor, dBm, last 5 min", 0, y, 160);
+	RctSetRectangle(&r, 3, y + 12, 130, GRAPH_BOTTOM - (y + 12));
 	if (gNoiseCount)
 		DrawGraph(&r);
 	FntSetFont(old);
