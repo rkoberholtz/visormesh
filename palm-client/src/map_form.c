@@ -14,6 +14,7 @@ static Boolean OpenMap(void) VM_SECT4;
 static void CloseMap(void) VM_SECT4;
 static void LoadNodes(void) VM_SECT4;
 static BitmapType *Tile(UInt16 rec) VM_SECT4;
+static BitmapType *Enlarged(Int32 col, Int32 row) VM_SECT4;
 static void ClampCenter(void) VM_SECT4;
 static void Draw(void) VM_SECT4;
 static void DrawNodes(const RectangleType *r, Int32 vx, Int32 vy) VM_SECT4;
@@ -65,6 +66,7 @@ static Boolean     gDepthSet = false;
 
 static struct { UInt16 rec; BitmapType *bmp; } gCache[CACHE_TILES];
 static UInt16 gCacheNext;
+static BitmapType *gBig = NULL;   /* Enlarged()'s tile */
 
 static MapNode *gNodes = NULL;
 static UInt16   gNodeCount;
@@ -141,6 +143,9 @@ static void CloseMap(void)
 	for (i = 0; i < CACHE_TILES; i++)
 		if (gCache[i].bmp)
 			BmpDelete(gCache[i].bmp);
+	if (gBig)
+		BmpDelete(gBig);
+	gBig = NULL;
 	if (gHdrH)
 		MemHandleUnlock(gHdrH);
 	gHdrH = NULL;
@@ -205,6 +210,8 @@ static BitmapType *Tile(UInt16 rec)
 	UInt32 bytes = (UInt32)VM_MAP_TILE * VM_MAP_TILE * gH.bpp / 8;
 	Boolean ok;
 
+	if (rec == 0)
+		return NULL;                       /* outside the zoom's area (record 0 is the header) */
 	for (i = 0; i < CACHE_TILES; i++)
 		if (gCache[i].rec == rec)
 			return gCache[i].bmp;
@@ -224,6 +231,55 @@ static BitmapType *Tile(UInt16 rec)
 	MemHandleUnlock(h);
 	gCache[i].rec = ok ? rec : 0;
 	return ok ? bmp : NULL;
+}
+
+/*
+ * Where this zoom has no tile (outside its area), the zoom below's pixels
+ * doubled: blockier, but not blank. Rows are built from the tiles they
+ * cross, and a row with the same source row as the one above is copied.
+ */
+static BitmapType *Enlarged(Int32 col, Int32 row)
+{
+	const VmMapZoom *z = &gH.zooms[gZi], *p;
+	UInt8 b = gH.bpp, mask = (UInt8)((1 << b) - 1), *dst, *line, *from = NULL;
+	UInt16 rowBytes = VM_MAP_TILE * b / 8, x, y, px, py, err;
+	Int32 tx, ty, sx, sy, c, pc = 0, pr;
+	BitmapType *src;
+
+	if (gZi == 0 || z->z != gH.zooms[gZi - 1].z + 1)
+		return NULL;
+	p = &gH.zooms[gZi - 1];
+	if (!gBig && (gBig = BmpCreate(VM_MAP_TILE, VM_MAP_TILE, b, NULL, &err)) == NULL)
+		return NULL;
+	dst = (UInt8 *)BmpGetBits(gBig);
+	tx = z->ox + col * VM_MAP_TILE;
+	ty = z->oy + row * VM_MAP_TILE;
+	for (y = 0; y < VM_MAP_TILE; y++) {
+		line = dst + y * rowBytes;
+		if (y > 0 && ((ty + y) >> 1) == ((ty + y - 1) >> 1)) {
+			MemMove(line, line - rowBytes, rowBytes);
+			continue;
+		}
+		MemSet(line, rowBytes, 0);
+		sy = ((ty + y) >> 1) - p->oy;
+		pr = FloorDiv(sy, VM_MAP_TILE);
+		py = (UInt16)(sy - pr * VM_MAP_TILE);
+		for (x = 0; x < VM_MAP_TILE; x++) {
+			sx = ((tx + x) >> 1) - p->ox;
+			c = FloorDiv(sx, VM_MAP_TILE);
+			if (x == 0 || c != pc) {
+				pc = c;
+				src = Tile(VmMapTileRecord(&gH, gZi - 1, c, pr));
+				from = src ? (UInt8 *)BmpGetBits(src) + py * rowBytes : NULL;
+			}
+			if (!from)
+				continue;
+			px = (UInt16)(sx - c * VM_MAP_TILE);
+			line[(x * b) >> 3] |= (UInt8)(((from[(px * b) >> 3] >> (8 - b - ((px * b) & 7))) & mask)
+			                                << (8 - b - ((x * b) & 7)));
+		}
+	}
+	return gBig;
 }
 
 static void ClampCenter(void)
@@ -413,7 +469,10 @@ static void Draw(void)
 			t.topLeft.y = r.topLeft.y + (Coord)(row * VM_MAP_TILE - vy);
 			t.extent.x = t.extent.y = VM_MAP_TILE;
 			rec = VmMapTileRecord(&gH, gZi, col, row);
-			bmp = rec && !(gHide & HIDE_BASEMAP) ? Tile(rec) : NULL;
+			if (gHide & HIDE_BASEMAP)
+				bmp = NULL;
+			else
+				bmp = rec ? Tile(rec) : Enlarged(col, row);
 			if (bmp)
 				WinDrawBitmap(bmp, t.topLeft.x, t.topLeft.y);
 			else

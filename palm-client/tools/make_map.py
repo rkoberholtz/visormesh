@@ -46,7 +46,7 @@ import zlib
 TILE = 160
 STEP_E6 = 10000                       # projection table step: 0.01 degree
 DEFAULT_BBOX = (39.70, -75.49, 40.20, -74.83)   # Philadelphia metro
-DEFAULT_DETAIL = (39.88, -75.26, 40.02, -75.06)  # ~16 km around Center City
+DEFAULT_DETAIL = (39.82, -75.42, 40.10, -74.95)  # ~40 x 31 km: the Main Line to Cherry Hill, Chester to Cheltenham
 OVERPASS = 'https://overpass-api.de/api/interpreter'
 USER_AGENT = 'VisorMesh-maptool/0.1 (personal use)'
 ATTRIBUTION = '\u00a9 OpenStreetMap'     # the short form OSM accepts on small screens; Latin-1 on the Visor
