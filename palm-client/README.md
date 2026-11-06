@@ -53,6 +53,21 @@ The Makefile uses `~/.local/bin/pilot-xfer` when it exists. On Linux, use the ke
 
 Verified: `pilot-xfer -p usb: -l` lists the Visor Neo's databases from macOS on Apple Silicon. The Visor is behind a USB hub, so a hub works.
 
+## A map of your own area
+
+The Map screen's basemap is a separate database, `VisorMeshMap.pdb`. `make map` builds the Philadelphia one. For any other place, run the Map Picker. It works on macOS, Windows and Linux, and needs only Python 3:
+
+```sh
+python3 tools/map_picker.py
+```
+
+It opens a page in the browser.
+
+1. **Choose the area:** drag the blue box over the area to cover (main roads, water and parks at every zoom), and the orange box over the part that gets every street at the closest zoom. Or pan the map to a place and use **Fit to view**.
+2. **Check the size:** the page shows each zoom's tiles and an estimate of the file's size. Street level is most of it, and the Visor Neo has 8 MB for everything.
+3. **Build:** **Build Map** downloads the OpenStreetMap data from the public Overpass server in 0.25° squares, then draws the tiles. The data is cached in `~/.visormesh/map-cache`, so each place is only fetched once. The server is sometimes busy, and the picker waits and tries again.
+4. **Install:** the map is saved in `~/VisorMeshMap` and offered as a download. Install it with `pilot-xfer -p usb: -i VisorMeshMap.pdb` (or `make install-map` after copying it to `build/`), or with Palm Desktop's Install Tool on Windows. It replaces the map on the Visor.
+
 ## Testing against a real radio over USB (before the boards arrive)
 
 `tools/visor_bridge.py` connects the app to a MeshCore companion radio through the Visor's USB cradle:

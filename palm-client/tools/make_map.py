@@ -16,6 +16,9 @@ OpenStreetMap data, for the Map screen to plot nodes on.
 Data (c) OpenStreetMap contributors, ODbL. The tiles are a Produced Work: the
 Map screen shows the attribution stored in the header.
 
+For other places, tools/map_picker.py picks the area on a map in the browser
+and fetches the data per cell (cell_jobs, fetch_cell, cell_layers below).
+
 Tiles use Web Mercator at the standard zooms (256-pixel world at zoom 0), cut
 into 160-pixel squares. Each tile is PackBits-compressed rows of 1, 2 or 4 bit
 pixels (MSB first; 0 = white); an all-white tile is a 1-byte record.
@@ -85,6 +88,88 @@ def fetch(cache, bbox):
         except Exception as e:                  # a busy server: carry on without the layer
             print('  failed (%s); run --fetch again later' % e)
         time.sleep(10)                          # be gentle with the public server
+
+
+# Cells for fetching any area (tools/map_picker.py): Overpass refuses or times
+# out on big queries, so each layer is fetched per CELL-degree square on a
+# fixed grid, cached as <layer>_<lat>_<lon>.json, and merged without repeats.
+CELL = 0.25
+AREA_LAYERS = ('major.json', 'water_ways.json', 'water_rels.json', 'parks.json')
+DETAIL_LAYERS = ('minor.json',)
+
+
+def cells(bbox):
+    s, w, n, e = bbox
+    lat = math.floor(s / CELL) * CELL
+    while lat < n:
+        lon = math.floor(w / CELL) * CELL
+        while lon < e:
+            yield round(lat, 2), round(lon, 2)
+            lon += CELL
+        lat += CELL
+
+
+def cell_path(cache, name, cell):
+    return os.path.join(cache, '%s_%+.2f_%+.2f.json' % (name[:-5], cell[0], cell[1]))
+
+
+def cell_jobs(cache, area, detail):
+    """The (layer, cell) fetches an area needs, and how many are cached already."""
+    jobs = [(name, c) for name in AREA_LAYERS for c in cells(area)]
+    jobs += [(name, c) for name in DETAIL_LAYERS for c in cells(detail)]
+    return jobs, sum(os.path.exists(cell_path(cache, name, c)) for name, c in jobs)
+
+
+def fetch_cell(cache, name, cell, log=print):
+    """One layer for one cell; True once it's in the cache. Retries a busy server."""
+    path = cell_path(cache, name, cell)
+    if os.path.exists(path):
+        return True
+    b = '(%.2f,%.2f,%.2f,%.2f)' % (cell[0], cell[1], cell[0] + CELL, cell[1] + CELL)
+    query = '[out:json][timeout:180];' + LAYERS[name].format(b=b)
+    data = urllib.parse.urlencode({'data': query}).encode()
+    for attempt in range(4):
+        req = urllib.request.Request(OVERPASS, data=data, headers={'User-Agent': USER_AGENT})
+        try:
+            with urllib.request.urlopen(req, timeout=240) as r:
+                body = r.read()
+            json.loads(body)['elements']             # a whole answer, or it's retried
+            with open(path + '.part', 'wb') as f:
+                f.write(body)
+            os.replace(path + '.part', path)
+            time.sleep(1)                            # be gentle with the public server
+            return True
+        except Exception as e:
+            wait = 30 * (attempt + 1)
+            log('  %s %+.2f,%+.2f: %s; trying again in %d s' % (name[:-5], cell[0], cell[1], e, wait))
+            time.sleep(wait)
+    return False
+
+
+def load_cells(cache, names, bbox):
+    """A layer's elements over bbox from its cells, each element once."""
+    seen, out = set(), []
+    for name in names:
+        for c in cells(bbox):
+            path = cell_path(cache, name, c)
+            if not os.path.exists(path):
+                continue
+            with open(path) as f:
+                for el in json.load(f).get('elements', []):
+                    key = (el.get('type'), el.get('id'))
+                    if key not in seen:
+                        seen.add(key)
+                        out.append(el)
+    return out
+
+
+def cell_layers(cache, area, detail):
+    return {
+        'major': load_cells(cache, ['major.json'], area),
+        'minor': load_cells(cache, ['minor.json'], detail),
+        'water': load_cells(cache, ['water_ways.json', 'water_rels.json'], area),
+        'parks': load_cells(cache, ['parks.json'], area),
+    }
 
 
 def load(cache, name):
@@ -343,6 +428,82 @@ def write_pdb(path, name, records):
         f.write(header + entries + b'\0\0' + b''.join(records))
 
 
+def zoom_plan(area, detail, min_zoom, max_zoom):
+    """The tile grid per zoom: (z, detail, (c0, r0), cols, rows). The max zoom
+    covers detail (with residential streets), the others the whole area."""
+    s, w, n, e = area
+    ds, dw, dn, de = detail
+    plan = []
+    for z in range(min_zoom, max_zoom + 1):
+        d = z == max_zoom
+        x0, y0 = world_xy(dn if d else n, dw if d else w, z)   # top-left
+        x1, y1 = world_xy(ds if d else s, de if d else e, z)
+        c0, r0 = int(x0 // TILE), int(y0 // TILE)
+        plan.append((z, d, (c0, r0), int(x1 // TILE) - c0 + 1, int(y1 // TILE) - r0 + 1))
+    return plan
+
+
+def auto_min_zoom(area, max_zoom):
+    """The widest zoom: the closest one that still shows the whole area in a
+    few screens (4 tiles across or fewer), at most 8 zooms in all."""
+    s, w, n, e = area
+    z = max_zoom
+    while z > max(0, max_zoom - 7):
+        x0, y0 = world_xy(n, w, z - 1)
+        x1, y1 = world_xy(s, e, z - 1)
+        if max(int(x1 // TILE) - int(x0 // TILE), int(y1 // TILE) - int(y0 // TILE)) + 1 < 4:
+            break
+        z -= 1
+    return z
+
+
+def build(area, detail, min_zoom, max_zoom, bpp, layers, out, preview=None, log=print):
+    """Renders the zooms and writes the database; returns its size in bytes."""
+    s, w, n, e = area
+    zooms, tiles = [], []
+    first = 1
+    for z, detail_zoom, origin, cols, rows in zoom_plan(area, detail, min_zoom, max_zoom):
+        origin = (origin[0] * TILE, origin[1] * TILE)
+        t0 = time.time()
+        canvas = render_zoom(z, layers, origin, cols, rows, detail_zoom)
+        if preview:
+            os.makedirs(preview, exist_ok=True)
+            write_png(os.path.join(preview, 'z%d.png' % z), canvas, bpp)
+        size = 0
+        for r in range(rows):
+            for col in range(cols):
+                raw = tile_bytes(canvas, col, r, bpp)
+                if not any(raw):
+                    rec = b'\0'
+                else:
+                    rec = packbits(raw)
+                    assert unpackbits(rec, len(raw)) == raw
+                tiles.append(rec)
+                size += len(rec)
+        zooms.append((z, cols, rows, first, origin))
+        first += cols * rows
+        log('zoom %d: %dx%d tiles, %d KB, %.0f s' % (z, cols, rows, size // 1024, time.time() - t0))
+
+    # projection tables at the max zoom, covering the area
+    lat0, lon0 = int(round(s * 1e6)), int(round(w * 1e6))
+    lat_n = int(math.ceil((n - s) * 1e6 / STEP_E6)) + 1
+    lon_n = int(math.ceil((e - w) * 1e6 / STEP_E6)) + 1
+    lat_t = [int(round(world_xy((lat0 + i * STEP_E6) / 1e6, w, max_zoom)[1])) for i in range(lat_n)]
+    lon_t = [int(round(world_xy(s, (lon0 + i * STEP_E6) / 1e6, max_zoom)[0])) for i in range(lon_n)]
+
+    hdr = struct.pack('>4sHHBBiiiiIHH32s', b'VMap', 1, TILE, bpp, len(zooms),
+                      lat0, lon0, int(round(n * 1e6)), int(round(e * 1e6)),
+                      STEP_E6, lat_n, lon_n, ATTRIBUTION.encode('latin-1'))
+    for z, cols, rows, frec, (ox, oy) in zooms:
+        hdr += struct.pack('>BBHHHii', z, 0, cols, rows, frec, ox, oy)
+    hdr += struct.pack('>%di' % lat_n, *lat_t) + struct.pack('>%di' % lon_n, *lon_t)
+
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    write_pdb(out, 'VisorMeshMap', [hdr] + tiles)
+    log('%d tiles -> %s (%d KB)' % (len(tiles), out, os.path.getsize(out) // 1024))
+    return os.path.getsize(out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--cache', required=True)
@@ -355,10 +516,10 @@ def main():
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'build', 'VisorMeshMap.pdb'))
     ap.add_argument('--preview')
     a = ap.parse_args()
-    s, w, n, e = (float(v) for v in a.bbox.split(','))
+    area = tuple(float(v) for v in a.bbox.split(','))
     os.makedirs(a.cache, exist_ok=True)
     if a.fetch:
-        fetch(a.cache, (s, w, n, e))
+        fetch(a.cache, area)
 
     print('loading OSM data ...', flush=True)
     layers = {
@@ -367,55 +528,8 @@ def main():
         'water': load(a.cache, 'water_ways.json') + load(a.cache, 'water_rels.json'),
         'parks': load(a.cache, 'parks.json'),
     }
-
-    zooms, tiles = [], []
-    first = 1
-    ds, dw, dn, de = (float(v) for v in a.detail_bbox.split(','))
-    for z in range(a.min_zoom, a.max_zoom + 1):
-        detail = z == a.max_zoom
-        x0, y0 = world_xy(dn if detail else n, dw if detail else w, z)   # top-left
-        x1, y1 = world_xy(ds if detail else s, de if detail else e, z)
-        c0, r0 = int(x0 // TILE), int(y0 // TILE)
-        cols, rows = int(x1 // TILE) - c0 + 1, int(y1 // TILE) - r0 + 1
-        origin = (c0 * TILE, r0 * TILE)
-        t0 = time.time()
-        canvas = render_zoom(z, layers, origin, cols, rows, detail)
-        if a.preview:
-            os.makedirs(a.preview, exist_ok=True)
-            write_png(os.path.join(a.preview, 'z%d.png' % z), canvas, a.bpp)
-        size = 0
-        for r in range(rows):
-            for col in range(cols):
-                raw = tile_bytes(canvas, col, r, a.bpp)
-                if not any(raw):
-                    rec = b'\0'
-                else:
-                    rec = packbits(raw)
-                    assert unpackbits(rec, len(raw)) == raw
-                tiles.append(rec)
-                size += len(rec)
-        zooms.append((z, cols, rows, first, origin))
-        first += cols * rows
-        print('zoom %d: %dx%d tiles, %d KB, %.0f s' % (z, cols, rows, size // 1024, time.time() - t0), flush=True)
-
-    # projection tables at the max zoom, covering the bbox
-    lat0, lon0 = int(round(s * 1e6)), int(round(w * 1e6))
-    lat_n = int(math.ceil((n - s) * 1e6 / STEP_E6)) + 1
-    lon_n = int(math.ceil((e - w) * 1e6 / STEP_E6)) + 1
-    zmax = a.max_zoom
-    lat_t = [int(round(world_xy((lat0 + i * STEP_E6) / 1e6, w, zmax)[1])) for i in range(lat_n)]
-    lon_t = [int(round(world_xy(s, (lon0 + i * STEP_E6) / 1e6, zmax)[0])) for i in range(lon_n)]
-
-    hdr = struct.pack('>4sHHBBiiiiIHH32s', b'VMap', 1, TILE, a.bpp, len(zooms),
-                      lat0, lon0, int(round(n * 1e6)), int(round(e * 1e6)),
-                      STEP_E6, lat_n, lon_n, ATTRIBUTION.encode('latin-1'))
-    for z, cols, rows, frec, (ox, oy) in zooms:
-        hdr += struct.pack('>BBHHHii', z, 0, cols, rows, frec, ox, oy)
-    hdr += struct.pack('>%di' % lat_n, *lat_t) + struct.pack('>%di' % lon_n, *lon_t)
-
-    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-    write_pdb(a.out, 'VisorMeshMap', [hdr] + tiles)
-    print('%d tiles -> %s (%d KB)' % (len(tiles), os.path.relpath(a.out), os.path.getsize(a.out) // 1024))
+    build(area, tuple(float(v) for v in a.detail_bbox.split(',')), a.min_zoom, a.max_zoom, a.bpp,
+          layers, a.out, a.preview, log=lambda m: print(m, flush=True))
 
 
 if __name__ == '__main__':
