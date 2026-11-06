@@ -307,10 +307,10 @@ BEGIN
   TITLE "                                "
   GADGET ID ContactGadget AT (0 16 153 128)
   SCROLLBAR ID ContactScroll AT (153 16 7 128) VALUE 0 MIN 0 MAX 0 PAGESIZE 1
-  BUTTON "Done" ID ContactDoneButton AT (1 147 AUTO AUTO)
-  BUTTON "Message" ID ContactMessageButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
-  BUTTON "Login" ID ContactLoginButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
-  BUTTON "More" ID ContactMoreButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
+  BUTTON "Done" ID ContactDoneButton AT (1 147 30 12)
+  BUTTON "Message" ID ContactMessageButton AT (PREVRIGHT+4 PREVTOP 42 12)
+  BUTTON "Login" ID ContactLoginButton AT (PREVRIGHT+4 PREVTOP 30 12)
+  BUTTON "More" ID ContactMoreButton AT (PREVRIGHT+4 PREVTOP 30 12)
   LIST "" ID ContactMoreList AT (84 60 74 AUTO) NONUSABLE VISIBLEITEMS 8
 END
 
