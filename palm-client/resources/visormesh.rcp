@@ -82,6 +82,39 @@ BEGIN
   END
 END
 
+MENU ID MapMenuBar
+BEGIN
+  PULLDOWN "Go"
+  BEGIN
+    MENUITEM "Conversations" ID MainMenuHome "H"
+    MENUITEM "Contacts" ID MainMenuContacts "T"
+    MENUITEM "Node" ID MainMenuNode "N"
+    MENUITEM "Map" ID MainMenuMap "W"
+    MENUITEM "-" AUTOID
+    MENUITEM "Heard Packets" ID MainMenuPackets
+    MENUITEM "Radio Stats" ID MainMenuStats
+    MENUITEM "Trace Path" ID MainMenuTrace
+  END
+  PULLDOWN "Map"
+  BEGIN
+    MENUITEM "Basemap On/Off" ID MainMenuBasemap "M"
+    MENUITEM "Neighbour Lines On/Off" ID MainMenuNeighLines "L"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Connect" ID MainMenuConnect
+    MENUITEM "Flood Scopes..." ID MainMenuScopes "O"
+    MENUITEM "Preferences..." ID MainMenuSounds "R"
+    MENUITEM "-" AUTOID
+    MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "Font Preview" ID MainMenuFontPreview "F"
+    MENUITEM "Screenshot" ID MainMenuShot "Z"
+    MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
+    MENUITEM "-" AUTOID
+    MENUITEM "About VisorMesh" ID MainMenuAbout
+  END
+END
+
 MENU ID ConvoMenuBar
 BEGIN
   PULLDOWN "Go"
@@ -552,7 +585,7 @@ END
 FORM ID MapForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenuBar
+MENUID MapMenuBar
 BEGIN
   TITLE "Map"
   GADGET ID MapGadget AT (0 15 160 130)

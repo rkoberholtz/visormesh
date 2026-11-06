@@ -42,6 +42,9 @@
 #define MainMenuStale      1029
 #define MainMenuBlocked    1030
 #define MainMenuBeamSelf   1031
+#define MapMenuBar         1032   /* Go, Map (Basemap, Neighbour Lines), Options */
+#define MainMenuBasemap    1033
+#define MainMenuNeighLines 1034
 #define MainStatsButton    1040
 #define AboutAlert         1020
 #define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */

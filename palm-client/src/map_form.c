@@ -31,6 +31,9 @@ static Int32 FloorDiv(Int32 a, Int32 b) VM_SECT4;
 #define MAP_DB_NAME     "VisorMeshMap"
 #define MAP_PREFS_ID    5
 #define MAP_PREFS_VER   1
+
+#define HIDE_BASEMAP    0x01   /* plain white under the nodes, to see them better */
+#define HIDE_LINES      0x02   /* the repeater neighbour lines */
 #define MAX_NODES       150
 #define CACHE_TILES     4
 #define TAP_SLOP        4      /* pixels a pen can move and still be a tap */
@@ -50,7 +53,7 @@ typedef struct {
 typedef struct {
 	UInt16 version;
 	UInt8  zi;
-	UInt8  pad;
+	UInt8  hide;               /* HIDE_*; 0 in prefs saved before there were layers */
 	Int32  cx, cy;
 } MapPrefs;
 
@@ -68,6 +71,7 @@ static UInt16   gNodeCount;
 static Int16    gSel = -1;
 
 static UInt8  gZi;
+static UInt8  gHide = 0;
 static Int32  gCx, gCy;        /* view centre, world pixels at the max zoom */
 static Coord  gDownX, gDownY;
 static Boolean gPenDown;
@@ -116,6 +120,7 @@ static Boolean OpenMap(void)
 	if (PrefGetAppPreferences(VM_CREATOR, MAP_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == MAP_PREFS_VER && prefs.zi < gH.zoomCount) {
 		gZi = prefs.zi;
+		gHide = prefs.hide;
 		gCx = prefs.cx;
 		gCy = prefs.cy;
 	} else {
@@ -153,7 +158,7 @@ static void SaveView(void)
 
 	prefs.version = MAP_PREFS_VER;
 	prefs.zi = gZi;
-	prefs.pad = 0;
+	prefs.hide = gHide;
 	prefs.cx = gCx;
 	prefs.cy = gCy;
 	PrefSetAppPreferences(VM_CREATOR, MAP_PREFS_ID, MAP_PREFS_VER, &prefs, sizeof(prefs), true);
@@ -408,14 +413,15 @@ static void Draw(void)
 			t.topLeft.y = r.topLeft.y + (Coord)(row * VM_MAP_TILE - vy);
 			t.extent.x = t.extent.y = VM_MAP_TILE;
 			rec = VmMapTileRecord(&gH, gZi, col, row);
-			bmp = rec ? Tile(rec) : NULL;
+			bmp = rec && !(gHide & HIDE_BASEMAP) ? Tile(rec) : NULL;
 			if (bmp)
 				WinDrawBitmap(bmp, t.topLeft.x, t.topLeft.y);
 			else
 				WinEraseRectangle(&t, 0);
 		}
 	}
-	DrawNeighbours(&r, vx, vy);
+	if (!(gHide & HIDE_LINES))
+		DrawNeighbours(&r, vx, vy);
 	DrawNodes(&r, vx, vy);
 	DrawInfo(&r);
 	WinResetClip();
@@ -539,6 +545,16 @@ Boolean MapFormHandleEvent(EventType *event)
 		}
 		if (event->data.keyDown.chr == pageDownChr) {
 			Zoom(-1);
+			return true;
+		}
+		break;
+	case menuEvent:
+		if (event->data.menu.itemID == MainMenuBasemap || event->data.menu.itemID == MainMenuNeighLines) {
+			gHide ^= event->data.menu.itemID == MainMenuBasemap ? HIDE_BASEMAP : HIDE_LINES;
+			if (gDb) {
+				SaveView();
+				Draw();
+			}
 			return true;
 		}
 		break;
