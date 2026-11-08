@@ -28,7 +28,7 @@ make map      # Map basemap PDB (tools/make_map.py); install-map is the user's, 
 
 - **Docker hangs:** Docker Desktop's amd64 emulation sometimes hangs. `docker run` never starts, or a build sits there for minutes. Don't keep retrying. Kill the stuck `make`/`docker run` processes and ask the user to restart Docker. The host tests can also run natively with `cc -std=c99` against `src/protocol.c`, `src/sha256.c` and `src/remote_fmt.c` (see the `test` target).
 - **After every link:** `tools/check_sections.py` runs automatically and fails the build on cross-segment references it can catch. A clean build means no warnings: treat a new warning as a bug.
-- **Screen edges:** `tools/check_ui.py` also runs on every build. It fails when a form object or label goes past its form, when an alert's buttons don't fit across it, or when a literal string drawn with `DrawCut` would be cut (use `DrawWrap` for sentences). Text built at run time isn't covered, so check those screens on the device in the large font.
+- **Screen edges:** `tools/check_ui.py` also runs on every build. It fails when a form object or label goes past its form, when an alert's buttons don't fit across it, or when a literal string drawn with `DrawCut` would be cut (use `DrawWrap` for sentences). For text built at run time, put the line's format in `src/screen_fmt.c` and give `tests/test_screens.c` its longest values. `tools/check_source.py` also runs on every build. It catches function-level `static const` in extra segments, menu items with no handler, clashing shortcuts, forms with no event handler, and repeated IDs.
 - **Segment sizes** matter (see below). Check them with `m68k-palmos-objdump -h build/visormesh` inside the image.
 
 ## Bench setup
