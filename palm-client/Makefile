@@ -68,6 +68,7 @@ build/res.stamp: resources/$(APP).rcp src/resources.h resources/smallfont.nfnt r
 
 build/$(APP).prc: build/$(APP) build/res.stamp
 	python3 tools/check_sections.py $(OBJS)
+	python3 tools/check_ui.py build/res resources/largefont.nfnt $(SRCS)
 	build-prc -o $@ $(APP).def build/$(APP) build/res/*.bin
 
 test: | build
