@@ -49,7 +49,7 @@ static void DrawPreview(void)
 	DrawChip("Steve K.", 1, y);                                     y += VM_CHIP_H + 1;
 	WinDrawChars("11:30", 5, 4, y);
 	WinDrawChars("I'll bring a spare antenna", 26, 26, y);         y += VM_ROW_H;
-	WinDrawChars("for anyone who needs one +6dB", 29, 26, y);      y += VM_ROW_H + 1;
+	WinDrawChars("for anyone who needs one", 24, 26, y);      y += VM_ROW_H + 1;
 	StrPrintF(line, "%c VisorNeo", GLYPH_SELF);
 	DrawChip(line, 1, y);                                           y += VM_CHIP_H + 1;
 	WinDrawChars("11:33", 5, 4, y);

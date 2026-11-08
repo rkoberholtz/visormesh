@@ -367,8 +367,9 @@ BEGIN
   PUSHBUTTON "Repeater" ID ContactAddRepeaterPush AT (PREVRIGHT+1 PREVTOP 42 12) GROUP ContactAddTypeGroup
   LABEL "Public key (64 hex digits):" AUTOID AT (5 58) FONT 1
   FIELD ID ContactAddKeyField AT (5 72 150 36) UNDERLINED MULTIPLELINES EDITABLE MAXCHARS 80
-  LABEL "For a node you haven't heard an advert" AUTOID AT (5 112)
-  LABEL "from yet. Its path starts unknown (flood)." AUTOID AT (5 123)
+  LABEL "For a node you haven't heard an" AUTOID AT (5 112)
+  LABEL "advert from yet. Its path starts" AUTOID AT (5 123)
+  LABEL "unknown (flood)." AUTOID AT (5 134)
   BUTTON "Add" ID ContactAddAddButton AT (5 145 AUTO AUTO)
   BUTTON "Cancel" ID ContactAddCancelButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
   GRAFFITISTATEINDICATOR AT (145 147)
@@ -679,8 +680,9 @@ BEGIN
   PUSHBUTTON "Private" ID ChannelPrivatePush AT (PREVRIGHT+1 PREVTOP 50 12) GROUP ChannelTypeGroup
   LABEL "Key (32 hex digits):" ID ChannelKeyLabel AT (5 58) FONT 1
   FIELD ID ChannelKeyField AT (5 72 150 24) UNDERLINED MULTIPLELINES EDITABLE MAXCHARS 39
-  LABEL "A #hashtag channel's key comes from its name:" AUTOID AT (5 104)
-  LABEL "anyone who knows the name can read it." AUTOID AT (5 115)
+  LABEL "A #hashtag channel's key comes" AUTOID AT (5 104)
+  LABEL "from its name: anyone who knows" AUTOID AT (5 115)
+  LABEL "the name can read it." AUTOID AT (5 126)
   BUTTON "Add" ID ChannelAddButton AT (5 145 AUTO AUTO)
   BUTTON "Cancel" ID ChannelCancelButton AT (PREVRIGHT+6 PREVTOP AUTO AUTO)
   GRAFFITISTATEINDICATOR AT (145 147)
