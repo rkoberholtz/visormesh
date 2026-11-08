@@ -88,10 +88,10 @@ Err TransportSend(const UInt8 *buf, UInt16 len)
 		if (sent >= len)
 			return errNone;
 		if (err != serErrTimeOut)
-			return err;
+			return sent ? vmErrPartSent : err;
 		SrmClearErr(gPortId);
 	}
-	return serErrTimeOut;
+	return sent ? vmErrPartSent : serErrTimeOut;
 }
 
 Err TransportSendOnce(const UInt8 *buf, UInt16 len)

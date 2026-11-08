@@ -120,7 +120,7 @@ void SbTransportClose(void)
 Err SbTransportSend(const UInt8 *buf, UInt16 len)
 {
 	UInt32 deadline = TimGetTicks() + SB_SEND_TICKS;
-	UInt16 n;
+	UInt16 n, total = len;
 
 	if (!gOpen)
 		return serErrNotOpen;
@@ -137,7 +137,7 @@ Err SbTransportSend(const UInt8 *buf, UInt16 len)
 		IrqEnable(true);
 		if (n == 0) {
 			if (TimGetTicks() >= deadline)
-				return serErrTimeOut;
+				return len < total ? vmErrPartSent : serErrTimeOut;
 			continue;
 		}
 		buf += n;

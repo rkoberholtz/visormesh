@@ -15,13 +15,18 @@
 #define VM_PORT_USB     'HsUd'      /* Handspring "USB" driver: the Visor's GENERIC USB port */
 #define VM_PORT_SBLORA  'SbLo'      /* not a Serial Manager port: transport_sb.c */
 
-#define vmErrNoModule   (appErrorClass | 6)   /* no SB-LoRa module answered (session.h has 1-5 and 7) */
+#define vmErrNoModule   (appErrorClass | 6)   /* no SB-LoRa module answered (session.h has 1-5, 7 and 8) */
+#define vmErrPartSent   (appErrorClass | 9)   /* the link stopped part way through a frame */
 
 void   TransportSetPort(UInt32 port);   /* takes effect on the next TransportOpen */
 UInt32 TransportGetPort(void);
 
 Err    TransportOpen(void);
 void   TransportClose(void);
+/*
+ * serErrTimeOut means nothing was sent (USB host away, TX FIFO stuck), so
+ * the frame can be sent again; vmErrPartSent means some of it went.
+ */
 Err    TransportSend(const UInt8 *buf, UInt16 len);
 /* One attempt, and none over USB while the host isn't reading: for a reconnect that mustn't hold up the app. */
 Err    TransportSendOnce(const UInt8 *buf, UInt16 len);

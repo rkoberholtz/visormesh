@@ -25,6 +25,7 @@
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
+#define VM_UNSENT_TRIES    4    /* sends that didn't go, about a second each (transport_srm.c) */
 #define VM_CONNECT_TRIES   3     /* over USB the host bridge needs a moment to attach */
 #define VM_SYNC_MAX        50    /* messages pulled per sync, so the UI isn't blocked forever */
 #define VM_ACK_MIN_SECS    10    /* shortest wait for a DM ack, whatever the radio estimates */
@@ -203,29 +204,32 @@ static void DrainInput(void)
 }
 
 /*
- * Sends a request frame and waits for one of the reply codes. A try is
- * repeated if the frame couldn't be sent or no reply came, so only use
- * tries > 1 for commands that are safe to repeat.
+ * Sends a request frame and waits for one of the reply codes. A frame that
+ * didn't go at all (the USB host re-attaching) is sent again whatever tries
+ * says, up to VM_UNSENT_TRIES times. A try that went out but got no reply is
+ * only repeated while tries lasts, so only use tries > 1 for commands that
+ * are safe to repeat.
  */
 static Err RequestAny(const UInt8 *frame, UInt16 len, const UInt8 *codes, UInt16 n, UInt16 tries)
 {
 	Err err = vmErrNoReply;
-	UInt16 t;
+	UInt16 t = 0, unsent = 0;
 
-	for (t = 0; t < tries; t++) {
+	while (t < tries) {
 		if (UserWaiting())
 			return vmErrCancelled;
 		DrainInput();
 		err = TransportSend(frame, len);
-		if (err == serErrTimeOut)
+		if (err == serErrTimeOut && ++unsent < VM_UNSENT_TRIES)
 			continue;
 		if (err != errNone)
 			break;
 		err = WaitForAny(codes, n, VM_REPLY_TIMEOUT);
 		if (err != vmErrNoReply)
 			return err;
+		t++;
 	}
-	if (err == serErrTimeOut)
+	if (err == serErrTimeOut || err == vmErrPartSent)
 		err = vmErrNoReply;
 	/*
 	 * The radio itself always answers at once, so the link is gone (the bridge
@@ -287,7 +291,7 @@ void SessionSyncClock(void)
 	UInt16 len;
 
 	len = VmBuildGetTime(frame, sizeof(frame));
-	if (Request(frame, len, VM_RESP_CURR_TIME, 1) != errNone ||
+	if (Request(frame, len, VM_RESP_CURR_TIME, 2) != errNone ||
 	    !VmParseCurrTime(gDecoder.payload, gDecoder.len, &radio))
 		return;
 	gRadioTime = radio;
@@ -302,7 +306,7 @@ void SessionSyncClock(void)
 		return;
 	if (radio + VM_CLOCK_SLACK < now) {
 		len = VmBuildSetTime(frame, sizeof(frame), now);
-		if (Request(frame, len, VM_RESP_OK, 1) == errNone)
+		if (Request(frame, len, VM_RESP_OK, 2) == errNone)
 			gRadioTime = now;
 	}
 }
@@ -701,7 +705,7 @@ static Err ApplyScope(const VmConv *conv)
 		len = VmBuildSetUnscoped(frame, sizeof(frame));
 	else
 		len = VmBuildSetScopeKey(frame, sizeof(frame), NULL);
-	err = Request(frame, len, VM_RESP_OK, 1);
+	err = Request(frame, len, VM_RESP_OK, 2);
 	if (err != errNone) {
 		gScopeMode = VM_SCOPE_UNKNOWN;
 		return err;
@@ -723,7 +727,7 @@ Err SessionGetDefaultScope(Char *name)
 		return serErrNotOpen;
 	if (gDevice.fwVerCode < VM_FW_SCOPES)
 		return errNone;
-	err = Request(frame, VmBuildGetDefaultScope(frame, sizeof(frame)), VM_RESP_DEFAULT_FLOOD_SCOPE, 1);
+	err = Request(frame, VmBuildGetDefaultScope(frame, sizeof(frame)), VM_RESP_DEFAULT_FLOOD_SCOPE, 2);
 	if (err == errNone && !VmParseDefaultScope(gDecoder.payload, gDecoder.len, name, key))
 		err = vmErrBadReply;
 	return err;
@@ -741,7 +745,7 @@ Err SessionSetDefaultScope(const Char *name)
 	len = VmBuildSetDefaultScope(frame, sizeof(frame), name);
 	if (len == 0)
 		return vmErrBadReply;
-	return Request(frame, len, VM_RESP_OK, 1);
+	return Request(frame, len, VM_RESP_OK, 2);
 }
 
 Err SessionAskRegions(const UInt8 *pubKey, Char *names, UInt16 size)
@@ -1169,7 +1173,8 @@ Err SessionKeyCommand(UInt8 code, const UInt8 *pubKey)
 
 	if (!gConnected)
 		return serErrNotOpen;
-	return Request(frame, len, VM_RESP_OK, 1);
+	/* a repeated remove would fail for the contact the first one removed */
+	return Request(frame, len, VM_RESP_OK, code == VM_CMD_REMOVE_CONTACT ? 1 : 2);
 }
 
 Err SessionAddContact(const UInt8 *pubKey, UInt8 type, const Char *name)
@@ -1183,7 +1188,7 @@ Err SessionAddContact(const UInt8 *pubKey, UInt8 type, const Char *name)
 	if (n == 0)
 		return vmErrTooLong;
 	len = VmBuildAddContact(frame, sizeof(frame), pubKey, type, utf8, n);
-	return Request(frame, len, VM_RESP_OK, 1);
+	return Request(frame, len, VM_RESP_OK, 2);   /* adds or updates: safe to repeat */
 }
 
 Err SessionSendAdvert(Boolean flood)
