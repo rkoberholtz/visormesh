@@ -40,6 +40,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -74,6 +75,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -107,6 +109,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -149,6 +152,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -197,6 +201,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -248,6 +253,7 @@ BEGIN
     MENUITEM "Preferences..." ID MainMenuSounds "R"
     MENUITEM "-" AUTOID
     MENUITEM "Serial Ports..." ID MainMenuPorts "I"
+    MENUITEM "SB-LoRa Test" ID MainMenuSbTest
     MENUITEM "Font Preview" ID MainMenuFontPreview "F"
     MENUITEM "Screenshot" ID MainMenuShot "Z"
     MENUITEM "Screenshot in 5 s" ID MainMenuShotLater "D"
@@ -697,6 +703,17 @@ MENUID MainMenuBar
 BEGIN
   TITLE "Radio Stats"
   BUTTON "Done" ID StatsDoneButton AT (1 147 AUTO AUTO)
+END
+
+/* SB-LoRa Test: the Springboard module, step by step (sb_test.c) */
+FORM ID SbTestForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenuBar
+BEGIN
+  TITLE "SB-LoRa Test"
+  BUTTON "Done" ID SbTestDoneButton AT (1 147 AUTO AUTO)
+  BUTTON "Run Again" ID SbTestRunButton AT (PREVRIGHT+4 PREVTOP AUTO AUTO)
 END
 
 /* Heard Packets: the radio's RX log (packets_form.c) */

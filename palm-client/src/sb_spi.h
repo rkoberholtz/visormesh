@@ -71,6 +71,25 @@ typedef struct {
  */
 Boolean SbProbe(void) VM_SECT3;
 
+/*
+ * For the module self-test: uses one mapping (connector A0 = CPU A(shift),
+ * shift 1 or 0) and keeps it. Writes 0x55 then 0xAA to the scratch register;
+ * got[] is what read back. Returns whether both matched.
+ */
+Boolean SbTryMapping(UInt8 shift, UInt8 got[2]) VM_SECT3;
+
+/* The mapping in use: 1 if connector A0 is CPU A1, 0 if A0. */
+UInt8   SbMappingShift(void) VM_SECT3;
+
+#define SB_MCR_LOOPBACK 0x10   /* MCR bit 4: TX goes straight to RX inside the chip */
+
+/*
+ * Internal loopback (needs SbUartInit first): sends n bytes (at most a FIFO's
+ * worth) with the chip's TX looped to its RX, reads back what arrives into
+ * in[] and turns loopback off again. Returns how many came back.
+ */
+UInt16  SbLoopback(const UInt8 *out, UInt16 n, UInt8 *in) VM_SECT3;
+
 /* csSlot0's address and the size of each chip select; csSlot1 follows csSlot0. */
 void    SbSetBase(UInt32 cs0, UInt32 csSize) VM_SECT3;
 

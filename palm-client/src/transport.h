@@ -41,5 +41,20 @@ Err    SbTransportOpen(void);
 void   SbTransportClose(void);
 Err    SbTransportSend(const UInt8 *buf, UInt16 len);
 UInt16 SbTransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP);
+/* Whether receiving is interrupt-driven (the slot handler installed) rather than polled. */
+Boolean SbTransportIrq(void);
+/* The module self-test: loops the UART's TX back to its RX inside the chip (nothing reaches the radio). */
+void   SbTransportLoopback(Boolean on);
+
+/*
+ * What's in the Springboard slot, without touching the bus. With
+ * SB_SLOT_READY, base and size are the module's chip selects, and the SPI
+ * driver uses them.
+ */
+#define SB_SLOT_NONE   0   /* not a Handspring device */
+#define SB_SLOT_EMPTY  1
+#define SB_SLOT_NO_CS  2   /* a module, but the OS gave no chip-select window */
+#define SB_SLOT_READY  3
+UInt8  SbSlotState(UInt32 *base, UInt32 *size);
 
 #endif

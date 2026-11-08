@@ -25,6 +25,7 @@
 #include "bgcheck.h"
 #include "shots.h"
 #include "stats_form.h"
+#include "sb_test.h"
 #include "packets_form.h"
 #include "trace_form.h"
 #include "beam.h"
@@ -76,6 +77,7 @@ static Boolean HandleMenu(UInt16 itemID)
 			FrmCustomAlert(SettingsErrorAlert, "Open the channel you want to beam first.", "", "");
 		return true;
 	case MainMenuPorts:       FrmGotoForm(PortsForm);       return true;
+	case MainMenuSbTest:      FrmGotoForm(SbTestForm);      return true;
 	case MainMenuFontPreview: FrmGotoForm(FontPreviewForm); return true;
 	case MainMenuSounds:      SoundsFormOpen(FrmGetActiveFormID()); return true;
 	case MainMenuAddChannel:  FrmGotoForm(ChannelForm);     return true;
@@ -123,6 +125,7 @@ static Boolean AppHandleEvent(EventType *event)
 	case ScopesForm:      FrmSetEventHandler(form, ScopesFormHandleEvent);      break;
 	case MapForm:         FrmSetEventHandler(form, MapFormHandleEvent);         break;
 	case StatsForm:       FrmSetEventHandler(form, StatsFormHandleEvent);       break;
+	case SbTestForm:      FrmSetEventHandler(form, SbTestFormHandleEvent);      break;
 	case PacketsForm:     FrmSetEventHandler(form, PacketsFormHandleEvent);     break;
 	case TraceForm:       FrmSetEventHandler(form, TraceFormHandleEvent);       break;
 	}

@@ -45,6 +45,7 @@
 #define MapMenuBar         1032   /* Go, Map (Basemap, Neighbour Lines), Options */
 #define MainMenuBasemap    1033
 #define MainMenuNeighLines 1034
+#define MainMenuSbTest     1035   /* Options: SB-LoRa Test (sb_test.c) */
 #define MainStatsButton    1040
 #define AboutAlert         1020
 #define ConvoChanMenuBar   1014   /* Go, Edit, Channel (Add, Leave, Mute, Scope), Options */
@@ -201,6 +202,10 @@
 #define PacketsAdvertPush     2706
 #define PacketsFilterGroup    6
 #define PacketAlert           2707
+
+#define SbTestForm            3000
+#define SbTestDoneButton      3001
+#define SbTestRunButton       3002
 
 #define TraceForm             2800
 #define TraceField            2801

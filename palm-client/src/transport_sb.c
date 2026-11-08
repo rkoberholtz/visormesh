@@ -39,19 +39,31 @@ static Boolean ModuleInstalled(void)
  * Asks the OS whether a module is in the slot and where its chip selects
  * are. A bus read with the slot empty is a bus error, which resets the Visor.
  */
-static Boolean ModulePresent(void)
+UInt8 SbSlotState(UInt32 *base, UInt32 *size)
 {
-	UInt32 version, base, size;
+	UInt32 version;
 
 	if (FtrGet(hsFtrCreator, hsFtrIDVersion, &version) != errNone)
-		return false;   /* not a Handspring device: no slot */
+		return SB_SLOT_NONE;   /* not a Handspring device: no slot */
 	if (!ModuleInstalled())
-		return false;
-	if (HsCardAttrGet(hsCardSlot, hsCardAttrCsBase, &base) != errNone ||
-	    HsCardAttrGet(hsCardSlot, hsCardAttrCsSize, &size) != errNone)
-		return false;
-	SbSetBase(base, size);
-	return true;
+		return SB_SLOT_EMPTY;
+	if (HsCardAttrGet(hsCardSlot, hsCardAttrCsBase, base) != errNone ||
+	    HsCardAttrGet(hsCardSlot, hsCardAttrCsSize, size) != errNone)
+		return SB_SLOT_NO_CS;
+	SbSetBase(*base, *size);
+	return SB_SLOT_READY;
+}
+
+static Boolean ModulePresent(void)
+{
+	UInt32 base, size;
+
+	return SbSlotState(&base, &size) == SB_SLOT_READY;
+}
+
+Boolean SbTransportIrq(void)
+{
+	return gIrq;
 }
 
 static void IrqEnable(Boolean on)
@@ -60,6 +72,15 @@ static void IrqEnable(Boolean on)
 
 	if (gIrq)
 		HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable);
+}
+
+void SbTransportLoopback(Boolean on)
+{
+	if (!gOpen)
+		return;
+	IrqEnable(false);
+	SbWriteReg(SB_MCR, on ? SB_MCR_LOOPBACK : 0);
+	IrqEnable(true);
 }
 
 static Boolean InstallHandler(void)

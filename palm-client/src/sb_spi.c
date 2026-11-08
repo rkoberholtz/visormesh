@@ -10,7 +10,7 @@ static void Select(const SbBus *b);
 static void Deselect(const SbBus *b);
 static UInt8 BusReadReg(const SbBus *b, UInt8 reg);
 static void BusReadFifo(const SbBus *b, UInt8 *buf, UInt16 n);
-static Boolean ScratchOk(void) VM_SECT3;
+static Boolean ScratchOk(UInt8 got[2]) VM_SECT3;
 
 static SbBus gBus = { SB_CS0_BASE, SB_CS0_BASE + SB_CS_SIZE, 0, 0 };
 
@@ -126,13 +126,13 @@ void SbDrainRx(SbRing *r)
 	}
 }
 
-static Boolean ScratchOk(void)
+static Boolean ScratchOk(UInt8 got[2])
 {
 	SbWriteReg(SB_SPR, 0x55);
-	if (SbReadReg(SB_SPR) != 0x55)
-		return false;
+	got[0] = SbReadReg(SB_SPR);
 	SbWriteReg(SB_SPR, 0xAA);
-	return SbReadReg(SB_SPR) == 0xAA;
+	got[1] = SbReadReg(SB_SPR);
+	return got[0] == 0x55 && got[1] == 0xAA;
 }
 
 void SbSetBase(UInt32 cs0, UInt32 csSize)
@@ -141,22 +141,57 @@ void SbSetBase(UInt32 cs0, UInt32 csSize)
 	gBus.cs1 = cs0 + csSize;
 }
 
+Boolean SbTryMapping(UInt8 shift, UInt8 got[2])
+{
+	Boolean ok;
+
+	gBus.offNcs = 1UL << (17 + shift);
+	gBus.offMosi = 1UL << (8 + shift);
+	Deselect(&gBus);
+	ok = ScratchOk(got);
+	Deselect(&gBus);
+	return ok;
+}
+
+UInt8 SbMappingShift(void)
+{
+	return gBus.offMosi == (1UL << 9) ? 1 : 0;
+}
+
 Boolean SbProbe(void)
 {
-	UInt8 shift;
+	UInt8 got[2];
 
 	/* Connector A0 = CPU A1 first: the slot only does 16-bit, even-address cycles. */
-	for (shift = 1; ; shift--) {
-		gBus.offNcs = 1UL << (17 + shift);
-		gBus.offMosi = 1UL << (8 + shift);
-		Deselect(&gBus);
-		if (ScratchOk())
-			return true;
-		if (shift == 0)
-			break;
+	return SbTryMapping(1, got) || SbTryMapping(0, got);
+}
+
+/*
+ * 64 bytes at 115200 take 5.6 ms; a register read is a few hundred bus
+ * cycles, so this many reads is well past that without needing a timer.
+ */
+#define SB_LOOP_POLLS 4000
+
+UInt16 SbLoopback(const UInt8 *out, UInt16 n, UInt8 *in)
+{
+	UInt16 got = 0, polls, k;
+
+	if (n > SB_FIFO_SIZE)
+		n = SB_FIFO_SIZE;
+	SbWriteReg(SB_FCR, 0x07);   /* empty both FIFOs */
+	SbWriteReg(SB_MCR, SB_MCR_LOOPBACK);
+	SbWriteFifo(out, n);
+	for (polls = 0; got < n && polls < SB_LOOP_POLLS; polls++) {
+		k = SbReadReg(SB_RXLVL);
+		if (k > n - got)
+			k = n - got;
+		if (k) {
+			SbReadFifo(in + got, k);
+			got += k;
+		}
 	}
-	Deselect(&gBus);
-	return false;
+	SbWriteReg(SB_MCR, 0);
+	return got;
 }
 
 void SbUartInit(void)

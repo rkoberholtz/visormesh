@@ -26,6 +26,7 @@ static UInt8 txlog[256];
 static int txn, txFree = SB_FIFO_SIZE;
 static int bit, byteIndex, transactions;
 static UInt8 cmd, in, out;
+static int loopBroken;     /* bit 0 of every looped byte flips (a bad baud clock, say) */
 
 static void SimReset(void)
 {
@@ -61,8 +62,20 @@ static void RegWrite(UInt8 reg, UInt8 val)
 	if (lcr == 0xBF && reg == SB_EFR) { efr = val; return; }
 	switch (reg) {
 	case SB_THR:
+		if (regs[SB_MCR] & SB_MCR_LOOPBACK) {
+			if (loopBroken)
+				val ^= 0x01;
+			if (rxn < SB_FIFO_SIZE)
+				rxq[rxn++] = val;
+			return;
+		}
 		if (txn < (int)sizeof(txlog))
 			txlog[txn++] = val;
+		return;
+	case SB_FCR:
+		regs[SB_FCR] = val;
+		if (val & 0x02)
+			rxn = 0;
 		return;
 	case SB_LCR:
 		lcr = val;
@@ -266,6 +279,44 @@ static void test_drain(void)
 	CHECK(ncs);
 }
 
+static void test_mapping(void)
+{
+	UInt8 got[2];
+
+	SimInsert(0);
+	CHECK(!SbTryMapping(1, got));
+	CHECK(SbTryMapping(0, got));
+	CHECK(got[0] == 0x55 && got[1] == 0xAA);
+	CHECK(SbMappingShift() == 0);
+	SimInsert(1);
+	CHECK(SbProbe());
+	CHECK(SbMappingShift() == 1);
+	CHECK(ncs);
+}
+
+static void test_loopback(void)
+{
+	UInt8 pat[SB_FIFO_SIZE], back[SB_FIFO_SIZE];
+	int i;
+
+	for (i = 0; i < SB_FIFO_SIZE; i++)
+		pat[i] = (UInt8)(i * 37 + 1);
+	SimInsert(1);
+	CHECK(SbProbe());
+	SbUartInit();
+	inject(3, 0x40);   /* stale bytes are flushed first */
+	CHECK(SbLoopback(pat, 16, back) == 16);
+	CHECK(memcmp(pat, back, 16) == 0);
+	CHECK(regs[SB_MCR] == 0);
+	CHECK(txn == 0);   /* nothing went to the radio */
+	loopBroken = 1;
+	CHECK(SbLoopback(pat, 16, back) == 16);
+	CHECK(memcmp(pat, back, 16) != 0);
+	loopBroken = 0;
+	present = 0;
+	CHECK(SbLoopback(pat, 16, back) == 0 || memcmp(pat, back, 16) != 0);
+}
+
 int main(void)
 {
 	test_probe();
@@ -274,6 +325,8 @@ int main(void)
 	test_fifos();
 	test_sleep();
 	test_drain();
+	test_mapping();
+	test_loopback();
 	if (failures) {
 		printf("%d failure(s)\n", failures);
 		return 1;
