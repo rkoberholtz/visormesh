@@ -46,7 +46,7 @@ const Char *ContactTypeName(UInt8 type)
 	switch (type) {
 	case VM_ADV_TYPE_CHAT:     return "Companion";
 	case VM_ADV_TYPE_REPEATER: return "Repeater";
-	case VM_ADV_TYPE_ROOM:     return "Room server";
+	case VM_ADV_TYPE_ROOM:     return "Room";
 	case VM_ADV_TYPE_SENSOR:   return "Sensor";
 	default:                   return "Unknown";
 	}

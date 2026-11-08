@@ -8,6 +8,7 @@
 #include "transport.h"
 #include "session.h"
 #include "app.h"
+#include "screen_fmt.h"
 #include "node_form.h"
 #include "ui/draw.h"
 
@@ -82,40 +83,38 @@ static void ShowRadioInfo(FormType *form)
 }
 
 /*
- * Clock check, small font, under the radio details:
- *   Visor 11/1 17:02 UTC 11/1 22:02 (-5:00)
- *   radio 11/1 11:57 UTC  sys 300
+ * Clock check, in the UI font, under the radio details:
+ *   Visor 11/1 17:02 (UTC-5:00)
+ *   Radio 11/1 22:02 UTC, sys 300
  * "sys" is Palm OS's own minutes-west-of-GMT preference (the offset's default).
  */
 static void DrawClockLine(void)
 {
 	DateTimeType dt;
 	RectangleType r;
-	Char line[56], utc[16], radio[16];
-	UInt32 now = TimGetSeconds();
-	Int16 off = SessionUtcOffset();
+	ScrTime t;
+	Char line[SCR_LINE];
 	UInt32 rt = SessionRadioTime();
 	FontID old = FntSetFont(vmSmallFont);
 
 	RctSetRectangle(&r, 0, 104, 160, 20);
 	WinEraseRectangle(&r, 0);
-	TimSecondsToDateTime(SessionNow() + 2082844800UL, &dt);
-	StrPrintF(utc, "%u/%u %02u:%02u", dt.month, dt.day, dt.hour, dt.minute);
-	TimSecondsToDateTime(now, &dt);
-	StrPrintF(line, "Visor %u/%u %02u:%02u UTC %s (%s%d:%02d)", dt.month, dt.day, dt.hour, dt.minute, utc,
-	          off < 0 ? "-" : "+", (off < 0 ? -off : off) / 60, (off < 0 ? -off : off) % 60);
-	WinDrawChars(line, StrLen(line), 5, 105);
+	TimSecondsToDateTime(TimGetSeconds(), &dt);
+	t.month = (UInt8)dt.month;
+	t.day = (UInt8)dt.day;
+	t.hour = (UInt8)dt.hour;
+	t.minute = (UInt8)dt.minute;
+	ScrVisorClock(line, &t, SessionUtcOffset());
+	DrawCut(line, 5, 105, 155);
 	if (rt) {
 		TimSecondsToDateTime(rt + 2082844800UL, &dt);
-		StrPrintF(radio, "%u/%u %02u:%02u", dt.month, dt.day, dt.hour, dt.minute);
-	} else {
-		StrCopy(radio, "--");
+		t.month = (UInt8)dt.month;
+		t.day = (UInt8)dt.day;
+		t.hour = (UInt8)dt.hour;
+		t.minute = (UInt8)dt.minute;
 	}
-	if (SessionClockMismatch())
-		StrPrintF(line, "radio %s UTC  MISMATCH: check date", radio);
-	else
-		StrPrintF(line, "radio %s UTC  sys %ld", radio, (Int32)PrefGetPreference(prefMinutesWestOfGMT));
-	WinDrawChars(line, StrLen(line), 5, 113);
+	ScrRadioClock(line, rt ? &t : NULL, SessionClockMismatch(), (Int32)PrefGetPreference(prefMinutesWestOfGMT));
+	DrawCut(line, 5, 105 + VM_ROW_H, 155);
 	FntSetFont(old);
 }
 

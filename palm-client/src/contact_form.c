@@ -20,6 +20,7 @@
 #include "ui/draw.h"
 #include "ui/text.h"
 #include "ui/rowlist.h"
+#include "screen_fmt.h"
 #include "contact_form.h"
 #include "remote.h"
 #include "trace_form.h"
@@ -31,6 +32,7 @@ static void *GetObject(FormType *form, UInt16 id) VM_SECT3;
 static void Error(const Char *msg) VM_SECT3;
 static void ErrorFor(Err err) VM_SECT3;
 static void FormatWhen(Char *out, UInt32 utc) VM_SECT3;
+static void LocalTime(ScrTime *t, UInt32 utc) VM_SECT3;
 static void DrawHex(const UInt8 *bytes, UInt16 n, Coord x, Coord y) VM_SECT3;
 static void DrawRow(UInt16 row, const RectangleType *b, void *ctx) VM_SECT3;
 static void Load(void) VM_SECT3;
@@ -85,6 +87,17 @@ static void FormatWhen(Char *out, UInt32 utc)
 	StrPrintF(out, "%02u-%02u %02u:%02u", dt.month, dt.day, dt.hour, dt.minute);
 }
 
+static void LocalTime(ScrTime *t, UInt32 utc)
+{
+	DateTimeType dt;
+
+	TimSecondsToDateTime(SessionLocalPalm(utc), &dt);
+	t->month = (UInt8)dt.month;
+	t->day = (UInt8)dt.day;
+	t->hour = (UInt8)dt.hour;
+	t->minute = (UInt8)dt.minute;
+}
+
 static void DrawHex(const UInt8 *bytes, UInt16 n, Coord x, Coord y)
 {
 	Char hex[2 * 16 + 1];
@@ -99,26 +112,27 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 {
 	FontID old = FntSetFont(vmSmallFont);
 	Coord x = b->topLeft.x + 1, y = b->topLeft.y, right = b->topLeft.x + b->extent.x - 1;
-	Char line[48], route[12], when[16], snr[8];
+	Char line[SCR_LINE], route[12], when[16], snr[8];
+	ScrTime t;
 	UInt32 now = SessionNow();
 
 	switch (row) {
 	case 0:
-		line[0] = ContactTypeGlyph(gContact.type);
+		/* tests/test_screens.c checks these two rows fit in the large font */
 		ContactFormatRoute(route, gContact.outPathLen);
-		StrPrintF(line + 1, " %s, %s%s", ContactTypeName(gContact.type), route,
-		          SessionIsLoggedIn(gContact.pubKey) ? ", logged in" : "");
-		WinDrawChars(line, StrLen(line), x, y);
+		ScrContactSummary(line, ContactTypeGlyph(gContact.type), ContactTypeName(gContact.type), route,
+		                  SessionIsLoggedIn(gContact.pubKey));
+		DrawCut(line, x, y, right - x);
 		break;
 	case 1:
 		if (gContact.lastAdvert) {
-			FormatWhen(when, gContact.lastAdvert);
+			LocalTime(&t, gContact.lastAdvert);
 			TxtFormatAge(route, now > gContact.lastAdvert ? now - gContact.lastAdvert : 0);
-			StrPrintF(line, "Advert %s (%s ago)", when, route);
+			ScrContactAdvert(line, &t, route);
 		} else {
 			StrCopy(line, "No advert heard yet");
 		}
-		WinDrawChars(line, StrLen(line), x, y);
+		DrawCut(line, x, y, right - x);
 		break;
 	case 2:
 		WinDrawChars("Key", 3, x, y);

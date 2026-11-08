@@ -19,6 +19,7 @@
 #include "ui/rowlist.h"
 #include "ui/glyphs.h"
 #include "ui/title.h"
+#include "screen_fmt.h"
 #include "trace_form.h"
 
 static void   *GetObject(FormType *form, UInt16 id) VM_SECT5;
@@ -124,14 +125,13 @@ static void DrawRow(UInt16 row, const RectangleType *b, void *ctx)
 
 	if (row == 0) {
 		if (gErr == vmErrNoReply)
-			StrCopy(line, "No answer: a hop didn't hear it.");
+			StrCopy(line, "No answer: a hop missed it.");
 		else if (gErr != errNone) {
 			AppErrorText(gErr, msg);
 			StrCopy(line, msg);
 		} else
-			StrPrintF(line, "Back in %lu.%lu s, %u hop%s", gTripMs / 1000, gTripMs % 1000 / 100,
-			          gTrace.hops, gTrace.hops == 1 ? "" : "s");
-		WinDrawChars(line, StrLen(line), x, y);
+			ScrTraceBack(line, gTripMs, gTrace.hops);
+		DrawCut(line, x, y, b->extent.x - 2);
 	} else {
 		line[0] = GLYPH_FORWARD;
 		line[1] = ' ';

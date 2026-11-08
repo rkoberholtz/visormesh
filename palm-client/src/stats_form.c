@@ -11,11 +11,10 @@
 #include "protocol2.h"
 #include "ui/draw.h"
 #include "ui/text.h"
+#include "screen_fmt.h"
 #include "stats_form.h"
 
 static void Read(void) VM_SECT5;
-static void FormatSecs(Char *out, UInt32 s) VM_SECT5;
-static void DrawText(Coord y, const Char *s) VM_SECT5;
 static void DrawGraph(const RectangleType *g) VM_SECT5;
 static void Draw(void) VM_SECT5;
 
@@ -31,6 +30,7 @@ static Err       gErr;
 static UInt32    gReadAt;
 static Int16     gNoise[NOISE_MAX];
 static UInt16    gNoiseCount = 0, gNoiseNext = 0;
+static Char      gLines[SCR_STATS_LINES][SCR_LINE];
 
 static void Read(void)
 {
@@ -62,24 +62,6 @@ static void Read(void)
 		if (gNoiseCount < NOISE_MAX)
 			gNoiseCount++;
 	}
-}
-
-/* "45s", "12m", "3h 20m", "2d 4h" */
-static void FormatSecs(Char *out, UInt32 s)
-{
-	if (s < 60)
-		StrPrintF(out, "%lus", s);
-	else if (s < 3600)
-		StrPrintF(out, "%lum", s / 60);
-	else if (s < 86400UL)
-		StrPrintF(out, "%luh %lum", s / 3600, s / 60 % 60);
-	else
-		StrPrintF(out, "%lud %luh", s / 86400UL, s / 3600 % 24);
-}
-
-static void DrawText(Coord y, const Char *s)
-{
-	DrawCut(s, 3, y, 154);    /* never past the edge, whatever the font */
 }
 
 /* The noise floor samples, oldest at the left; the scale fits what's there, at least 10 dB. */
@@ -120,8 +102,8 @@ static void Draw(void)
 {
 	FontID old = FntSetFont(vmSmallFont);
 	RectangleType r;
-	Char line[48], a[16], b[16], snr[8];
-	Coord y = 18, step = VM_ROW_H;
+	Coord y = 18;
+	UInt16 n, i;
 
 	RctSetRectangle(&r, 0, 16, 160, 127);
 	WinEraseRectangle(&r, 0);
@@ -130,51 +112,15 @@ static void Draw(void)
 		FntSetFont(old);
 		return;
 	}
-	if (gHasBatt) {
-		StrPrintF(line, "Battery %u.%02u V", gBatt.battMv / 1000, (gBatt.battMv % 1000) / 10);
-		DrawText(y, line);
-		y += step;
-		if (gBatt.hasStorage) {
-			StrPrintF(line, "Storage %lu of %lu KB used", gBatt.usedKb, gBatt.totalKb);
-			DrawText(y, line);
-			y += step;
-		}
-	}
-	if (gStats.hasCore) {
-		FormatSecs(a, gStats.uptimeSecs);
-		StrPrintF(line, "Up %s, %u queued", a, gStats.queueLen);
-		if (gStats.errFlags)
-			StrPrintF(line + StrLen(line), ", errors %x", gStats.errFlags);
-		DrawText(y, line);
-		y += step;
-	}
-	if (gStats.hasRadio) {
-		StrPrintF(line, "Noise floor %d dBm", gStats.noiseFloor);
-		DrawText(y, line);
-		y += step;
-		TxtFormatSnr(snr, gStats.lastSnrQ);
-		StrPrintF(line, "Last heard %d dBm, %s", (Int16)gStats.lastRssi, snr);
-		DrawText(y, line);
-		y += step;
-		FormatSecs(a, gStats.txAirSecs);
-		FormatSecs(b, gStats.rxAirSecs);
-		StrPrintF(line, "Airtime: sent %s, heard %s", a, b);
-		DrawText(y, line);
-		y += step;
-	}
-	if (gStats.hasPackets) {
-		StrPrintF(line, "Heard %lu: %lu flood, %lu direct", gStats.recv, gStats.recvFlood, gStats.recvDirect);
-		DrawText(y, line);
-		y += step;
-		StrPrintF(line, "Sent %lu: %lu flood, %lu direct", gStats.sent, gStats.sentFlood, gStats.sentDirect);
-		DrawText(y, line);
-		y += step;
-	}
 	if (!gStats.hasCore && !gStats.hasRadio && !gStats.hasPackets) {
 		DrawWrap(gErr == vmErrRadio ? "This firmware doesn't report stats." : "The radio didn't answer.", 3, y, 154);
 		FntSetFont(old);
 		return;
 	}
+	/* tests/test_screens.c checks the longest values still fit above Done */
+	n = ScrStatsLines(&gStats, &gBatt, gHasBatt, gLines);
+	for (i = 0; i < n; i++)
+		y = DrawWrap(gLines[i], 3, y, 154);
 	/* the graph takes what the lines leave, which depends on the font */
 	y += 2;
 	if (GRAPH_BOTTOM - (y + 12) < GRAPH_MIN_H) {
