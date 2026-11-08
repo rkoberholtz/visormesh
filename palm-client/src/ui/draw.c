@@ -106,6 +106,21 @@ Coord DrawCut(const Char *text, Coord x, Coord y, Coord maxW)
 	return w + FntCharWidth(ell);
 }
 
+Coord DrawWrap(const Char *text, Coord x, Coord y, Coord maxW)
+{
+	UInt16 n;
+
+	while (*text) {
+		n = FntWordWrap(text, maxW);
+		if (n == 0)
+			break;
+		WinDrawChars(text, n, x, y);
+		text += n;
+		y += VM_ROW_H;
+	}
+	return y;
+}
+
 Coord DrawRight(const Char *text, Coord xRight, Coord y)
 {
 	UInt16 len = StrLen(text);

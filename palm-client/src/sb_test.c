@@ -245,9 +245,9 @@ static void Draw(void)
 	RctSetRectangle(&r, 0, 16, 160, 128);
 	WinEraseRectangle(&r, 0);
 	if (gCount == 0)
-		DrawCut("Testing...", 3, y, 154);
-	for (i = 0; i < gCount; i++, y += VM_ROW_H)
-		DrawCut(gLines[i], 3, y, 154);
+		DrawWrap("Testing...", 3, y, 154);
+	for (i = 0; i < gCount; i++)
+		y = DrawWrap(gLines[i], 3, y, 154);
 	FntSetFont(old);
 }
 

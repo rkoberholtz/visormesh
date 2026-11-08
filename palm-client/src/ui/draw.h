@@ -33,6 +33,9 @@ Coord ChipWidth(const Char *text) VM_SECT2;
 /* Draws text in the current font, cut with an ellipsis to fit maxW. Returns the width drawn. */
 Coord DrawCut(const Char *text, Coord x, Coord y, Coord maxW) VM_SECT2;
 
+/* Draws text word-wrapped to maxW, a line per VM_ROW_H. Returns the y below the last line. */
+Coord DrawWrap(const Char *text, Coord x, Coord y, Coord maxW) VM_SECT2;
+
 /* Draws text right-aligned so it ends at xRight. Returns its left edge. */
 Coord DrawRight(const Char *text, Coord xRight, Coord y) VM_SECT2;
 

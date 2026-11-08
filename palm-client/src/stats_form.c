@@ -126,7 +126,7 @@ static void Draw(void)
 	RctSetRectangle(&r, 0, 16, 160, 127);
 	WinEraseRectangle(&r, 0);
 	if (gErr == serErrNotOpen) {
-		DrawText(y, "Connect to the radio first (Node).");
+		DrawWrap("Connect to the radio first (Node).", 3, y, 154);
 		FntSetFont(old);
 		return;
 	}
@@ -171,7 +171,7 @@ static void Draw(void)
 		y += step;
 	}
 	if (!gStats.hasCore && !gStats.hasRadio && !gStats.hasPackets) {
-		DrawText(y, gErr == vmErrRadio ? "This firmware doesn't report stats." : "The radio didn't answer.");
+		DrawWrap(gErr == vmErrRadio ? "This firmware doesn't report stats." : "The radio didn't answer.", 3, y, 154);
 		FntSetFont(old);
 		return;
 	}
