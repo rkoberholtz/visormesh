@@ -8,8 +8,8 @@ Draft, nothing designed yet. Rev 1 (`hw-v0.1`) is ordered and shipping, but its 
 
 The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the carrier next to each other, instead of stacked on 2.54 mm headers. The stack is the tallest thing on rev 1. Side by side, the height is set by the XIAO's USB-C socket (about 3.2 mm) and the Wio's u.FL.
 
-- Both are 14-pin boards the size of the XIAO. The kit ships them soldered directly on top of each other, so going side by side means desoldering the pair. The rev 1 extension is 50.4 mm wide and 24.6 mm deep, which holds two of them (about 18 x 21 mm each) with the XIAO's USB-C at the outer edge.
-- The XIAO is soldered by its castellated edge pads. That covers its bottom pads, so the carrier brings them out:
+- Both are 14-pin boards the size of the XIAO. In the kit the XIAO has a male pin header that plugs into the Wio, so they separate by unplugging. The rev 1 extension is 50.4 mm wide and 24.6 mm deep, which holds two of them (about 18 x 21 mm each) with the XIAO's USB-C at the outer edge.
+- The XIAO is soldered by its castellated edge pads, after its pin header is removed (or, keeping the header, through carrier holes with the plastic spacer slid off and the pins cut flush underneath). Flat on the carrier, its bottom pads are covered, so the carrier brings them out:
   - **BAT+ / BAT-** to pads for a flat pouch LiPo (the XIAO's charger still does the charging over USB-C).
   - **SWDIO / SWCLK / RST** to test pads, so the radio can be reflashed with a probe if the bootloader is lost.
 - The Wio board's mounting depends on what its edge offers (to measure): castellated pads, or through-holes with pins cut flush.
@@ -48,7 +48,6 @@ This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs abou
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
 - **Link to the radio on CS1*.** Keep rev 1's SC16IS740 SPI bridge (decoded on CS1* with an address line instead of CS0*/CS1*), or use a memory-mapped 16550-style UART (e.g. NXP SC16C750B, 64-byte FIFO) on the bus that the flash already needs. The UART is one bus access per register instead of several per SPI bit, and drops U1-U3; it means rewriting `transport_sb.c` and its simulation.
 - **Wio board edge** (castellated pads or only through-holes), for the footprint.
-- **Fallback if separating the pair is too risky:** keep the stack as it is and solder it straight to the carrier with no female headers. Thicker than side by side, but thinner than rev 1's stack on headers.
 - **LiPo size** for the bump, about 3-4 mm thick.
 
 ## Carried over from rev 1
