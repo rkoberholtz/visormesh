@@ -13,7 +13,7 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
   - **BAT+ / BAT-** to pads for a flat pouch LiPo (the XIAO's charger still does the charging over USB-C).
   - **SWDIO / SWCLK / RST** to test pads, so the radio can be reflashed with a probe if the bootloader is lost.
   - The edge pins have no battery connection (5V is the USB input to the charger; feeding the LiPo there would put USB's 5 V on it), so BAT+/BAT- must come from the bottom pads. Under each bottom pad the carrier has a large plated hole, filled with solder from the back so it wicks up to the XIAO's pad. That joins them with no gap under the XIAO. Position the holes from Seeed's KiCad footprint (it includes the back pads), checked against a real board. The fallback is a cut-out in the carrier under the pads, so wires can be soldered on from below.
-- The Wio board's mounting depends on what its edge offers (to measure): castellated pads, or through-holes with pins cut flush.
+- The Wio has a female socket on top (where the XIAO plugs in) and male pins underneath. On rev 2 its male pins go through plated holes in the carrier, with the plastic spacer slid off so the board sits flush, and are cut flush underneath. With nothing plugged into it, its top socket is now the tallest part of the module. Either leave it, or remove it (14 pins) if the bump needs to be thinner.
 - The carrier wires the radio nets pin to pin, from the MeshCore `xiao_nrf52` variant:
 
   | XIAO pin | Net | Goes to |
@@ -48,7 +48,7 @@ This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs abou
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
 - **Link to the radio on CS1*.** Keep rev 1's SC16IS740 SPI bridge (decoded on CS1* with an address line instead of CS0*/CS1*), or use a memory-mapped 16550-style UART (e.g. NXP SC16C750B, 64-byte FIFO) on the bus that the flash already needs. The UART is one bus access per register instead of several per SPI bit, and drops U1-U3; it means rewriting `transport_sb.c` and its simulation.
-- **Wio board edge** (castellated pads or only through-holes), for the footprint.
+- **Wio top socket height**, to decide whether it stays.
 - **LiPo size** for the bump, about 3-4 mm thick.
 
 ## Carried over from rev 1
