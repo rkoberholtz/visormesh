@@ -313,7 +313,7 @@ BEGIN
   LABEL "                      " ID MainModeLabel AT (50 66)
   LABEL "Power:" AUTOID AT (5 78) FONT 1
   LABEL "                      " ID MainPowerLabel AT (50 78)
-  LABEL "Firmware:" AUTOID AT (5 90) FONT 1
+  LABEL "Version:" AUTOID AT (5 90) FONT 1
   LABEL "                      " ID MainFirmwareLabel AT (50 90)
 
   BUTTON "Settings" ID MainSettingsButton AT (5 127 AUTO AUTO)
@@ -542,8 +542,8 @@ BEGIN
   LABEL "Turning a sound on plays it." AUTOID AT (5 PREVBOTTOM+1)
   LABEL "Volume: Prefs, General, Alarm          " ID SoundsStatusLabel AT (5 PREVBOTTOM)
   LABEL "Check when closed:" AUTOID AT (5 132) FONT 1
-  POPUPTRIGGER "Off" ID SoundsCheckTrigger AT (95 131 AUTO AUTO) LEFTANCHOR
-  LIST "Off" "Every 5 min" "Every 15 min" "Every 30 min" "Every hour" ID SoundsCheckList AT (90 90 66 AUTO) NONUSABLE VISIBLEITEMS 5
+  POPUPTRIGGER "Off" ID SoundsCheckTrigger AT (101 131 AUTO AUTO) LEFTANCHOR
+  LIST "Off" "5 min" "15 min" "30 min" "1 hour" ID SoundsCheckList AT (90 90 66 AUTO) NONUSABLE VISIBLEITEMS 5
   POPUPLIST ID SoundsCheckTrigger SoundsCheckList
   BUTTON "Done" ID SoundsDoneButton AT (CENTER 147 AUTO AUTO)
 END
@@ -556,7 +556,7 @@ MENUID EditMenuBar
 BEGIN
   TITLE "Flood Scopes"
   LABEL "Radio default:" AUTOID AT (5 17) FONT 1
-  LABEL "                              " ID ScopesDefaultLabel AT (75 17)
+  LABEL "                              " ID ScopesDefaultLabel AT (80 17)
   LIST "" ID ScopesList AT (5 31 150 AUTO) VISIBLEITEMS 6
   FIELD ID ScopesField AT (5 100 68 12) UNDERLINED SINGLELINE EDITABLE MAXCHARS 31
   BUTTON "Add" ID ScopesAddButton AT (78 99 30 12)
