@@ -27,6 +27,8 @@ PORT       ?= usb:
 DOCKER_IMAGE = visormesh-palm
 DOCKER_RUN   = docker run --rm --platform linux/amd64 -v "$(CURDIR)":/src -w /src $(DOCKER_IMAGE)
 
+.DEFAULT_GOAL := all
+
 # Runs the bridge's frame capture through the app's parsers (tests/replay.c), on the host.
 CAPTURE ?= $(or $(TMPDIR),/tmp)/visor_frames.txt
 replay:
