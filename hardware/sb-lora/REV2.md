@@ -34,10 +34,17 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
 
 A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard Development Guide requires for the module to be recognised (§2.1). With a Palm-MakeROM header and the app on it, the Visor mounts the module on insertion and switches to the app (§3.3; on Palm OS 3.5 and later the Welcome app is chosen by a ROM token, so the database can stay "VisorMesh").
 
-- Candidate: SST39VF1601C (2 MB, x16, 70 ns, TSOP-48, 1.2 mm). Room for the app and the Map basemap.
+- Candidates: Infineon S29AL016J or SST39VF1601C (2 MB, x16, 70 ns, TSOP-48, 1.2 mm), whichever the Flash Manager drivers handle. Room for the app and the Map basemap.
 - WE* is wired so the app can rewrite the flash itself: HotSync a new .prc to RAM, then update the module from the app.
 - A write-protect jumper.
 - Software: only the app's own code and resources are read-only when it runs from the module. Checked: all of its data (channels, contacts, messages, beam inbox, screenshots, map) is in RAM databases on card 0, and it never writes to its own database, so nothing changes. To keep the Map basemap in flash too, `map_form.c` must also look on card 1. The alarms (`bgcheck.c`, `sb_spi.c`) point at the app's database, and they go away with the module, which is fine because the radio does too.
+- Getting the app onto the flash, all from the Visor, with no chip programmer:
+  1. `make rom` on the Mac builds a module image with VisorMesh in it, following Handspring's MakeROM (its source is in `Handspring_SDK.zip`: `Handspring Tools/MakeROM/Src`).
+  2. The image is wrapped in an updater .prc, as Handspring's Card Updater stationery does, and installed with HotSync like any app.
+  3. The updater runs from RAM, erases and writes the flash, checks it, and asks for the module to be pulled and reinserted.
+  - A blank or bad image has no valid header, so the module looks like rev 1 (hardware present, nothing mounted) and the updater can still write it. The first programming works the same way.
+  - Handspring's Flash Manager source (same zip, `FlashManager Resources`) has drivers for AMD-style (29LV160 family) and SST 4 KB-sector parts. Pick a chip it supports, or add its ID to the table. Infineon S29AL016J is the in-production 29LV160 equivalent.
+  - To check: what the launcher does when VisorMesh is in both RAM and the module during development.
 - Alternative: a small Welcome app on the flash that copies VisorMesh into RAM when it's missing or older, so the app runs from RAM exactly as it does now.
 
 This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs about 20 address lines and all 16 data lines, so rev 2 is expected to be a 4-layer board.
