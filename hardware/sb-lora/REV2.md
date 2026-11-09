@@ -26,7 +26,7 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
   | D8 / D9 / D10 | SCK / MISO / MOSI | Wio |
   | D6 / D7 | UART TX / RX | Visor bridge (as rev 1), not the Wio |
   | 3V3, GND | power | Wio and the XIAO-side level translators |
-  | D0 | free | |
+  | D0 | VISOR_PRESENT | slot power sensed through a translator, as rev 1 |
 
 - The antenna is the Wio's existing flexible stick-on antenna on its u.FL. It goes inside the module case.
 
@@ -36,7 +36,7 @@ A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard
 
 - Candidates: Infineon S29AL016J or SST39VF1601C (2 MB, x16, 70 ns, TSOP-48, 1.2 mm), whichever the Flash Manager drivers handle. Room for the app and the Map basemap.
 - WE* is wired so the app can rewrite the flash itself: HotSync a new .prc to RAM, then update the module from the app.
-- A write-protect jumper.
+- A write-protect jumper: JP2 in the WE# line, bridged by default, cut to protect.
 - Software: only the app's own code and resources are read-only when it runs from the module. Checked: all of its data (channels, contacts, messages, beam inbox, screenshots, map) is in RAM databases on card 0, and it never writes to its own database, so nothing changes. To keep the Map basemap in flash too, `map_form.c` must also look on card 1. The alarms (`bgcheck.c`, `sb_spi.c`) point at the app's database, and they go away with the module, which is fine because the radio does too.
 - Getting the app onto the flash, all from the Visor, with no chip programmer:
   1. `make rom` on the Mac builds a module image with VisorMesh in it, following Handspring's MakeROM (its source is in `Handspring_SDK.zip`: `Handspring Tools/MakeROM/Src`).
@@ -45,7 +45,7 @@ A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard
   - A blank or bad image has no valid header, so the module looks like rev 1 (hardware present, nothing mounted) and the updater can still write it. The first programming works the same way.
   - Handspring's Flash Manager source (same zip, `FlashManager Resources`) has drivers for AMD-style (29LV160 family) and SST 4 KB-sector parts. Pick a chip it supports, or add its ID to the table. Infineon S29AL016J is the in-production 29LV160 equivalent.
   - To check: what the launcher does when VisorMesh is in both RAM and the module during development.
-- Alternative: a small Welcome app on the flash that copies VisorMesh into RAM when it's missing or older, so the app runs from RAM exactly as it does now.
+- **Decided: the flash holds a small installer, and VisorMesh runs from RAM.** The Dev Guide (§1.5) says a module whose code installs interrupt handlers needs a Setup app, or the Visor soft-resets when the module is pulled, because the handler's code goes with it. VisorMesh's SB-LoRa transport installs one. So the flash's Welcome app copies VisorMesh into RAM when it's missing or older, and launches it; the app then runs exactly as it does now. This also settles the RAM-and-module question above.
 
 This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs about 20 address lines and all 16 data lines, so rev 2 is expected to be a 4-layer board.
 
@@ -53,9 +53,9 @@ This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs abou
 
 A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latch logic (U1-U3). The flash already needs the full address and data bus, so the UART costs little routing, and each register access is one bus cycle instead of several per SPI bit.
 
-- Part: NXP SC16C550B, SC16C650B or SC16C750B (16, 32 or 64-byte FIFOs, 3.3 V). Prefer the biggest FIFO that JLC stocks: at 115200 baud a 16-byte FIFO fills in 1.4 ms.
+- Part: NXP SC16C650BIBS (32-byte FIFOs, HVQFN32, LCSC C729132). The SC16C750BIBS (64-byte) has the same HVQFN32 pinout and fits the footprint; the SC16C550B doesn't. At 115200 baud a 32-byte FIFO fills in 2.8 ms.
 - Wiring:
-  - CS* from CS1*, RD* from OE*, WR* from WE*.
+  - Strobes: the slot may assert OE*/WE* at the same moment as CS1* (Dev Guide table 6-2), but the UART wants IOR/IOW 10 ns after its CS. So the UART's CS is tied active and a 74LVC2G32 makes IOR = OE* OR CS1* and IOW = WE* OR CS1*. Nothing else on the bus is affected: the UART only drives the data bus while IOR is low.
   - Register select A0-A2 of the UART from A1-A3 of the slot, so the registers sit at word addresses.
   - UART D0-D7 on slot D0-D7. The driver uses 16-bit reads and writes and keeps the low byte (a 68k byte access at an even address uses D8-D15).
   - The UART's INT and RESET are active high and the slot's IRQ* and RESET* are active low, so a 74LVC2G04 inverts both.
@@ -70,7 +70,19 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 - **Connector: waiting on the Hirose IC1HA order.** If it ships, rev 2 keeps rev 1's straddle footprint. If it's cancelled, switch to a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
-- **LiPo size** for the bump, about 3-4 mm thick.
+- **LiPo size.** The aim is at least a few days per charge. Estimate, to be replaced by a measurement:
+  - The XIAO and SX1262 listen all the time (MeshCore companion doesn't sleep the radio): roughly 5-6 mA for the SX1262 in receive with boosted gain, plus 1-3 mA for the nRF52840 with the UART open. Transmits at 22 dBm draw about 120 mA but are short at SF10/BW500 and rare for a companion. Call it 7-10 mA on average.
+  - 3 days at 10 mA is 720 mAh; with margin for usable capacity and ageing, about 1000 mAh. 500 mAh gives about 2 days.
+  - Flat pouches of that size: about 5 x 30 x 50 mm for 1000 mAh, 4 x 25 x 50 mm for 500-600 mAh. The extension is 50.4 x 24.6 mm, so a 50 mm cell fits across it, under or beside the boards.
+  - To measure: current into BAT+ with a meter in series, USB unplugged, over a few minutes of idle listening and one message sent.
+
+## Netlist
+
+`rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
+- Check the flash's TSOP-48 pin table against the Infineon S29AL016J datasheet (it's written from the standard 29LV160 pinout, which Handspring's flash driver supports).
+- Look up LCSC numbers for the flash, 74LVC2G32, 74LVC2G04 and SN74LVC2T45.
+- Make footprints for the XIAO (castellated edge plus plated holes under its bottom pads, from Seeed's footprint) and the Wio (14 plated holes).
+- J1 stays rev 1's straddle footprint until the connector order is settled.
 
 ## Carried over from rev 1
 
