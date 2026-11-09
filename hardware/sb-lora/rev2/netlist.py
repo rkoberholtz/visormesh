@@ -56,11 +56,11 @@ PARTS = {
     "JP1": ("VDOCK EN", "Jumper", "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm", "", "Open by default", False),
     "JP2": ("FLASH WE", "Jumper", "SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm", "",
             "Bridged by default; cut to write-protect the flash", False),
-    "X1": ("XIAO nRF52840", None, "XIAO_SMD", "",
+    "X1": ("XIAO nRF52840", "visormesh", "XIAO_SMD", "",
            "Soldered flat by its castellated pads; bottom pads reached through solder-filled plated holes", True),
-    "X2": ("Wio-SX1262 for XIAO", None, "WIO_PTH", "",
+    "X2": ("Wio-SX1262 for XIAO", "visormesh", "WIO_PTH", "",
            "Male pins through the carrier, spacer off, cut flush; top socket removed", True),
-    "BT1": ("LiPo", None, "BAT_PADS", "", "Flat pouch LiPo, solder pads (size in REV2.md)", True),
+    "BT1": ("LiPo", "visormesh", "BAT_PADS", "", "Flat pouch LiPo, solder pads (size in REV2.md)", True),
     "TP1": ("SWDIO", "TestPoint", "TestPoint_Pad_D1.0mm", "", "XIAO SWD", True),
     "TP2": ("SWCLK", "TestPoint", "TestPoint_Pad_D1.0mm", "", "XIAO SWD", True),
     "TP3": ("NRST", "TestPoint", "TestPoint_Pad_D1.0mm", "", "XIAO reset", True),
@@ -162,8 +162,9 @@ XIAO = {1: "VISOR_PRESENT", 2: "LORA_DIO1", 3: "LORA_RESET", 4: "LORA_BUSY", 5: 
         12: "3V3X", 13: "GND", 14: "XIAO_VBUS"}
 for k, n in XIAO.items():
     c("X1", k, n)
-# Bottom pads: names as on Seeed's footprint. VERIFY names and positions against a real board.
-for pad, net in {"BAT+": "VBAT", "BAT-": "GND", "SWDIO": "SWDIO", "SWCLK": "SWCLK", "RST": "NRST"}.items():
+# Bottom pads (visormesh.pretty/XIAO_SMD, positions from Seeed's XIAO nRF52840 v1.3 board file).
+for pad, net in {"BAT+": "VBAT", "BAT-": "GND", "SWDIO": "SWDIO", "SWCLK": "SWCLK", "RST": "NRST",
+                 "GND": "GND"}.items():
     c("X1", pad, net)
 c("BT1", 1, "VBAT"); c("BT1", 2, "GND")
 c("TP1", 1, "SWDIO"); c("TP2", 1, "SWCLK"); c("TP3", 1, "NRST"); c("TP4", 1, "GND")

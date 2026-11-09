@@ -12,7 +12,8 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
 - The XIAO is soldered by its castellated edge pads, after its pin header is removed (or, keeping the header, through carrier holes with the plastic spacer slid off and the pins cut flush underneath). Flat on the carrier, its bottom pads are covered, so the carrier brings them out:
   - **BAT+ / BAT-** to pads for a flat pouch LiPo (the XIAO's charger still does the charging over USB-C).
   - **SWDIO / SWCLK / RST** to test pads, so the radio can be reflashed with a probe if the bootloader is lost.
-  - The edge pins have no battery connection (5V is the USB input to the charger; feeding the LiPo there would put USB's 5 V on it), so BAT+/BAT- must come from the bottom pads. Under each bottom pad the carrier has a large plated hole, filled with solder from the back so it wicks up to the XIAO's pad. That joins them with no gap under the XIAO. Position the holes from Seeed's KiCad footprint (it includes the back pads), checked against a real board. The fallback is a cut-out in the carrier under the pads, so wires can be soldered on from below.
+  - The edge pins have no battery connection (5V is the USB input to the charger; feeding the LiPo there would put USB's 5 V on it), so BAT+/BAT- must come from the bottom pads. Under each bottom pad the carrier has a large plated hole, filled with solder from the back so it wicks up to the XIAO's pad. That joins them with no gap under the XIAO. The hole positions come from Seeed's XIAO nRF52840 v1.3 board file: BAT+/BAT- are 1.9 mm apart near the middle, the SWD pads a 2.54 mm square of four (SWDIO, SWCLK, RST, GND) toward the USB end. The fallback is a cut-out in the carrier under the pads, so wires can be soldered on from below.
+- The Wio's D0 has a button to ground and a pull-up on the Wio, so its D0 pin stays unconnected (D0 is Visor-present on the XIAO).
 - The Wio has a female socket on top (where the XIAO plugs in) and male pins underneath. On rev 2 its male pins go through plated holes in the carrier, with the plastic spacer slid off so the board sits flush (its underside is bare), and are cut flush underneath. Its top socket is about 8 mm tall, against about 3.2 mm for the XIAO's USB-C, and nothing plugs into it once the XIAO sits alongside, so it comes off. The easiest way is to cut the plastic body away with flush cutters, then pull each pin out with the iron and clear the holes with braid.
 - The carrier wires the radio nets pin to pin, from the MeshCore `xiao_nrf52` variant:
 
@@ -79,7 +80,7 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 ## Netlist
 
 `rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
-- Make footprints for the XIAO (castellated edge plus plated holes under its bottom pads, from Seeed's footprint) and the Wio (14 plated holes).
+- Footprints: `rev2/make_footprints.py` writes `rev2/visormesh.pretty` (XIAO_SMD, WIO_PTH, BAT_PADS) from Seeed's own KiCad files. Open them in KiCad and check against a real XIAO and Wio with calipers before ordering.
 - J1 stays rev 1's straddle footprint until the connector order is settled.
 
 ## Carried over from rev 1
