@@ -4,7 +4,8 @@ Checks that the UI stays on the 160x160 screen, after PilRC has compiled the
 resources (run by `make`, like check_sections.py):
 
   forms    every object's bounds (PilRC has already worked out AUTO, CENTER
-           and PREVRIGHT) inside its form, and labels' text inside it too
+           and PREVRIGHT) inside its form, and labels' text inside it too;
+           and no two drawn objects overlapping (a label over a button)
   alerts   the buttons in a row fit across the alert, as Palm OS lays them
            out: from x 4, each its text + 12 wide, 4 apart, ending by 156
            (from the device: "2 weeks" "1 month" "3 months" "Cancel" lost
@@ -51,28 +52,42 @@ def cstr(d, p):
     return d[p:d.index(b'\0', p)]
 
 
+USABLE = 0x8000   # the attr bit an object is drawn with; NONUSABLE ones are shown by the code
+
+
 def read_form(d):
-    """(form bounds, [(kind, id, x, y, w, h, font, text)]) from a tFRM resource."""
+    """(form bounds, [(kind, id, x, y, w, h, font, text, usable)]) from a tFRM resource."""
     fx, fy, fw, fh = struct.unpack('>4h', d[0x0A:0x12])
     n = struct.unpack('>H', d[0x3E:0x40])[0]
     objs = []
+
+    def attr(off):
+        return bool(struct.unpack('>H', d[off:off + 2])[0] & USABLE)
+
     for i in range(n):
         kind, _, p = struct.unpack('>BBI', d[0x44 + 6 * i:0x4A + 6 * i])
+        usable = True
         if kind in (FIELD, CONTROL, LIST, TABLE):
             oid, x, y, w, h = struct.unpack('>H4h', d[p:p + 10])
+            if kind in (FIELD, LIST):
+                usable = attr(p + 10)
+            elif kind == CONTROL:
+                usable = attr(p + 14)
         elif kind == GADGET:
             oid = struct.unpack('>H', d[p:p + 2])[0]
+            usable = attr(p + 2)
             x, y, w, h = struct.unpack('>4h', d[p + 4:p + 12])
         elif kind == SCROLL:
             x, y, w, h, oid = struct.unpack('>4hH', d[p:p + 10])
+            usable = attr(p + 10)
         elif kind == LABEL:
             oid, x, y = struct.unpack('>H2h', d[p:p + 6])
             font = d[p + 8]
-            objs.append((kind, oid, x, y, None, None, font, cstr(d, p + 14)))
+            objs.append((kind, oid, x, y, None, None, font, cstr(d, p + 14), attr(p + 6)))
             continue
         else:
             continue
-        objs.append((kind, oid, x, y, w, h, None, None))
+        objs.append((kind, oid, x, y, w, h, None, None, usable))
     return (fx, fy, fw, fh), objs
 
 
@@ -211,12 +226,25 @@ def main(argv):
     sys_w = pilrc_widths(texts)
 
     for fid, ((_, _, fw, fh), objs) in sorted(forms.items()):
-        for kind, oid, x, y, w, h, font_id, text in objs:
+        for kind, oid, x, y, w, h, font_id, text, usable in objs:
             if kind == LABEL:
                 w, h = sys_w[(font_id, text)], 11
             what = 'form %d %s %d' % (fid, KINDS[kind], oid)
             if x < 0 or y < 0 or x + w > fw or y + h > fh:
                 problems.append('%s at (%d %d %d %d) is outside the form (%d x %d)' % (what, x, y, w, h, fw, fh))
+        # drawn objects that run into each other (gadgets and tables are drawn into by the code)
+        boxes = []
+        for kind, oid, x, y, w, h, font_id, text, usable in objs:
+            if not usable or kind in (GADGET, TABLE):
+                continue
+            if kind == LABEL:
+                w, h = sys_w[(font_id, text)], 11
+            boxes.append((KINDS[kind], oid, x, y, w, h))
+        for i, a in enumerate(boxes):
+            for b in boxes[i + 1:]:
+                if a[2] < b[2] + b[4] and b[2] < a[2] + a[4] and a[3] < b[3] + b[5] and b[3] < a[3] + a[5]:
+                    problems.append('form %d: %s %d (%d %d %d %d) and %s %d (%d %d %d %d) overlap' % (
+                        (fid,) + a + b))
     for aid, (title, buttons) in sorted(alerts.items()):
         right = ALERT_X + sum(sys_w[(0, b)] + ALERT_PAD for b in buttons) + ALERT_GAP * (len(buttons) - 1)
         if right > ALERT_RIGHT:
