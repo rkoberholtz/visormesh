@@ -22,6 +22,7 @@
 #include "ports.h"
 #include "preview_form.h"
 #include "channel_form.h"
+#include "transport.h"
 #include "bgcheck.h"
 #include "shots.h"
 #include "stats_form.h"
@@ -239,7 +240,9 @@ static void CheckWake(void)
 	if (gLastSecs) {
 		wall = (Int32)(secs - gLastSecs);
 		run = (Int32)((ticks - gLastTicks) / SysTicksPerSecond());
-		if (wall - run > VM_SLEEP_GAP_SECS && (SessionIsConnected() || SessionConnecting() || gWantConnection)) {
+		/* USB drops while the Visor sleeps; the Slot link stays up */
+		if (wall - run > VM_SLEEP_GAP_SECS && TransportGetPort() != VM_PORT_SBLORA &&
+		    (SessionIsConnected() || SessionConnecting() || gWantConnection)) {
 			gWantConnection = true;
 			gRetries = 0;
 			StartReconnect();
@@ -354,6 +357,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		if (SessionDevice()->fwVerCode)
 			BgRadioSeen();      /* the radio's back: check at the normal interval */
 		BgScheduleIfIdle();
+		BgArmWake();
 	}
 	return errNone;
 }

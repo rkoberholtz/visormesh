@@ -8,8 +8,16 @@
  * So one SPI bit is a CS0 read at an address that encodes nCS and MOSI,
  * then a CS1 read that clocks it and returns MISO. The SC16IS740 is mode 0.
  *
- * Plain C with no Palm OS calls, so it also builds on the host, where
- * tests/test_sblora.c supplies SimBusRead() and a simulated module.
+ * Plain C, so it also builds on the host, where tests/test_sblora.c supplies
+ * SimBusRead(), a simulated module and stand-ins for the two Handspring
+ * calls the interrupt handler makes.
+ *
+ * The functions without VM_SECT3 (SbCoreStart to SbCoreEnd in sb_spi.c) are
+ * the interrupt-context core. They use only the SbRing they're given, make
+ * no calls outside the block except system traps, and sit together in the
+ * first segment, so transport_sb.c can copy the block into memory that
+ * outlives the app (SbWakeArm) and run it while the app is closed.
+ * tools/check_sections.py fails the build if the block refers outside itself.
  */
 #ifndef VM_SB_SPI_H
 #define VM_SB_SPI_H
@@ -42,6 +50,22 @@
 
 #define SB_FIFO_SIZE 64
 #define SB_IER_RHR   0x01   /* IER: interrupt on RX data (trigger level or timeout) */
+#define SB_IER_THR   0x02   /* IER: interrupt while the TX FIFO is empty, i.e. at once */
+#define SB_IER_SLEEP 0x10   /* IER: sleep while idle (needs EFR bit 4); RX wakes the chip */
+
+/* The radio's PUSH_MSG_WAITING frame: '>', length 1 (LE), code 0x83. */
+#define SB_WAITING_LEN 4
+
+/* Ticks the Visor stays awake after a wake, for the app to sync (100 a second). */
+#define SB_AWAKE_TICKS 1000
+
+/* The handlers' 32-bit parameter (a pointer); pointer-sized on the host. */
+#ifdef __palmos__
+typedef UInt32 SbParam;
+#else
+#include <stdint.h>
+typedef uintptr_t SbParam;
+#endif
 
 /* Where the chip is on the bus: chip-select addresses and the A17/A8 offsets. */
 typedef struct {
@@ -61,6 +85,15 @@ typedef struct {
 	volatile UInt16  head;
 	volatile UInt16  tail;
 	volatile Boolean overflow;  /* bytes were dropped */
+	/* Waking for a new message (SbIrq) */
+	UInt8            ier;       /* the IER to keep: SB_IER_RHR, plus SB_IER_SLEEP while the app is closed */
+	UInt8            match;     /* bytes of a PUSH_MSG_WAITING frame seen so far */
+	volatile Boolean waiting;   /* one arrived: wake the Visor */
+	Boolean          woke;      /* the Visor was asleep and SbIrq woke it */
+	Boolean          resident;  /* the app is closed: post a card event to start the check */
+	volatile UInt16  wakes;     /* how many times it woke for a message */
+	UInt16           appCard;   /* the app, for SbWakeEvt's alarm */
+	Char             appName[32];
 	UInt8            buf[SB_RING_SIZE];
 } SbRing;
 
@@ -106,6 +139,26 @@ const SbBus *SbCurrentBus(void) VM_SECT3;
  */
 void    SbDrainRx(SbRing *r);
 
+/*
+ * The slot interrupt handler, open app and closed alike: drains the RX FIFO
+ * into r and, when a PUSH_MSG_WAITING frame went by, wakes the Visor. As the
+ * Springboard guide says, it does that by keeping IRQ* asserted (the THR
+ * empty interrupt) and setting *sysAwakeP; once the system is up it's called
+ * again, releases IRQ* and keeps the Visor awake SB_AWAKE_TICKS (screen
+ * off). With r->resident it also posts a card event for SbWakeEvt.
+ */
+void    SbIrq(SbParam cardParam, Boolean *sysAwakeP);
+
+/*
+ * The card event handler while the app is closed: sets the app's alarm for
+ * now, so the closed-app check (bgcheck.c) connects, syncs and alerts.
+ */
+Boolean SbWakeEvt(SbParam cardParam, UInt16 evtNum, UInt16 evtParam);
+
+/* The ends of the block SbWakeArm copies. */
+void    SbCoreStart(void);
+void    SbCoreEnd(void);
+
 /* Low-power sleep (IER bit 4) while the link is closed, or wake. */
 void    SbSleep(Boolean sleep) VM_SECT3;
 
@@ -125,6 +178,11 @@ UInt16 SimBusRead(UInt32 addr);
 #define true  1
 #define false 0
 #endif
+typedef UInt16 Err;
+#define hsCardSlot 1
+/* supplied by the test */
+Err HsCardEventPost(UInt16 cardNo, UInt16 evtNum, UInt16 evtParam);
+Err HsEvtResetAutoOffTimer(Int32 stayAwakeTicks, Boolean userOn);
 #endif
 
 #endif

@@ -9,11 +9,17 @@
  *
  * The handler and the app share the bus, so the app masks the slot interrupt
  * around its own SPI transactions (sends, close).
+ *
+ * The handler is SbIrq (sb_spi.c), which also wakes the Visor when the radio
+ * says a message is waiting. SbWakeArm leaves a copy of it running after the
+ * app closes, in memory of its own, so a message starts the closed-app check
+ * at once instead of at the next alarm.
  */
 #include <PalmOS.h>
 #include "transport.h"
 #include "sb_spi.h"
 #include "hs_card.h"
+#include "app.h"
 
 #define SB_SEND_TICKS 200   /* give up if the TX FIFO doesn't drain for 2 s */
 
@@ -21,12 +27,6 @@ static Boolean gOpen = false;
 static Boolean gIrq = false;     /* the interrupt handler is installed */
 static SbRing  gRing;
 
-/* Interrupt context: no globals (gRing comes in as cardParam), no system calls. */
-static void SbIntHandler(UInt32 cardParam, Boolean *sysAwakeP)
-{
-	(void)sysAwakeP;   /* draining needs only bus reads, so the Visor can stay asleep */
-	SbDrainRx((SbRing *)cardParam);
-}
 
 static Boolean ModuleInstalled(void)
 {
@@ -86,15 +86,17 @@ void SbTransportLoopback(Boolean on)
 static Boolean InstallHandler(void)
 {
 	UInt32 param = (UInt32)&gRing;
-	HsCardIntHandlerPtr handler = SbIntHandler;
+	HsCardIntHandlerPtr handler = SbIrq;
+	HsCardEvtHandlerPtr evt = NULL;
 	UInt8 enable = true;
 
+	MemSet(&gRing, sizeof(gRing) - SB_RING_SIZE, 0);
 	gRing.bus = *SbCurrentBus();
-	gRing.head = gRing.tail = 0;
-	gRing.overflow = false;
+	gRing.ier = SB_IER_RHR;
 	if (HsCardAttrSet(hsCardSlot, hsCardAttrCardParam, &param) != errNone ||
 	    HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler) != errNone)
 		return false;
+	HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt);
 	SbWriteReg(SB_IER, SB_IER_RHR);
 	/* interrupts start disabled; the guide says to enable them after installing */
 	if (HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable) != errNone) {
@@ -119,6 +121,7 @@ Err SbTransportOpen(void)
 {
 	if (gOpen)
 		return errNone;
+	SbWakeArm(false);   /* the app's own handler takes over */
 	if (!ModulePresent() || !SbProbe())
 		return vmErrNoModule;
 	SbUartInit();
@@ -221,4 +224,68 @@ UInt16 SbTransportRecv(UInt8 *buf, UInt16 max, Int32 timeoutTicks, Err *errP)
 		n = SbReadReg(SB_RXLVL);
 	}
 	return got;
+}
+
+#define VM_FTR_WAKE 3   /* feature: the SbWakeArm block's address while it's in */
+
+/*
+ * The block is an SbRing (resident) followed by a copy of sb_spi.c's core,
+ * in a dynamic-heap chunk owned by the system so it stays when the app
+ * quits. The handlers point into the copy, not the app's code: a HotSync
+ * can replace the app while the block runs.
+ */
+void SbWakeArm(Boolean on)
+{
+	/* through pointer variables: GCC 2.95 can't take PC-relative function addresses into arithmetic */
+	void (*start)(void) = SbCoreStart, (*end)(void) = SbCoreEnd;
+	HsCardIntHandlerPtr irq = SbIrq;
+	HsCardEvtHandlerPtr evtFn = SbWakeEvt;
+	UInt32 addr, param, coreLen;
+	SbRing *r;
+	UInt8 *code;
+	UInt8 enable = false;
+	HsCardIntHandlerPtr handler = NULL;
+	HsCardEvtHandlerPtr evt = NULL;
+	LocalID self;
+	UInt16 card;
+
+	if (FtrGet(VM_CREATOR, VM_FTR_WAKE, &addr) == errNone) {
+		HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable);
+		HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler);
+		HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt);
+		MemPtrFree((MemPtr)addr);
+		FtrUnregister(VM_CREATOR, VM_FTR_WAKE);
+		if (!on && ModuleInstalled())
+			SbSleep(true);
+	}
+	if (!on || gOpen || !ModulePresent() || !SbProbe())
+		return;
+	coreLen = (UInt32)end - (UInt32)start;
+	r = (SbRing *)MemPtrNew(sizeof(SbRing) + coreLen);
+	if (!r)
+		return;
+	MemPtrSetOwner(r, 0);
+	MemSet(r, sizeof(SbRing) - SB_RING_SIZE, 0);
+	r->bus = *SbCurrentBus();
+	r->ier = SB_IER_RHR | SB_IER_SLEEP;
+	r->resident = true;
+	SysCurAppDatabase(&card, &self);
+	r->appCard = card;
+	DmDatabaseInfo(card, self, r->appName, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	code = (UInt8 *)(r + 1);
+	MemMove(code, (void *)start, (Int32)coreLen);
+	FtrSet(VM_CREATOR, VM_FTR_WAKE, (UInt32)r);
+
+	SbUartInit();
+	SbSleep(false);     /* sets EFR bit 4, so IER can take the sleep bit */
+	SbWriteReg(SB_IER, r->ier);
+	param = (UInt32)r;
+	handler = (HsCardIntHandlerPtr)(code + ((UInt32)irq - (UInt32)start));
+	evt = (HsCardEvtHandlerPtr)(code + ((UInt32)evtFn - (UInt32)start));
+	enable = true;
+	if (HsCardAttrSet(hsCardSlot, hsCardAttrCardParam, &param) != errNone ||
+	    HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler) != errNone ||
+	    HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt) != errNone ||
+	    HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable) != errNone)
+		SbWakeArm(false);
 }

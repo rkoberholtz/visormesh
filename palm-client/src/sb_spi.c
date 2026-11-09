@@ -1,18 +1,28 @@
 #include "sb_spi.h"
+#ifdef __palmos__
+#include "hs_card.h"
+#endif
 
 /*
- * The bus core (Xfer to BusReadFifo) and SbDrainRx stay in the first segment
- * and use only the SbBus they're given: the interrupt handler runs them, and
- * it can't reach globals or call into vmcode3 (both need A5).
+ * The core, SbCoreStart to SbCoreEnd, is in the first segment and uses only
+ * the SbBus or SbRing it's given: the interrupt handler runs it, which can't
+ * reach globals or call into vmcode3 (both need A5), and SbWakeArm copies it
+ * as one block. Keep every function without VM_SECT3 between the two.
  */
 static UInt8 Xfer(const SbBus *b, UInt8 out);
 static void Select(const SbBus *b);
 static void Deselect(const SbBus *b);
 static UInt8 BusReadReg(const SbBus *b, UInt8 reg);
+static void BusWriteReg(const SbBus *b, UInt8 reg, UInt8 val);
 static void BusReadFifo(const SbBus *b, UInt8 *buf, UInt16 n);
+static void Scan(SbRing *r, const UInt8 *p, UInt16 n);
 static Boolean ScratchOk(UInt8 got[2]) VM_SECT3;
 
 static SbBus gBus = { SB_CS0_BASE, SB_CS0_BASE + SB_CS_SIZE, 0, 0 };
+
+void SbCoreStart(void)
+{
+}
 
 /* nCS = NOT A17: an access with A17 high selects the chip. */
 static void Select(const SbBus *b)
@@ -56,6 +66,14 @@ static UInt8 BusReadReg(const SbBus *b, UInt8 reg)
 	return val;
 }
 
+static void BusWriteReg(const SbBus *b, UInt8 reg, UInt8 val)
+{
+	Select(b);
+	Xfer(b, (UInt8)(reg << 3));
+	Xfer(b, val);
+	Deselect(b);
+}
+
 static void BusReadFifo(const SbBus *b, UInt8 *buf, UInt16 n)
 {
 	Select(b);
@@ -72,10 +90,7 @@ UInt8 SbReadReg(UInt8 reg)
 
 void SbWriteReg(UInt8 reg, UInt8 val)
 {
-	Select(&gBus);
-	Xfer(&gBus, (UInt8)(reg << 3));
-	Xfer(&gBus, val);
-	Deselect(&gBus);
+	BusWriteReg(&gBus, reg, val);
 }
 
 void SbWriteFifo(const UInt8 *buf, UInt16 n)
@@ -97,6 +112,25 @@ const SbBus *SbCurrentBus(void)
 	return &gBus;
 }
 
+/* Watches for '>' 01 00 83 across reads. A frame's payload could hold the same bytes: that only costs a check. */
+static void Scan(SbRing *r, const UInt8 *p, UInt16 n)
+{
+	UInt8 m = r->match, c;
+
+	while (n--) {
+		c = *p++;
+		if ((m == 0 && c == 0x3E) || (m == 1 && c == 0x01) || (m == 2 && c == 0x00)) {
+			m++;
+		} else if (m == 3 && c == 0x83) {
+			r->waiting = true;
+			m = 0;
+		} else {
+			m = c == 0x3E;
+		}
+	}
+	r->match = m;
+}
+
 /*
  * Empties the RX FIFO into the ring, which also releases the chip's IRQ
  * (it's level-triggered). Bytes that don't fit are read and dropped.
@@ -113,6 +147,7 @@ void SbDrainRx(SbRing *r)
 		room = SB_RING_SIZE - (UInt16)(head - r->tail);
 		if (room == 0) {
 			BusReadFifo(&r->bus, drop, n);
+			Scan(r, drop, n);
 			r->overflow = true;
 			continue;
 		}
@@ -122,8 +157,49 @@ void SbDrainRx(SbRing *r)
 		if (n > toEnd)
 			n = toEnd;
 		BusReadFifo(&r->bus, r->buf + (head & (SB_RING_SIZE - 1)), n);
+		Scan(r, r->buf + (head & (SB_RING_SIZE - 1)), n);
 		r->head = head + n;
 	}
+}
+
+void SbIrq(SbParam cardParam, Boolean *sysAwakeP)
+{
+	SbRing *r = (SbRing *)cardParam;
+
+	SbDrainRx(r);
+	if (!r->waiting)
+		return;
+	if (!*sysAwakeP) {
+		/* no system calls yet: hold IRQ* with the chip kept awake, and have the rest of the system woken */
+		BusWriteReg(&r->bus, SB_IER, (UInt8)((r->ier & ~SB_IER_SLEEP) | SB_IER_THR));
+		r->woke = true;
+		*sysAwakeP = true;
+		return;
+	}
+	BusWriteReg(&r->bus, SB_IER, r->ier);
+	r->waiting = false;
+	r->wakes++;
+	if (r->resident)
+		HsCardEventPost(hsCardSlot, 0, 0);
+	if (r->woke)
+		HsEvtResetAutoOffTimer(SB_AWAKE_TICKS, false);
+	r->woke = false;
+}
+
+Boolean SbWakeEvt(SbParam cardParam, UInt16 evtNum, UInt16 evtParam)
+{
+#ifdef __palmos__
+	SbRing *r = (SbRing *)cardParam;
+	LocalID id = DmFindDatabase(r->appCard, r->appName);
+
+	if (id)
+		AlmSetAlarm(r->appCard, id, 0, TimGetSeconds(), true);
+#else
+	(void)cardParam;
+#endif
+	(void)evtNum;
+	(void)evtParam;
+	return true;
 }
 
 static Boolean ScratchOk(UInt8 got[2])
@@ -212,4 +288,9 @@ void SbSleep(Boolean sleep)
 	SbWriteReg(SB_EFR, 0x10);
 	SbWriteReg(SB_LCR, 0x03);
 	SbWriteReg(SB_IER, sleep ? 0x10 : 0x00);
+}
+
+/* Last in the file: everything in the first segment comes before it. */
+void SbCoreEnd(void)
+{
 }

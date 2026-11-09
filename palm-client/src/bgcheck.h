@@ -40,6 +40,12 @@ void   BgDisplayAlarm(void);
 /* "Last 18:05 ok, next 18:10" for Preferences: out holds 40. */
 void   BgStatusText(Char *out) VM_SECT4;
 
+/*
+ * With checks on and the Slot link, leaves the module waking the Visor for
+ * waiting messages after the app closes (SbWakeArm); otherwise removes that.
+ */
+void   BgArmWake(void) VM_SECT4;
+
 /* The VM_LAUNCH_BGCHECK work, with globals: returns the enabled sound kinds (1 << VM_SND_*) found. */
 UInt16 BgCheckRun(void) VM_SECT4;
 

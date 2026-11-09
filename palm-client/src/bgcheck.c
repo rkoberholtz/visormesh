@@ -9,6 +9,7 @@
 #include "mutes.h"
 #include "convos.h"
 #include "resources.h"
+#include "transport.h"
 #include "bgcheck.h"
 
 #define VM_BG_PREFS_ID      6
@@ -309,6 +310,11 @@ static void AddPending(UInt32 since)
 	SavePending(&pend);
 }
 
+void BgArmWake(void)
+{
+	SbWakeArm(BgInterval() != 0 && TransportGetPort() == VM_PORT_SBLORA);
+}
+
 UInt16 BgCheckRun(void)
 {
 	UInt16 kinds, n;
@@ -331,6 +337,7 @@ UInt16 BgCheckRun(void)
 	if (kinds)
 		AddPending(start);
 	WriteStatus(err == errNone ? VM_BG_DONE : VM_BG_NO_RADIO, err, kinds);
+	BgArmWake();        /* the connect took the slot's handler over */
 	ContactsClose();
 	ChannelsClose();
 	MessagesClose();

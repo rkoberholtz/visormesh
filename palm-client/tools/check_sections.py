@@ -48,10 +48,45 @@ def symbols_by_section(objs):
     return where
 
 
+# Objects whose first-segment code is copied as one block (SbWakeArm): every
+# .text symbol must lie between the markers, and nothing may be relocated.
+BLOCKS = {'sb_spi.o': ('SbCoreStart', 'SbCoreEnd')}
+
+
+def check_block(obj, first, last):
+    """Problems with a copied block: code outside the markers, or references out of it."""
+    bad = []
+    out = subprocess.run([OBJDUMP, '-t', obj], capture_output=True, text=True).stdout
+    names = section_names(obj)
+    syms = {}
+    for line in out.splitlines():
+        m = re.search(r'\(sec\s+(-?\d+)\).*\s(0x[0-9a-f]+)\s(\S+)$', line)
+        if m and 1 <= int(m.group(1)) <= len(names) and names[int(m.group(1)) - 1] == '.text':
+            syms[m.group(3)] = int(m.group(2), 16)
+    lo, hi = syms.get(first), syms.get(last)
+    if lo is None or hi is None:
+        return [f'{obj}: {first}/{last} not found in .text']
+    for name, addr in syms.items():
+        if name.startswith('.') or name in ('gcc2_compiled.', '__gnu_compiled_c'):
+            continue
+        if not lo <= addr <= hi:
+            bad.append(f'{obj}: {name} is outside {first}..{last}: SbWakeArm would not copy it')
+    relocs = subprocess.run([OBJDUMP, '-r', '-j', '.text', obj], capture_output=True, text=True).stdout
+    for line in relocs.splitlines():
+        parts = line.split()
+        if len(parts) == 3 and re.match(r'^[0-9a-f]+$', parts[0]):
+            bad.append(f'{obj}: .text relocation {parts[1]} at {parts[0]} to {parts[2]}: the copied block must refer only to itself')
+    return bad
+
+
 def main():
     objs = sys.argv[1:]
     where = symbols_by_section(objs)
     bad = []
+    for obj in objs:
+        for base, (first, last) in BLOCKS.items():
+            if obj.endswith('/' + base):
+                bad += check_block(obj, first, last)
     for obj in objs:
         for section in SECTIONS:
             out = subprocess.run([OBJDUMP, '-r', '-j', section, obj], capture_output=True, text=True)
@@ -66,7 +101,7 @@ def main():
                 if sect != section:
                     bad.append(f'{obj}: {section}: PC-relative {parts[1]} at {parts[0]} to {parts[2]} (in {sect})')
     if bad:
-        print('An extra code segment refers PC-relative outside itself (see src/sections.h):')
+        print('Code segment rules broken (see src/sections.h and src/sb_spi.h):')
         print('\n'.join('  ' + b for b in bad))
         sys.exit(1)
     print(f'sections OK: {len(objs)} objects checked')

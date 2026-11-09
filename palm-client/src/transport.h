@@ -51,6 +51,15 @@ void   SbTransportLoopback(Boolean on);
  * SB_SLOT_READY, base and size are the module's chip selects, and the SPI
  * driver uses them.
  */
+/*
+ * Waking for messages while the app is closed: on, leaves the slot interrupt
+ * handler running on its own (with the module asleep between frames) so a
+ * waiting message sets the app's alarm at once; off removes it. The app
+ * calls it as it closes, and the closed-app check as it ends. Opening the
+ * link removes it.
+ */
+void   SbWakeArm(Boolean on);
+
 #define SB_SLOT_NONE   0   /* not a Handspring device */
 #define SB_SLOT_EMPTY  1
 #define SB_SLOT_NO_CS  2   /* a module, but the OS gave no chip-select window */

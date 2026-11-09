@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "../src/sb_spi.h"
 
 static int failures;
@@ -279,6 +280,109 @@ static void test_drain(void)
 	CHECK(ncs);
 }
 
+/* Stand-ins for the Handspring calls SbIrq makes. */
+static int posts, resets;
+
+Err HsCardEventPost(UInt16 cardNo, UInt16 evtNum, UInt16 evtParam)
+{
+	(void)cardNo; (void)evtNum; (void)evtParam;
+	posts++;
+	return 0;
+}
+
+Err HsEvtResetAutoOffTimer(Int32 stayAwakeTicks, Boolean userOn)
+{
+	(void)stayAwakeTicks; (void)userOn;
+	resets++;
+	return 0;
+}
+
+static void push(const UInt8 *p, int n)
+{
+	memcpy(rxq + rxn, p, (size_t)n);
+	rxn = (UInt8)(rxn + n);
+}
+
+static void test_waiting(void)
+{
+	static SbRing r;
+	static const UInt8 advert[] = { 0x3E, 0x05, 0x00, 0x80, 0x3E, 0x01, 0x00, 0x82 };
+	static const UInt8 waiting[] = { 0x3E, 0x01, 0x00, 0x83 };
+
+	SimInsert(1);
+	CHECK(SbProbe());
+	SbUartInit();
+	memset(&r, 0, sizeof(r));
+	r.bus = *SbCurrentBus();
+
+	/* other frames, and near misses, don't count */
+	push(advert, sizeof(advert));
+	SbDrainRx(&r);
+	CHECK(!r.waiting);
+
+	/* split across two reads */
+	push(waiting, 2);
+	SbDrainRx(&r);
+	CHECK(!r.waiting);
+	push(waiting + 2, 2);
+	SbDrainRx(&r);
+	CHECK(r.waiting);
+
+	/* after a stray '>' */
+	r.waiting = false;
+	inject(1, 0x3E);
+	push(waiting, sizeof(waiting));
+	SbDrainRx(&r);
+	CHECK(r.waiting);
+}
+
+static void test_wake(void)
+{
+	static SbRing r;
+	static const UInt8 waiting[] = { 0x3E, 0x01, 0x00, 0x83 };
+	Boolean awake;
+
+	SimInsert(1);
+	CHECK(SbProbe());
+	SbUartInit();
+	SbSleep(false);    /* EFR bit 4, so IER keeps the sleep bit */
+	memset(&r, 0, sizeof(r));
+	r.bus = *SbCurrentBus();
+	r.ier = SB_IER_RHR | SB_IER_SLEEP;
+	r.resident = 1;
+	SbWriteReg(SB_IER, r.ier);
+	posts = resets = 0;
+
+	/* asleep, nothing for us: drained, and the Visor stays asleep */
+	inject(10, 0x20);
+	awake = 0;
+	SbIrq((SbParam)&r, &awake);
+	CHECK(!awake && rxn == 0 && posts == 0);
+	CHECK(regs[SB_IER] == (SB_IER_RHR | SB_IER_SLEEP));
+
+	/* asleep, a message waiting: IRQ* held (THR empty, chip awake), the rest of the system asked for */
+	push(waiting, sizeof(waiting));
+	awake = 0;
+	SbIrq((SbParam)&r, &awake);
+	CHECK(awake);
+	CHECK(regs[SB_IER] == (SB_IER_RHR | SB_IER_THR));
+	CHECK(posts == 0 && resets == 0);
+
+	/* called again once awake: IRQ* released, the check started, kept awake */
+	awake = 1;
+	SbIrq((SbParam)&r, &awake);
+	CHECK(regs[SB_IER] == (SB_IER_RHR | SB_IER_SLEEP));
+	CHECK(posts == 1 && resets == 1 && r.wakes == 1 && !r.waiting && !r.woke);
+
+	/* the app open and the Visor on: nothing to wake or post */
+	r.resident = 0;
+	r.ier = SB_IER_RHR;
+	push(waiting, sizeof(waiting));
+	awake = 1;
+	SbIrq((SbParam)&r, &awake);
+	CHECK(posts == 1 && resets == 1 && r.wakes == 2);
+}
+
 static void test_mapping(void)
 {
 	UInt8 got[2];
@@ -325,6 +429,8 @@ int main(void)
 	test_fifos();
 	test_sleep();
 	test_drain();
+	test_waiting();
+	test_wake();
 	test_mapping();
 	test_loopback();
 	if (failures) {

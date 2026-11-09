@@ -25,8 +25,15 @@
 /* Called on IRQ* (level, active low); *sysAwakeP false = only memory accesses allowed. */
 typedef void (*HsCardIntHandlerPtr)(UInt32 cardParam, Boolean *sysAwakeP);
 
+#define hsCardAttrEvtHandler   11       /* HsCardEvtHandlerPtr */
+
+/* Called from the event loop after HsCardEventPost; any system call is allowed. */
+typedef Boolean (*HsCardEvtHandlerPtr)(UInt32 cardParam, UInt16 evtNum, UInt16 evtParam);
+
 #define hsSelCardAttrGet       0x6
 #define hsSelCardAttrSet       0x7
+#define hsSelCardEventPost     0x8
+#define hsSelEvtResetAutoOffTimer 0x14
 
 /* Two levels so table/vector/selector are macro-expanded before _Str. */
 #define VM_HS_CALL(table, vector, selector)                                 \
@@ -39,5 +46,11 @@ Err HsCardAttrGet(UInt16 cardNo, UInt16 attr, void *valueP)
 	VM_HS_SEL_TRAP(sysTrapOEMDispatch, hsSelCardAttrGet);
 Err HsCardAttrSet(UInt16 cardNo, UInt16 attr, void *valueP)
 	VM_HS_SEL_TRAP(sysTrapOEMDispatch, hsSelCardAttrSet);
+/* From an interrupt handler only with *sysAwakeP true. */
+Err HsCardEventPost(UInt16 cardNo, UInt16 evtNum, UInt16 evtParam)
+	VM_HS_SEL_TRAP(sysTrapOEMDispatch, hsSelCardEventPost);
+/* How long to stay awake after an interrupt (-1: the auto-off time), and whether to turn the screen on. */
+Err HsEvtResetAutoOffTimer(Int32 stayAwakeTicks, Boolean userOn)
+	VM_HS_SEL_TRAP(sysTrapOEMDispatch, hsSelEvtResetAutoOffTimer);
 
 #endif
