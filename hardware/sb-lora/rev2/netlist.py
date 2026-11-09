@@ -102,7 +102,8 @@ for p, n in SB.items():
 def c(ref, pad, net):
     CONN[(ref, str(pad))] = net
 
-# U1 S29AL016J, 48-pin TSOP standard pinout (JEDEC 29LV160 layout). VERIFY against the Infineon datasheet.
+# U1 S29AL016J, 48-pin standard TSOP (datasheet figure 3.1). The -020 suffix is the bottom-boot part:
+# IDs 01h/2249h, the same as the Am29LV160BB in Handspring's flash driver table.
 FLASH_A = {25: 0, 24: 1, 23: 2, 22: 3, 21: 4, 20: 5, 19: 6, 18: 7, 8: 8, 7: 9, 6: 10, 5: 11, 4: 12,
            3: 13, 2: 14, 1: 15, 48: 16, 17: 17, 16: 18, 9: 19}
 for pad, bit in FLASH_A.items():
@@ -113,7 +114,7 @@ for pad, bit in FLASH_DQ.items():
     c("U1", pad, "D%d" % bit)
 for pad, net in {11: "WE_FL_N", 12: "RESET_N", 26: "CS0_N", 27: "GND", 28: "OE_N",
                  37: "VSB", 46: "GND", 47: "VSB"}.items():
-    c("U1", pad, net)            # 47 BYTE# high = word mode; 15 RY/BY# open (status is polled); 10, 13, 14 NC
+    c("U1", pad, net)            # 47 BYTE# high = word mode; 15 RY/BY# open (status is polled); 14 WP# open (internal pull-up); 10, 13 NC
 c("JP2", 1, "WE_N"); c("JP2", 2, "WE_FL_N")
 c("R4", 1, "VSB"); c("R4", 2, "WE_FL_N")
 

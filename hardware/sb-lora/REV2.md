@@ -34,7 +34,7 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
 
 A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard Development Guide requires for the module to be recognised (§2.1). With a Palm-MakeROM header and the app on it, the Visor mounts the module on insertion and switches to the app (§3.3; on Palm OS 3.5 and later the Welcome app is chosen by a ROM token, so the database can stay "VisorMesh").
 
-- Candidates: Infineon S29AL016J or SST39VF1601C (2 MB, x16, 70 ns, TSOP-48, 1.2 mm), whichever the Flash Manager drivers handle. Room for the app and the Map basemap.
+- Part: Infineon S29AL016J70TFI020 (2 MB, x16, 70 ns, TSOP-48, 1.2 mm, bottom boot). Its IDs (01h, 2249h) and sector layout (16-8-8-32 KB, then 64 KB) are the same as the Am29LV160BB's, so Handspring's Flash Manager drives it unchanged. The pin table in `rev2/netlist.py` is checked against the datasheet. Room for the app and the Map basemap.
 - WE* is wired so the app can rewrite the flash itself: HotSync a new .prc to RAM, then update the module from the app.
 - A write-protect jumper: JP2 in the WE# line, bridged by default, cut to protect.
 - Software: only the app's own code and resources are read-only when it runs from the module. Checked: all of its data (channels, contacts, messages, beam inbox, screenshots, map) is in RAM databases on card 0, and it never writes to its own database, so nothing changes. To keep the Map basemap in flash too, `map_form.c` must also look on card 1. The alarms (`bgcheck.c`, `sb_spi.c`) point at the app's database, and they go away with the module, which is fine because the radio does too.
@@ -79,7 +79,6 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 ## Netlist
 
 `rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
-- Check the flash's TSOP-48 pin table against the Infineon S29AL016J datasheet (it's written from the standard 29LV160 pinout, which Handspring's flash driver supports).
 - Look up LCSC numbers for the flash, 74LVC2G32, 74LVC2G04 and SN74LVC2T45.
 - Make footprints for the XIAO (castellated edge plus plated holes under its bottom pads, from Seeed's footprint) and the Wio (14 plated holes).
 - J1 stays rev 1's straddle footprint until the connector order is settled.
