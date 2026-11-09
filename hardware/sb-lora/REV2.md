@@ -55,10 +55,10 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 
 - Part: NXP SC16C650BIBS (32-byte FIFOs, HVQFN32, LCSC C729132). The SC16C750BIBS (64-byte) has the same HVQFN32 pinout and fits the footprint; the SC16C550B doesn't. At 115200 baud a 32-byte FIFO fills in 2.8 ms.
 - Wiring:
-  - Strobes: the slot may assert OE*/WE* at the same moment as CS1* (Dev Guide table 6-2), but the UART wants IOR/IOW 10 ns after its CS. So the UART's CS is tied active and a 74LVC2G32 makes IOR = OE* OR CS1* and IOW = WE* OR CS1*. Nothing else on the bus is affected: the UART only drives the data bus while IOR is low.
+  - Strobes: the slot may assert OE*/WE* at the same moment as CS1* (Dev Guide table 6-2), but the UART wants IOR/IOW 10 ns after its CS. So the UART's CS is tied active and a SN74LVC2G32 makes IOR = OE* OR CS1* and IOW = WE* OR CS1*. Nothing else on the bus is affected: the UART only drives the data bus while IOR is low.
   - Register select A0-A2 of the UART from A1-A3 of the slot, so the registers sit at word addresses.
   - UART D0-D7 on slot D0-D7. The driver uses 16-bit reads and writes and keeps the low byte (a 68k byte access at an even address uses D8-D15).
-  - The UART's INT and RESET are active high and the slot's IRQ* and RESET* are active low, so a 74LVC2G04 inverts both.
+  - The UART's INT and RESET are active high and the slot's IRQ* and RESET* are active low, so an SN74LVC2G04 inverts both.
 - Clock: keep rev 1's 14.7456 MHz crystal (divisor 8 for 115200).
 - Wait states: csSlot0 and csSlot1 share one setting, so it's set for the slower of the flash and the UART.
 - Powered from the slot (VSB), with the level translators to the XIAO's always-on side as on rev 1.
@@ -79,7 +79,6 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 ## Netlist
 
 `rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
-- Look up LCSC numbers for the flash, 74LVC2G32, 74LVC2G04 and SN74LVC2T45.
 - Make footprints for the XIAO (castellated edge plus plated holes under its bottom pads, from Seeed's footprint) and the Wio (14 plated holes).
 - J1 stays rev 1's straddle footprint until the connector order is settled.
 

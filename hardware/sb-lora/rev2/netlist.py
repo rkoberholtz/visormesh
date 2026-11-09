@@ -26,13 +26,13 @@ Pin tables that still need checking against a datasheet are marked VERIFY.
 PARTS = {
     "J1": ("Springboard 68p straddle", None, "SPRINGBOARD_68", "",
            "Hirose IC1HA-68RD-1.27SH(51); pending the order (REV2.md). Hand-solder", True),
-    "U1": ("S29AL016J70TFI020", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "",
+    "U1": ("S29AL016J70TFI020", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "C914935",
            "2 MB NOR flash, x16, 70 ns, csSlot0", False),
     "U2": ("SC16C650BIBS", "Package_DFN_QFN", "HVQFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm", "C729132",
            "UART, 32-byte FIFOs, csSlot1 (SC16C750BIBS fits the same footprint)", False),
-    "U3": ("74LVC2G32DC", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "", "OR: UART read/write strobes", False),
-    "U4": ("74LVC2G04GW", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "", "Inverters: INT -> IRQ*, RESET* -> RESET", False),
-    "U5": ("SN74LVC2T45DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "",
+    "U3": ("SN74LVC2G32DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "C91874", "OR: UART read/write strobes", False),
+    "U4": ("SN74LVC2G04DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C105251", "Inverters: INT -> IRQ*, RESET* -> RESET", False),
+    "U5": ("SN74LVC2T45DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "C15741",
            "Ioff xlate: UART TX -> XIAO D7, Visor-present -> XIAO D0", False),
     "U6": ("SN74LVC1T45DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C9382", "Ioff xlate: XIAO D6 -> UART RX", False),
     "Y1": ("14.7456MHz 20pF", "Crystal", "Crystal_SMD_3225-4Pin_3.2x2.5mm", "C2901666", "SX3B14.7456F2010F30", False),
@@ -128,11 +128,11 @@ for pad, net in {1: "D5", 2: "D6", 3: "D7", 4: "UART_BAUD", 5: "UART_RX", 6: "UA
 # Y1 3225 4-pad: 1/3 crystal, 2/4 case
 c("Y1", 1, "XTAL1"); c("Y1", 3, "XTAL2"); c("Y1", 2, "GND"); c("Y1", 4, "GND")
 c("C6", 1, "XTAL1"); c("C6", 2, "GND"); c("C7", 1, "XTAL2"); c("C7", 2, "GND")
-# U3 74LVC2G32 (8-pin): 1 1A, 2 1B, 3 2Y, 4 GND, 5 2A, 6 2B, 7 1Y, 8 VCC
+# U3 SN74LVC2G32 (VSSOP-8): 1 1A, 2 1B, 3 2Y, 4 GND, 5 2A, 6 2B, 7 1Y, 8 VCC
 for pad, net in {1: "OE_N", 2: "CS1_N", 7: "UART_IOR_N", 5: "WE_N", 6: "CS1_N", 3: "UART_IOW_N",
                  4: "GND", 8: "VSB"}.items():
     c("U3", pad, net)
-# U4 74LVC2G04 (SC-70-6): 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y
+# U4 SN74LVC2G04 (SC-70-6): 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y
 for pad, net in {1: "UART_INT", 6: "IRQ_N", 3: "RESET_N", 4: "UART_RESET", 2: "GND", 5: "VSB"}.items():
     c("U4", pad, net)
 # U5 SN74LVC2T45 (VSSOP-8): 1 VCCA, 2 A1, 3 A2, 4 GND, 5 DIR, 6 B2, 7 B1, 8 VCCB. DIR high = A->B
