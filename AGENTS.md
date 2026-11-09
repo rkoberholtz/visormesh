@@ -54,7 +54,7 @@ The app is C for GCC 2.95 (prc-tools-remix) and PilRC, against the Palm OS 3.5 S
 
 - During any launch, `SysCurAppDatabase` returns the launched app, not the one in front. To tell whether the app is open, use a feature (`BgSetAppOpen`).
 - The channel and contact databases open lazily. `ChannelsOpen` is only called by `ChannelsRefresh` and `ConvosBuild`. Paths that skip those must open the databases themselves, or every lookup quietly fails.
-- With no module in the slot, accessing the Springboard slot's address space is a bus error that resets the Visor. Check `HsCardAttrGet(hsCardAttrHwInstalled)` first. Slot is deliberately not restored at launch.
+- With no module in the slot, accessing the Springboard slot's address space is a bus error that resets the Visor. Check `HsCardAttrGet(hsCardAttrHwInstalled)` first (`SbSlotState`). A saved Slot link is only restored at launch while the OS reports a module.
 - `StrPrintF` hex output printed zeros. Use `TxtHex` (ui/text.c).
 - The Visor's clock is local time with no time zone. Everything stored and sent is UTC via the app's UTC-offset preference (`SessionNow`, `SessionLocalPalm`).
 - 68k is big-endian; the companion protocol is little-endian. Assemble LE fields byte by byte (see `protocol.c`).

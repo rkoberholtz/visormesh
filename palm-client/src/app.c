@@ -28,6 +28,7 @@ void AppLoadPrefs(void)
 	AppPrefs prefs;
 	UInt16 size = sizeof(prefs);
 	Int32 west;
+	UInt32 base, csSize;
 
 	SoundsLoad();
 	MutesLoad();
@@ -36,11 +37,12 @@ void AppLoadPrefs(void)
 	if (PrefGetAppPreferences(VM_CREATOR, VM_PREFS_ID, &prefs, &size, true) != noPreferenceFound &&
 	    size == sizeof(prefs) && prefs.version == VM_PREFS_VERSION) {
 		/*
-		 * Slot isn't restored: with no module in the slot, the first bus read
-		 * at csSlot0 is a bus error and resets the Visor, and the Home form
-		 * auto-connects at launch, so a saved Slot made every launch reset.
+		 * Slot only while the OS reports a module: with the slot empty, the
+		 * first bus read at csSlot0 is a bus error that resets the Visor, and
+		 * the Home form auto-connects at launch. SbSlotState doesn't touch the
+		 * bus. The closed-app check needs Slot restored to use the module.
 		 */
-		if (prefs.port != VM_PORT_SBLORA)
+		if (prefs.port != VM_PORT_SBLORA || SbSlotState(&base, &csSize) == SB_SLOT_READY)
 			TransportSetPort(prefs.port);
 		SessionSetUtcOffset(prefs.utcOffset);
 		return;
