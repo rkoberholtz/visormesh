@@ -189,7 +189,7 @@ static void Status(const Char *text)
 	WinEraseRectangle(&r, 0);
 	WinDrawLine(r.topLeft.x, r.topLeft.y, r.topLeft.x + r.extent.x - 1, r.topLeft.y);
 	old = FntSetFont(vmSmallFont);
-	WinDrawChars(text, StrLen(text), r.topLeft.x + 2, r.topLeft.y + 1);
+	DrawCut(text, r.topLeft.x + 2, r.topLeft.y + 1, r.extent.x - 4);
 	FntSetFont(old);
 }
 
@@ -207,7 +207,7 @@ static Boolean Login(FormType *form)
 	pw[0] = 0;
 	if (FrmCustomResponseAlert(PasswordAlert, gContact.name, "", "", pw, sizeof(pw), NULL) != 0)
 		return false;
-	Status("Logging in (waiting for an answer over the mesh)...");
+	Status("Logging in over the mesh...");
 	err = SessionLogin(gContact.pubKey, pw, &admin);
 	MemSet(pw, sizeof(pw), 0);
 	RowListDraw(&gList);

@@ -4,6 +4,7 @@
  */
 #include <PalmOS.h>
 #include "resources.h"
+#include "ui/draw.h"
 #include "ports.h"
 
 #define LINE_H     11
@@ -12,7 +13,7 @@
 
 static void DrawLine(UInt16 line, const Char *text)
 {
-	WinDrawChars(text, StrLen(text), 2, FIRST_Y + line * LINE_H);
+	DrawCut(text, 2, FIRST_Y + line * LINE_H, 156);
 }
 
 static void DrawPorts(void)

@@ -11,7 +11,10 @@ resources (run by `make`, like check_sections.py):
            Cancel; "2 wk" "1 mo" "3 mo" "Cancel" fit)
   C text   literal strings drawn with DrawCut(s, x, y, maxW) are no wider
            than maxW in the large UI font, so a sentence is never cut short
-           (use DrawWrap), and WinDrawChars("...", n, x, y) ends by x 160
+           (use DrawWrap), and WinDrawChars("...", n, x, y) ends by x 160.
+           The same goes for literals passed to a screen's own one-line
+           helpers (WRAPPERS); a new helper that draws its text parameter
+           fails the check until it's listed there with its width
 
 Text measured at run time (StrPrintF results, names) can't be checked here.
 System-font widths come from PilRC itself: an AUTO button is its text + 12.
@@ -27,6 +30,15 @@ import sys
 import tempfile
 
 SCREEN = 160
+
+# A screen's own helpers that draw their text on one line: (file, function) -> room in px.
+# None: never given a literal, and safe for other reasons (noted).
+WRAPPERS = {
+    ('contact_form.c', 'Status'): 149,           # the 153-wide gadget's bottom row, x + 2
+    ('convo_form.c', 'TextWithMentions'): None,  # draws lines text.c has already wrapped
+    ('ports.c', 'DrawLine'): None,               # formatted lines, cut at the edge
+    ('preview_form.c', 'Row'): None,             # sample rows, cut to their columns
+}
 ALERT_X, ALERT_GAP, ALERT_PAD, ALERT_RIGHT = 4, 4, 12, 156
 
 # FormObjectKind
@@ -130,8 +142,40 @@ def c_literal(s):
     return bytes(out)
 
 
+def drawing_helpers(path):
+    """Functions in a file that draw a Char * parameter with WinDrawChars or DrawCut."""
+    text = open(path, encoding='latin-1').read()
+    found = []
+    for m in re.finditer(r'(?m)^(?:static\s+)?\w+\s+(\w+)\(([^)]*)\)\s*\n\{(.*?)\n\}', text, re.S):
+        name, params, body = m.groups()
+        for p in re.findall(r'Char\s*\*\s*(\w+)', params):
+            if re.search(r'\b(WinDrawChars|DrawCut)\(\s*%s\b' % p, body):
+                found.append(name)
+                break
+    return found
+
+
 def check_c(paths, widths):
     problems = []
+    for path in paths:
+        if path.endswith('ui/draw.c'):
+            continue
+        base = os.path.basename(path)
+        text = open(path, encoding='latin-1').read()
+        for name in drawing_helpers(path):
+            key = (base, name)
+            if key not in WRAPPERS:
+                problems.append('%s: %s() draws its text on one line: add it to WRAPPERS in '
+                                'tools/check_ui.py with its width' % (path, name))
+                continue
+            if WRAPPERS[key] is None:
+                continue
+            for m in re.finditer(r'\b%s\(\s*"((?:[^"\\]|\\.)*)"\s*\)' % name, text):
+                w = sum(widths[b] for b in c_literal(m.group(1)))
+                if w > WRAPPERS[key]:
+                    no = text.count('\n', 0, m.start()) + 1
+                    problems.append('%s:%d: "%s" is %d px, %s() has room for %d' % (
+                        path, no, m.group(1), w, name, WRAPPERS[key]))
     cut = re.compile(r'DrawCut\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*(\d+)\s*,[^,]+,\s*(\d+)\s*\)')
     chars = re.compile(r'WinDrawChars\(\s*"((?:[^"\\]|\\.)*)"\s*,[^,]+,\s*(\d+)\s*,')
     for path in paths:
