@@ -167,6 +167,8 @@ void SbIrq(SbParam cardParam, Boolean *sysAwakeP)
 	SbRing *r = (SbRing *)cardParam;
 
 	SbDrainRx(r);
+	if (!(r->ier & SB_IER_RHR))
+		r->waiting = false;     /* shut down for low voltage (SbPwr): no more wakes */
 	if (!r->waiting)
 		return;
 	if (!*sysAwakeP) {
@@ -186,12 +188,33 @@ void SbIrq(SbParam cardParam, Boolean *sysAwakeP)
 	r->woke = false;
 }
 
+void SbPwr(SbParam cardParam, Boolean sleep, UInt16 reason)
+{
+	SbRing *r = (SbRing *)cardParam;
+
+	if (!sleep || reason != SB_PWR_LOW_VOLTAGE)
+		return;
+	r->ier = SB_IER_SLEEP;
+	r->waiting = false;
+	BusWriteReg(&r->bus, SB_IER, r->ier);
+}
+
 Boolean SbWakeEvt(SbParam cardParam, UInt16 evtNum, UInt16 evtParam)
 {
 #ifdef __palmos__
 	SbRing *r = (SbRing *)cardParam;
-	LocalID id = DmFindDatabase(r->appCard, r->appName);
+	UInt16 warn = 0, volts = SysBatteryInfo(false, &warn, NULL, NULL, NULL, NULL, NULL);
+	UInt8 off = false;
+	LocalID id;
 
+	if (warn && volts <= warn) {
+		/* no more wakes until the app arms it again (BgArmWake checks the battery too) */
+		r->ier = SB_IER_SLEEP;
+		BusWriteReg(&r->bus, SB_IER, r->ier);
+		HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &off);
+		return true;
+	}
+	id = DmFindDatabase(r->appCard, r->appName);
 	if (id)
 		AlmSetAlarm(r->appCard, id, 0, TimGetSeconds(), true);
 #else

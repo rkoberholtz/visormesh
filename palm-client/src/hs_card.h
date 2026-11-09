@@ -25,7 +25,12 @@
 /* Called on IRQ* (level, active low); *sysAwakeP false = only memory accesses allowed. */
 typedef void (*HsCardIntHandlerPtr)(UInt32 cardParam, Boolean *sysAwakeP);
 
+#define hsCardAttrPwrHandler   10       /* HsCardPwrHandlerPtr */
 #define hsCardAttrEvtHandler   11       /* HsCardEvtHandlerPtr */
+
+/* Called as the Visor sleeps or wakes, maybe in interrupt context: memory accesses only. */
+typedef void (*HsCardPwrHandlerPtr)(UInt32 cardParam, Boolean sleep, UInt16 reason);
+#define hsCardPwrDownLowVoltage 1      /* an emergency shutdown; HsExt.h: never sent by the Neo's OS (HSX 3.5.2) */
 
 /* Called from the event loop after HsCardEventPost; any system call is allowed. */
 typedef Boolean (*HsCardEvtHandlerPtr)(UInt32 cardParam, UInt16 evtNum, UInt16 evtParam);

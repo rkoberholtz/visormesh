@@ -151,9 +151,20 @@ void    SbIrq(SbParam cardParam, Boolean *sysAwakeP);
 
 /*
  * The card event handler while the app is closed: sets the app's alarm for
- * now, so the closed-app check (bgcheck.c) connects, syncs and alerts.
+ * now, so the closed-app check (bgcheck.c) connects, syncs and alerts. With
+ * the battery at the OS's warning level it turns the wake off instead.
  */
 Boolean SbWakeEvt(SbParam cardParam, UInt16 evtNum, UInt16 evtParam);
+
+/*
+ * The slot power handler. On a low-voltage shutdown it stops the chip
+ * interrupting, so the module can't keep waking a Visor whose batteries are
+ * failing (the board doesn't use LOWBAT*, as the Springboard guide would
+ * have it). The Neo's OS never reports that reason, so SbWakeEvt and
+ * BgArmWake also check the battery themselves.
+ */
+#define SB_PWR_LOW_VOLTAGE 1
+void    SbPwr(SbParam cardParam, Boolean sleep, UInt16 reason);
 
 /* The ends of the block SbWakeArm copies. */
 void    SbCoreStart(void);

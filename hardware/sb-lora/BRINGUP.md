@@ -83,6 +83,8 @@ With the Slot link, a new message wakes the Visor:
 - **App open, Visor asleep:** the app syncs within a few seconds and plays its sound, with the screen still off.
 - **App closed:** set Preferences > Check when closed (any interval) before closing. A message starts the closed-app check at once, which syncs, plays the sound and shows the alert, instead of waiting for the next alarm. After a reset or a HotSync install, this starts again from the first regular check.
 
+With the batteries at the OS's low-battery warning level, the wake turns itself off rather than keep waking the Visor; the next check after fresh batteries turns it back on. (The board doesn't use LOWBAT*, and the Neo's OS never tells the module's power handler about a low-voltage shutdown, so this is done in software.)
+
 To test: close VisorMesh, turn the Visor off, and send a DM to the radio from another node (ask before sending on PhillyMesh). The Visor should chirp within a few seconds and show the alert. If it only does so at the next interval, the wake isn't working but the regular check is; note that and the screenshot of the SB-LoRa Test.
 
 ## 8. Standby current

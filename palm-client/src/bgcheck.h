@@ -41,8 +41,9 @@ void   BgDisplayAlarm(void);
 void   BgStatusText(Char *out) VM_SECT4;
 
 /*
- * With checks on and the Slot link, leaves the module waking the Visor for
- * waiting messages after the app closes (SbWakeArm); otherwise removes that.
+ * With checks on, the Slot link and the battery above the OS's warning
+ * level, leaves the module waking the Visor for waiting messages after the
+ * app closes (SbWakeArm); otherwise removes that.
  */
 void   BgArmWake(void) VM_SECT4;
 

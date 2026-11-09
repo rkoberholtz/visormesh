@@ -383,6 +383,40 @@ static void test_wake(void)
 	CHECK(posts == 1 && resets == 1 && r.wakes == 2);
 }
 
+static void test_power(void)
+{
+	static SbRing r;
+	static const UInt8 waiting[] = { 0x3E, 0x01, 0x00, 0x83 };
+	Boolean awake;
+
+	SimInsert(1);
+	CHECK(SbProbe());
+	SbUartInit();
+	SbSleep(false);
+	memset(&r, 0, sizeof(r));
+	r.bus = *SbCurrentBus();
+	r.ier = SB_IER_RHR | SB_IER_SLEEP;
+	SbWriteReg(SB_IER, r.ier);
+
+	/* a normal sleep or wake changes nothing */
+	SbPwr((SbParam)&r, 1, 0);
+	SbPwr((SbParam)&r, 0, 0);
+	CHECK(r.ier == (SB_IER_RHR | SB_IER_SLEEP) && regs[SB_IER] == r.ier);
+
+	/* a low-voltage shutdown: no RX interrupt any more, and a pending wake is dropped */
+	r.waiting = 1;
+	SbPwr((SbParam)&r, 1, SB_PWR_LOW_VOLTAGE);
+	CHECK(regs[SB_IER] == SB_IER_SLEEP && !r.waiting);
+
+	/* and a later interrupt (one already in flight) leaves it that way */
+	posts = resets = 0;
+	push(waiting, sizeof(waiting));
+	awake = 0;
+	SbIrq((SbParam)&r, &awake);
+	CHECK(!awake && posts == 0 && rxn == 0);
+	CHECK(regs[SB_IER] == SB_IER_SLEEP);
+}
+
 static void test_mapping(void)
 {
 	UInt8 got[2];
@@ -431,6 +465,7 @@ int main(void)
 	test_drain();
 	test_waiting();
 	test_wake();
+	test_power();
 	test_mapping();
 	test_loopback();
 	if (failures) {

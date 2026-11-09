@@ -312,7 +312,10 @@ static void AddPending(UInt32 since)
 
 void BgArmWake(void)
 {
-	SbWakeArm(BgInterval() != 0 && TransportGetPort() == VM_PORT_SBLORA);
+	UInt16 warn = 0, volts = SysBatteryInfo(false, &warn, NULL, NULL, NULL, NULL, NULL);
+	Boolean low = warn && volts <= warn;   /* the OS's low-battery warning level */
+
+	SbWakeArm(BgInterval() != 0 && TransportGetPort() == VM_PORT_SBLORA && !low);
 }
 
 UInt16 BgCheckRun(void)

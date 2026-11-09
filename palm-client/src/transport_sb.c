@@ -88,6 +88,7 @@ static Boolean InstallHandler(void)
 	UInt32 param = (UInt32)&gRing;
 	HsCardIntHandlerPtr handler = SbIrq;
 	HsCardEvtHandlerPtr evt = NULL;
+	HsCardPwrHandlerPtr pwr = SbPwr;
 	UInt8 enable = true;
 
 	MemSet(&gRing, sizeof(gRing) - SB_RING_SIZE, 0);
@@ -97,6 +98,7 @@ static Boolean InstallHandler(void)
 	    HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler) != errNone)
 		return false;
 	HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt);
+	HsCardAttrSet(hsCardSlot, hsCardAttrPwrHandler, &pwr);
 	SbWriteReg(SB_IER, SB_IER_RHR);
 	/* interrupts start disabled; the guide says to enable them after installing */
 	if (HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable) != errNone) {
@@ -111,9 +113,11 @@ static Boolean InstallHandler(void)
 static void RemoveHandler(void)
 {
 	HsCardIntHandlerPtr handler = NULL;
+	HsCardPwrHandlerPtr pwr = NULL;
 
 	IrqEnable(false);
 	HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler);
+	HsCardAttrSet(hsCardSlot, hsCardAttrPwrHandler, &pwr);
 	gIrq = false;
 }
 
@@ -240,6 +244,7 @@ void SbWakeArm(Boolean on)
 	void (*start)(void) = SbCoreStart, (*end)(void) = SbCoreEnd;
 	HsCardIntHandlerPtr irq = SbIrq;
 	HsCardEvtHandlerPtr evtFn = SbWakeEvt;
+	HsCardPwrHandlerPtr pwrFn = SbPwr, pwr = NULL;
 	UInt32 addr, param, coreLen;
 	SbRing *r;
 	UInt8 *code;
@@ -253,6 +258,7 @@ void SbWakeArm(Boolean on)
 		HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable);
 		HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler);
 		HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt);
+		HsCardAttrSet(hsCardSlot, hsCardAttrPwrHandler, &pwr);
 		MemPtrFree((MemPtr)addr);
 		FtrUnregister(VM_CREATOR, VM_FTR_WAKE);
 		if (!on && ModuleInstalled())
@@ -282,10 +288,12 @@ void SbWakeArm(Boolean on)
 	param = (UInt32)r;
 	handler = (HsCardIntHandlerPtr)(code + ((UInt32)irq - (UInt32)start));
 	evt = (HsCardEvtHandlerPtr)(code + ((UInt32)evtFn - (UInt32)start));
+	pwr = (HsCardPwrHandlerPtr)(code + ((UInt32)pwrFn - (UInt32)start));
 	enable = true;
 	if (HsCardAttrSet(hsCardSlot, hsCardAttrCardParam, &param) != errNone ||
 	    HsCardAttrSet(hsCardSlot, hsCardAttrIntHandler, &handler) != errNone ||
 	    HsCardAttrSet(hsCardSlot, hsCardAttrEvtHandler, &evt) != errNone ||
+	    HsCardAttrSet(hsCardSlot, hsCardAttrPwrHandler, &pwr) != errNone ||
 	    HsCardAttrSet(hsCardSlot, hsCardAttrIntEnable, &enable) != errNone)
 		SbWakeArm(false);
 }
