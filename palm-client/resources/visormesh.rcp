@@ -679,6 +679,7 @@ BEGIN
   PUSHBUTTON "#hashtag" ID ChannelHashtagPush AT (40 37 50 12) GROUP ChannelTypeGroup
   PUSHBUTTON "Private" ID ChannelPrivatePush AT (PREVRIGHT+1 PREVTOP 50 12) GROUP ChannelTypeGroup
   LABEL "Key (32 hex digits):" ID ChannelKeyLabel AT (5 58) FONT 1
+  BUTTON "New Key" ID ChannelNewKeyButton AT (110 57 AUTO AUTO)
   FIELD ID ChannelKeyField AT (5 72 150 24) UNDERLINED MULTIPLELINES EDITABLE MAXCHARS 39
   LABEL "A #hashtag channel's key comes" AUTOID AT (5 104)
   LABEL "from its name: anyone who knows" AUTOID AT (5 115)

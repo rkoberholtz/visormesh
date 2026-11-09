@@ -12,6 +12,7 @@
 #include "channels.h"
 #include "app.h"
 #include "ui/text.h"
+#include "entropy.h"
 #include "channel_form.h"
 
 /* In the fourth code segment: see sections.h for the rules. */
@@ -22,6 +23,7 @@ static void ShowKeyField(FormType *form) VM_SECT4;
 static void Error(const Char *msg) VM_SECT4;
 static Boolean HashtagKey(const Char *name, UInt8 *key) VM_SECT4;
 static Boolean Add(FormType *form) VM_SECT4;
+static void NewKey(FormType *form) VM_SECT4;
 
 static void *GetObject(FormType *form, UInt16 id)
 {
@@ -44,13 +46,16 @@ static Boolean IsPrivate(FormType *form)
 static void ShowKeyField(FormType *form)
 {
 	UInt16 label = FrmGetObjectIndex(form, ChannelKeyLabel), field = FrmGetObjectIndex(form, ChannelKeyField);
+	UInt16 button = FrmGetObjectIndex(form, ChannelNewKeyButton);
 
 	if (IsPrivate(form)) {
 		FrmShowObject(form, label);
 		FrmShowObject(form, field);
+		FrmShowObject(form, button);
 	} else {
 		FrmHideObject(form, label);
 		FrmHideObject(form, field);
+		FrmHideObject(form, button);
 	}
 }
 
@@ -135,7 +140,7 @@ static Boolean Add(FormType *form)
 		StrNCopy(name, typed, VM_NAME_SIZE - 1);
 		name[VM_NAME_SIZE - 1] = 0;
 		if (!VmParseHex(FieldText(form, ChannelKeyField), key, sizeof(key))) {
-			Error("The key is 32 hex digits (0-9, a-f).");
+			Error("The key is 32 hex digits (0-9, a-f). For a new channel, tap New Key.");
 			return false;
 		}
 		return ChannelJoin(name, key);
@@ -143,6 +148,26 @@ static Boolean Add(FormType *form)
 	/* hashtag: the key is derived from the exact name, '#' included */
 	StrPrintF(name, "%s%s", typed[0] == '#' ? "" : "#", typed);
 	return ChannelJoin(name, NULL);
+}
+
+/* A key from the pool (entropy.c), which needs a moment of stylus use after a fresh start. */
+static void NewKey(FormType *form)
+{
+	FieldType *field = GetObject(form, ChannelKeyField);
+	UInt8 key[VM_CHANNEL_SECRET_SIZE];
+	Char hex[2 * VM_CHANNEL_SECRET_SIZE + 1], msg[96];
+
+	if (!EntropyKey(key, sizeof(key))) {
+		StrPrintF(msg, "Move the stylus around the screen for a few seconds, then tap New Key again (%u%% there).",
+		          EntropyCount() * 100 / VM_ENTROPY_MIN);
+		Error(msg);
+		return;
+	}
+	TxtHex(key, sizeof(key), hex);
+	MemSet(key, sizeof(key), 0);
+	FldDelete(field, 0, FldGetTextLength(field));
+	FldInsert(field, hex, StrLen(hex));
+	MemSet(hex, sizeof(hex), 0);
 }
 
 Boolean ChannelFormHandleEvent(EventType *event)
@@ -164,6 +189,9 @@ Boolean ChannelFormHandleEvent(EventType *event)
 			return true;
 		case ChannelAddButton:
 			Add(form);
+			return true;
+		case ChannelNewKeyButton:
+			NewKey(form);
 			return true;
 		case ChannelCancelButton:
 			FrmGotoForm(HomeForm);

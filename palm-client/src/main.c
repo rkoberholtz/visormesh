@@ -24,6 +24,7 @@
 #include "channel_form.h"
 #include "transport.h"
 #include "bgcheck.h"
+#include "entropy.h"
 #include "shots.h"
 #include "stats_form.h"
 #include "sb_test.h"
@@ -50,6 +51,34 @@ static Err RomVersionCompatible(UInt32 required, UInt16 launchFlags)
 	    (sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp))
 		FrmAlert(RomIncompatibleAlert);
 	return sysErrRomIncompatible;
+}
+
+/* The key pool between launches: an unsaved preference, so it never goes into a backup. */
+#define VM_ENTROPY_PREFS_ID 10
+
+typedef struct {
+	UInt8  state[VM_ENTROPY_STATE];
+	UInt16 count;
+} EntropyPrefs;
+
+static void LoadEntropy(void)
+{
+	EntropyPrefs p;
+	UInt16 size = sizeof(p);
+
+	if (PrefGetAppPreferences(VM_CREATOR, VM_ENTROPY_PREFS_ID, &p, &size, false) != noPreferenceFound &&
+	    size == sizeof(p))
+		EntropyLoad(p.state, p.count);
+	MemSet(&p, sizeof(p), 0);
+}
+
+static void SaveEntropy(void)
+{
+	EntropyPrefs p;
+
+	EntropySave(p.state, &p.count);
+	PrefSetAppPreferences(VM_CREATOR, VM_ENTROPY_PREFS_ID, 1, &p, sizeof(p), false);
+	MemSet(&p, sizeof(p), 0);
 }
 
 static void Connect(void);
@@ -288,6 +317,10 @@ static void AppEventLoop(void)
 			FrmUpdateForm(FrmGetActiveFormID(), VM_UPDATE_DATA);
 		}
 		EvtGetEvent(&event, EventTimeout());
+		EntropyEvent(TimGetTicks(), event.eType, event.screenX, event.screenY,
+		             event.eType == keyDownEvent ? event.data.keyDown.chr : 0,
+		             event.eType == penDownEvent || event.eType == penMoveEvent ||
+		             event.eType == penUpEvent || event.eType == keyDownEvent);
 		CheckWake();
 		if (event.eType == nilEvent) {
 			if (BeamInboxWaiting())
@@ -342,10 +375,12 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		BeamInboxNote();
 		UiFontInit(SoundsLargeText());
 		HeardLoad();
+		LoadEntropy();
 		FrmGotoForm(HomeForm);
 		AppEventLoop();
 		SessionDisconnect();
 		HeardSave();
+		SaveEntropy();
 		FrmCloseAllForms();
 		ContactsClose();
 		ChannelsClose();

@@ -12,7 +12,7 @@ APP     = visormesh
 NAME    = VisorMesh
 CREATOR = VMsh
 
-SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/request.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/title.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c src/shots.c src/db.c src/reaction_fmt.c src/reactions.c src/rxpath.c src/msg_menu.c src/protocol2.c src/info_fmt.c src/screen_fmt.c src/stats_form.c src/sb_test.c src/packets_form.c src/trace_form.c src/blocks.c src/beam.c src/beam_rx.c src/stale.c src/convo_extra.c src/neigh.c
+SRCS = src/main.c src/app.c src/home_form.c src/convo_form.c src/node_form.c src/channel_form.c src/convos.c src/protocol.c src/sha256.c src/transport_srm.c src/transport_sb.c src/sb_spi.c src/session.c src/request.c src/settings.c src/presets.c src/contacts.c src/contacts_form.c src/contact_form.c src/heard.c src/remote_fmt.c src/remote.c src/remote_form.c src/messages.c src/channels.c src/preview_form.c src/ui/draw.c src/ui/text.c src/ui/rowlist.c src/ui/title.c src/ui/fontmetrics.c src/ports.c src/sounds.c src/mutes.c src/scopes.c src/scope_proto.c src/map_geo.c src/map_form.c src/ui/emoji.c src/bgcheck.c src/pins.c src/shots.c src/db.c src/reaction_fmt.c src/reactions.c src/rxpath.c src/msg_menu.c src/protocol2.c src/info_fmt.c src/screen_fmt.c src/entropy.c src/stats_form.c src/sb_test.c src/packets_form.c src/trace_form.c src/blocks.c src/beam.c src/beam_rx.c src/stale.c src/convo_extra.c src/neigh.c
 OBJS = $(SRCS:src/%.c=build/%.o)
 
 CC      = m68k-palmos-gcc
@@ -88,6 +88,8 @@ test: | build
 	build/test_text
 	gcc -std=c99 -Wall -Wextra -o build/test_sblora tests/test_sblora.c src/sb_spi.c
 	build/test_sblora
+	gcc -std=c99 -Wall -Wextra -o build/test_entropy tests/test_entropy.c src/entropy.c src/sha256.c
+	build/test_entropy
 	gcc -std=c99 -Wall -Wextra -o build/test_request tests/test_request.c src/request.c
 	build/test_request
 	gcc -std=c99 -Wall -Wextra -Isrc -o build/test_screens tests/test_screens.c src/screen_fmt.c src/ui/text.c src/ui/fontmetrics.c src/protocol.c

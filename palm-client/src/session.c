@@ -12,6 +12,7 @@
 #include "ui/text.h"
 #include "session.h"
 #include "request.h"
+#include "entropy.h"
 #include "heard.h"
 #include "remote.h"
 #include "sounds.h"
@@ -123,6 +124,8 @@ static void HandlePush(void)
 	} else if (code == VM_PUSH_LOG_RX) {
 		VmRxLog rx;
 
+		/* the signal readings and the packet as heard: one sample for new keys */
+		EntropyAdd(gDecoder.payload, gDecoder.len < 24 ? gDecoder.len : 24, true);
 		if (VmParseRxLog(gDecoder.payload, gDecoder.len, &rx)) {
 			HeardRecord(&rx, SessionNow());
 			RxPathNote(&rx, SessionNow());

@@ -147,6 +147,7 @@
 #define ChannelKeyField       1705
 #define ChannelAddButton      1706
 #define ChannelCancelButton   1707
+#define ChannelNewKeyButton   1708
 #define ChannelTypeGroup      3
 
 #define PortsForm         1100
