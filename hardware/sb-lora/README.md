@@ -57,6 +57,8 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
 
 ## Bring-up order
 
+[BRINGUP.md](BRINGUP.md) has the full plan: checks and expected readings for each step, and what each line of the Visor's SB-LoRa Test means. In short:
+
 1. Bare board, before soldering anything: check continuity of VSB (J1 pins 17/51) and GND, then dry-fit in the Visor slot.
 2. After JLC assembly, fit J1 only. Bench-power VSB at 3.3 V through a current-limited supply. Expect a few mA, and the crystal at 14.7456 MHz on Y1.
 3. Insert into the Visor with nothing on J2/J3. Port springSD's bus routines and read the SC16IS740 scratch register (SPR, reg 0x07): write and read back a pattern. That proves the CS0/CS1 latch path.
