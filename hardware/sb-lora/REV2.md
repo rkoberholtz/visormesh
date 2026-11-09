@@ -8,7 +8,7 @@ Draft, nothing designed yet. Rev 1 (`hw-v0.1`) is ordered and shipping, but its 
 
 The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the carrier next to each other, instead of stacked on 2.54 mm headers. The stack is the tallest thing on rev 1. Side by side, the height is set by the XIAO's USB-C socket (about 3.2 mm) and the Wio's u.FL.
 
-- Both are 14-pin XIAO-footprint boards. The rev 1 extension is 50.4 mm wide and 24.6 mm deep, which holds two of them (about 18 x 21 mm each) with the XIAO's USB-C at the outer edge.
+- Both are 14-pin boards the size of the XIAO. The kit ships them soldered directly on top of each other, so going side by side means desoldering the pair. The rev 1 extension is 50.4 mm wide and 24.6 mm deep, which holds two of them (about 18 x 21 mm each) with the XIAO's USB-C at the outer edge.
 - The XIAO is soldered by its castellated edge pads. That covers its bottom pads, so the carrier brings them out:
   - **BAT+ / BAT-** to pads for a flat pouch LiPo (the XIAO's charger still does the charging over USB-C).
   - **SWDIO / SWCLK / RST** to test pads, so the radio can be reflashed with a probe if the bootloader is lost.
@@ -40,17 +40,15 @@ A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard
 
 This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs about 20 address lines and all 16 data lines, so rev 2 is expected to be a 4-layer board.
 
-### Connector
-
-Single-sided SMT PC Card receptacle (both rows of tails on the top side), the kind found in ordinary PC Cards. The Springboard core is the same 68-pin PCMCIA contact set (Dev Guide §5, §7.1). The keying is in the module's plastic case, not the connector, so a plain PC Card connector works as long as the case provides the key.
 
 ## Open
 
-- **Connector part.** Either a harvested one or a stocked part (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
+- **Connector: waiting on the Hirose IC1HA order.** If it ships, rev 2 keeps rev 1's straddle footprint. If it's cancelled, switch to a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
-- **Board thickness.** The straddle connector forced 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
+- **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
 - **Link to the radio on CS1*.** Keep rev 1's SC16IS740 SPI bridge (decoded on CS1* with an address line instead of CS0*/CS1*), or use a memory-mapped 16550-style UART (e.g. NXP SC16C750B, 64-byte FIFO) on the bus that the flash already needs. The UART is one bus access per register instead of several per SPI bit, and drops U1-U3; it means rewriting `transport_sb.c` and its simulation.
-- **Wio board dimensions and edge**, for the footprint.
+- **Wio board edge** (castellated pads or only through-holes), for the footprint.
+- **Fallback if separating the pair is too risky:** keep the stack as it is and solder it straight to the carrier with no female headers. Thicker than side by side, but thinner than rev 1's stack on headers.
 - **LiPo size** for the bump, about 3-4 mm thick.
 
 ## Carried over from rev 1
