@@ -11,6 +11,7 @@
 #include "contacts.h"
 #include "ui/text.h"
 #include "session.h"
+#include "request.h"
 #include "heard.h"
 #include "remote.h"
 #include "sounds.h"
@@ -25,7 +26,6 @@
 
 #define VM_APP_NAME        "VisorMesh"
 #define VM_REPLY_TIMEOUT   (2 * SysTicksPerSecond())
-#define VM_UNSENT_TRIES    4    /* sends that didn't go, about a second each (transport_srm.c) */
 #define VM_CONNECT_TRIES   3     /* over USB the host bridge needs a moment to attach */
 #define VM_SYNC_MAX        50    /* messages pulled per sync, so the UI isn't blocked forever */
 #define VM_ACK_MIN_SECS    10    /* shortest wait for a DM ack, whatever the radio estimates */
@@ -203,40 +203,66 @@ static void DrainInput(void)
 	VmDecoderReset(&gDecoder);
 }
 
+/* The request being made, for the VmRequestRun link. */
+typedef struct {
+	const UInt8 *frame, *codes;
+	UInt16 len, n;
+} ReqCtx;
+
+static Boolean ReqCancelled(void *ctx)
+{
+	(void)ctx;
+	return UserWaiting();
+}
+
+static void ReqDrain(void *ctx)
+{
+	(void)ctx;
+	DrainInput();
+}
+
+static Err ReqSend(void *ctx)
+{
+	ReqCtx *c = (ReqCtx *)ctx;
+
+	return TransportSend(c->frame, c->len);
+}
+
+static Err ReqWait(void *ctx)
+{
+	ReqCtx *c = (ReqCtx *)ctx;
+
+	return WaitForAny(c->codes, c->n, VM_REPLY_TIMEOUT);
+}
+
 /*
- * Sends a request frame and waits for one of the reply codes. A frame that
- * didn't go at all (the USB host re-attaching) is sent again whatever tries
- * says, up to VM_UNSENT_TRIES times. A try that went out but got no reply is
- * only repeated while tries lasts, so only use tries > 1 for commands that
- * are safe to repeat.
+ * Sends a request frame and waits for one of the reply codes, by the rules
+ * in request.h: only use tries > 1 for commands that are safe to repeat
+ * (tools/check_source.py checks the sends that must only try once).
  */
 static Err RequestAny(const UInt8 *frame, UInt16 len, const UInt8 *codes, UInt16 n, UInt16 tries)
 {
-	Err err = vmErrNoReply;
-	UInt16 t = 0, unsent = 0;
+	ReqCtx c;
+	VmRequestLink link;
+	Boolean gone;
+	Err err;
 
-	while (t < tries) {
-		if (UserWaiting())
-			return vmErrCancelled;
-		DrainInput();
-		err = TransportSend(frame, len);
-		if (err == serErrTimeOut && ++unsent < VM_UNSENT_TRIES)
-			continue;
-		if (err != errNone)
-			break;
-		err = WaitForAny(codes, n, VM_REPLY_TIMEOUT);
-		if (err != vmErrNoReply)
-			return err;
-		t++;
-	}
-	if (err == serErrTimeOut || err == vmErrPartSent)
-		err = vmErrNoReply;
+	c.frame = frame;
+	c.len = len;
+	c.codes = codes;
+	c.n = n;
+	link.cancelled = ReqCancelled;
+	link.drain = ReqDrain;
+	link.send = ReqSend;
+	link.wait = ReqWait;
+	link.ctx = &c;
+	err = VmRequestRun(&link, tries, &gone);
 	/*
 	 * The radio itself always answers at once, so the link is gone (the bridge
 	 * stopped, a cable pulled): offline, rather than "online" with every
 	 * command failing. gConnected first, so the disconnect sends nothing.
 	 */
-	if (gConnected) {
+	if (gone && gConnected) {
 		gConnected = false;
 		gLost = true;
 		SessionDisconnect();

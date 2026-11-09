@@ -10,6 +10,9 @@ check_sections.py and check_ui.py):
             menu's U X C P S K G
   forms     every form gets an event handler in main.c's frmLoadEvent switch,
             or is opened as a dialog with FrmInitForm
+  once      the functions that send over the air or take a queued message
+            only ever make requests with tries 1 (ONCE): a repeat would
+            transmit twice or skip a message (src/request.h)
   ids       no number used twice within one form, one menu bar or one
             resource type (forms, alerts, menu bars); numbers may repeat
             across those, which Palm OS keeps apart
@@ -20,6 +23,10 @@ import re
 import sys
 
 EDIT_KEYS = set('UXCPSKG')
+
+# session.c functions whose requests must only try once.
+ONCE = ('SendRecord', 'SessionSendReaction', 'SessionSyncMessages', 'SessionSendAdvert',
+        'SessionRequestSent', 'SessionTrace', 'SessionLogin', 'SessionAskRegions')
 EXTRA = re.compile(r'\bVM_SECT[2-5]\b')
 
 
@@ -63,6 +70,63 @@ def check_tables(c_files, extra):
                 problems.append('%s:%d: static const inside %s, which is in an extra segment: '
                                 'it reads as garbage on the Visor (compute it, or move it to file level)'
                                 % (path, no, func))
+    return problems
+
+
+def function_bodies(text):
+    """{name: (first line, body)} for K&R functions ({ and } at column 0)."""
+    bodies, lines, name, start, body = {}, text.split('\n'), None, 0, []
+    for no, line in enumerate(lines, 1):
+        if name is None:
+            m = re.match(r'^[A-Za-z_][\w \t\*]*?\b(\w+)\s*\(', line)
+            if m and not line.rstrip().endswith(';'):
+                head = m.group(1)
+            if line.startswith('{'):
+                name, start, body = head, no, []
+            continue
+        if line.startswith('}'):
+            bodies[name] = (start, '\n'.join(body))
+            name = None
+            continue
+        body.append(line)
+    return bodies
+
+
+def call_args(text, at):
+    """The top-level arguments of the call whose '(' is at text[at]."""
+    depth, args, cur = 0, [], ''
+    for ch in text[at:]:
+        if ch == '(':
+            depth += 1
+            if depth == 1:
+                continue
+        elif ch == ')':
+            depth -= 1
+            if depth == 0:
+                args.append(cur.strip())
+                return args
+        elif ch == ',' and depth == 1:
+            args.append(cur.strip())
+            cur = ''
+            continue
+        cur += ch
+    return args
+
+
+def check_once(path):
+    problems = []
+    bodies = function_bodies(strip_comments(open(path, encoding='latin-1').read()))
+    for name in ONCE:
+        if name not in bodies:
+            problems.append('%s: %s() not found: update ONCE in tools/check_source.py' % (path, name))
+            continue
+        start, body = bodies[name]
+        for m in re.finditer(r'\b(Request|RequestAny)\s*\(', body):
+            args = call_args(body, m.end() - 1)
+            if args and args[-1] != '1':
+                no = start + body.count('\n', 0, m.start()) + 1
+                problems.append('%s:%d: %s() makes a request with tries %s: it sends over the air or takes '
+                                'a queued message, so a repeat would do it twice' % (path, no, name, args[-1]))
     return problems
 
 
@@ -163,6 +227,7 @@ def main(argv):
     problems += check_menus(rcp, code)
     problems += check_forms(rcp, code, main_c)
     problems += check_ids(rcp, header)
+    problems += check_once([p for p in c_files if p.endswith('src/session.c')][0])
     for p in problems:
         print('check_source: ' + p)
     if problems:
