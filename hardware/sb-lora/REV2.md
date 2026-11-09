@@ -49,13 +49,27 @@ A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard
 
 This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs about 20 address lines and all 16 data lines, so rev 2 is expected to be a 4-layer board.
 
+### Radio link: a bus UART on CS1*
+
+A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latch logic (U1-U3). The flash already needs the full address and data bus, so the UART costs little routing, and each register access is one bus cycle instead of several per SPI bit.
+
+- Part: NXP SC16C550B, SC16C650B or SC16C750B (16, 32 or 64-byte FIFOs, 3.3 V). Prefer the biggest FIFO that JLC stocks: at 115200 baud a 16-byte FIFO fills in 1.4 ms.
+- Wiring:
+  - CS* from CS1*, RD* from OE*, WR* from WE*.
+  - Register select A0-A2 of the UART from A1-A3 of the slot, so the registers sit at word addresses.
+  - UART D0-D7 on slot D0-D7. The driver uses 16-bit reads and writes and keeps the low byte (a 68k byte access at an even address uses D8-D15).
+  - The UART's INT and RESET are active high and the slot's IRQ* and RESET* are active low, so a 74LVC2G04 inverts both.
+- Clock: keep rev 1's 14.7456 MHz crystal (divisor 8 for 115200).
+- Wait states: csSlot0 and csSlot1 share one setting, so it's set for the slower of the flash and the UART.
+- Powered from the slot (VSB), with the level translators to the XIAO's always-on side as on rev 1.
+- Software: `transport_sb.c` is rewritten for the UART, and its simulation test with it. The interrupt handler keeps the rules in AGENTS.md (segment 1, no globals).
+
 
 ## Open
 
 - **Connector: waiting on the Hirose IC1HA order.** If it ships, rev 2 keeps rev 1's straddle footprint. If it's cancelled, switch to a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
-- **Link to the radio on CS1*.** Keep rev 1's SC16IS740 SPI bridge (decoded on CS1* with an address line instead of CS0*/CS1*), or use a memory-mapped 16550-style UART (e.g. NXP SC16C750B, 64-byte FIFO) on the bus that the flash already needs. The UART is one bus access per register instead of several per SPI bit, and drops U1-U3; it means rewriting `transport_sb.c` and its simulation.
 - **LiPo size** for the bump, about 3-4 mm thick.
 
 ## Carried over from rev 1
@@ -66,4 +80,4 @@ This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs abou
 
 ## What rev 1 can still tell us
 
-Even without a connector, a bare rev 1 board can be dry-fitted in the slot to check the outline and the assumption that the top of the 50.47 mm section lines up with the slot opening. If the Hirose part does arrive, rev 1 also proves the CS0*/CS1* bus path and the SC16IS740 driver.
+Even without a connector, a bare rev 1 board can be dry-fitted in the slot to check the outline and the assumption that the top of the 50.47 mm section lines up with the slot opening. If the Hirose part does arrive, rev 1 also proves the slot bus timing and the interrupt path, though its SC16IS740 driver doesn't carry over.
