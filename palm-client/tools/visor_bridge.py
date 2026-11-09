@@ -9,6 +9,9 @@ bytes between it and the radio, logging each companion frame.
     visor_bridge.py /dev/cu.usbmodemXXXX       # radio's own USB companion link
 
 Then put the Visor in its USB cradle and tap Connect with Link = USB.
+--capture FILE appends every frame in full (time, direction, hex) for
+`make replay`, which runs them through the app's parsers. Captures hold real
+messages: keep them local.
 The app's 'HsUd' driver turns out to send on the Visor's HOTSYNC port (2), so
 the bridge also grabs the Visor during a HotSync: stop it before `make install`
 (the Makefile does this for you).
@@ -77,14 +80,15 @@ def open_serial(path):
 
 
 class FrameLogger:
-    """Splits a byte stream into companion frames and prints one line per frame."""
+    """Splits a byte stream into companion frames, prints one line per frame and captures it in full."""
 
-    def __init__(self, label, start, names, quiet):
+    def __init__(self, label, start, names, quiet, capture=None):
         self.label, self.start, self.names, self.quiet = label, start, names, quiet
+        self.capture = capture
         self.buf = bytearray()
 
     def feed(self, data):
-        if self.quiet:
+        if self.quiet and not self.capture:
             return
         self.buf += data
         while True:
@@ -102,6 +106,11 @@ class FrameLogger:
             del self.buf[:3 + n]
             code = body[0] if body else None
             name = self.names.get(code, f'0x{code:02x}' if code is not None else 'empty')
+            if self.capture:
+                self.capture.write(f'{time.strftime("%H:%M:%S")} {self.label} {body.hex()}\n')
+                self.capture.flush()
+            if self.quiet:
+                continue
             shown = body[:24].hex(' ') + (' ...' if n > 24 else '')
             print(f'{time.strftime("%H:%M:%S")} {self.label} {name:<18} len={n:<3} {shown}', flush=True)
 
@@ -144,14 +153,14 @@ def connection_ports(lib, h):
     return ports
 
 
-def bridge(lib, h, ports, serial_fd, quiet):
+def bridge(lib, h, ports, serial_fd, quiet, capture=None):
     """
     Listens on every port's IN endpoint, since which one the app's driver uses
     isn't documented. Radio replies go out on the port the Visor last sent on.
     Stalled endpoints are cleared and retried rather than ending the session.
     """
-    to_radio = FrameLogger('visor->radio', b'<', CODES_TO_RADIO, quiet)
-    to_visor = FrameLogger('radio->visor', b'>', CODES_FROM_RADIO, quiet)
+    to_radio = FrameLogger('visor->radio', b'<', CODES_TO_RADIO, quiet, capture)
+    to_visor = FrameLogger('radio->visor', b'>', CODES_FROM_RADIO, quiet, capture)
     gone = threading.Event()
     lock = threading.Lock()
     active = {'port': None}
@@ -217,7 +226,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('radio', help='serial port of the MeshCore companion radio')
     ap.add_argument('--quiet', action='store_true', help="don't log frames")
+    ap.add_argument('--capture', metavar='FILE', help='append every frame in full, for make replay')
     args = ap.parse_args()
+    capture = open(args.capture, 'a') if args.capture else None
 
     lib = load_libusb()
     serial_fd = open_serial(args.radio)
@@ -228,7 +239,7 @@ def main():
             try:
                 ports = connection_ports(lib, h)
                 print(f'Bridging Visor USB ports {sorted(ports)} <-> {args.radio}', flush=True)
-                bridge(lib, h, ports, serial_fd, args.quiet)
+                bridge(lib, h, ports, serial_fd, args.quiet, capture)
             except RuntimeError as e:
                 print(e, flush=True)
             finally:

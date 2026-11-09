@@ -2,10 +2,12 @@
 # Start, stop or check visor_bridge.py in the background.
 #   tools/bridge.sh start [port]   default port: the first /dev/cu.usbserial-*
 #   tools/bridge.sh stop | restart [port] | status | log
-# The log goes to $TMPDIR/visor_bridge.log.
+# The log goes to $TMPDIR/visor_bridge.log, and every frame in full to
+# $TMPDIR/visor_frames.txt for `make replay`.
 
 cd "$(dirname "$0")/.." || exit 1
 LOG="${TMPDIR:-/tmp}/visor_bridge.log"
+FRAMES="${TMPDIR:-/tmp}/visor_frames.txt"
 PATTERN=tools/visor_bridge.py
 
 running() { pgrep -f "$PATTERN" >/dev/null; }
@@ -15,7 +17,7 @@ start() {
 	port="$1"
 	[ -n "$port" ] || port=$(ls /dev/cu.usbserial-* 2>/dev/null | head -1)
 	[ -n "$port" ] || { echo "No /dev/cu.usbserial-* found; pass the port"; return 1; }
-	nohup python3 "$PATTERN" "$port" >"$LOG" 2>&1 &
+	nohup python3 "$PATTERN" --capture "$FRAMES" "$port" >"$LOG" 2>&1 &
 	sleep 1
 	if running; then
 		echo "Bridge started on $port (log: $LOG)"

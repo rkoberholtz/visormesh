@@ -3,6 +3,7 @@
 #   make           build build/visormesh.prc (in Docker if the toolchain isn't installed)
 #   make test      run the host-side protocol tests
 #   make install   install the .prc over the USB cradle (press HotSync when asked)
+#   make replay    run the bridge's frame capture through the parsers (CAPTURE=file)
 #   make shots     fetch screenshots taken on the Visor into build/shots/ (HotSync)
 #   make editor    copy the SDK headers to .sdk/ and write compile_flags.txt for clangd
 #   make clean
@@ -25,6 +26,12 @@ PORT       ?= usb:
 
 DOCKER_IMAGE = visormesh-palm
 DOCKER_RUN   = docker run --rm --platform linux/amd64 -v "$(CURDIR)":/src -w /src $(DOCKER_IMAGE)
+
+# Runs the bridge's frame capture through the app's parsers (tests/replay.c), on the host.
+CAPTURE ?= $(or $(TMPDIR),/tmp)/visor_frames.txt
+replay:
+	mkdir -p build && cc -std=c99 -Wall -Wextra -o build/replay tests/replay.c src/protocol.c src/protocol2.c src/remote_fmt.c src/scope_proto.c src/sha256.c
+	build/replay $(CAPTURE)
 
 ifeq ($(shell command -v $(CC) 2>/dev/null),)
 
