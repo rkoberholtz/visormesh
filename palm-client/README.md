@@ -11,7 +11,7 @@ make test     # host-side tests for the protocol framing
 
 If `m68k-palmos-gcc` isn't installed, `make` builds and runs the `visormesh-palm` Docker image (see `Dockerfile`) and does the build inside it. The first run takes a minute or two. The image is amd64-only, so on Apple Silicon it runs under emulation. That's fine for builds this small.
 
-The toolchain versions and the palm-os-sdk commit are pinned in the `Dockerfile`.
+The toolchain versions and the palm-os-sdk commit are pinned in `tools/install_toolchain.sh`, which the `Dockerfile` and the release workflow both run.
 
 Your editor's C checker can't see the Palm SDK headers, since they only exist inside the image. Errors like `'PalmOS.h' file not found` there are expected and don't affect the build.
 

@@ -1,0 +1,62 @@
+# Builds the Palm app and publishes it as a release when a v* tag is pushed
+# (hardware tags are hw-v*, so they don't match). The tag must match the
+# VERSION resource in palm-client/resources/visormesh.rcp, e.g. v0.2 for "0.2".
+# An annotated tag's message becomes the release notes.
+#
+#   git tag -a v0.2 -m "What changed" && git push origin v0.2
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  palm-client:
+    runs-on: ubuntu-latest
+    # Bookworm, for the toolchain .debs; Node, for actions/checkout.
+    container: node:20-bookworm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: sh palm-client/tools/install_toolchain.sh
+
+      - name: Version check
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have=$(sed -n 's/^VERSION ID 1 "\(.*\)"/\1/p' palm-client/resources/visormesh.rcp)
+          if [ "$want" != "$have" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match VERSION \"$have\" in visormesh.rcp"; exit 1
+          fi
+
+      - name: Build and test
+        working-directory: palm-client
+        run: make && make test
+
+      - name: Release
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          tag="$GITHUB_REF_NAME"
+          api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
+          mkdir -p dist
+          cp palm-client/build/visormesh.prc "dist/visormesh-$tag.prc"
+          (cd dist && sha256sum *.prc > SHA256SUMS)
+
+          git config --global --add safe.directory "$PWD"
+          git fetch --depth=1 origin "+refs/tags/$tag:refs/tags/$tag"
+          if [ "$(git cat-file -t "$tag")" = tag ]; then
+            git for-each-ref "refs/tags/$tag" --format='%(contents:subject)%0a%0a%(contents:body)' > notes.txt
+          else
+            : > notes.txt
+          fi
+          body=$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))' < notes.txt)
+
+          id=$(curl -fsS -X POST -H "Authorization: token $TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"tag_name\":\"$tag\",\"name\":\"VisorMesh $tag\",\"body\":$body}" "$api/releases" |
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          for f in dist/*; do
+            curl -fsS -X POST -H "Authorization: token $TOKEN" \
+              -F "attachment=@$f" "$api/releases/$id/assets?name=$(basename "$f")" >/dev/null
+          done
