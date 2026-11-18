@@ -1,6 +1,6 @@
 # SB-LoRa rev 2 plan
 
-Draft, nothing designed yet. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one may not ship. Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
+Draft, not laid out yet. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one was cancelled (2026-11-17). Until rev 2 arrives, rev 1 is built with a harvested or wired-on connector (see "Without the Hirose part" in [README.md](README.md)). Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
 
 ## Decided
 
@@ -68,7 +68,7 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 
 ## Open
 
-- **Connector: waiting on the Hirose IC1HA order.** If it ships, rev 2 keeps rev 1's straddle footprint. If it's cancelled, switch to a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
+- **Connector: the Hirose IC1HA order was cancelled (2026-11-17)**, so rev 2 drops the straddle footprint for a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
 - **LiPo size.** The aim is at least a few days per charge. Estimate, to be replaced by a measurement:
@@ -81,7 +81,7 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 
 `rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
 - Footprints: `rev2/make_footprints.py` writes `rev2/visormesh.pretty` (XIAO_SMD, WIO_PTH, BAT_PADS) from Seeed's own KiCad files. Open them in KiCad and check against a real XIAO and Wio with calipers before ordering.
-- J1 stays rev 1's straddle footprint until the connector order is settled.
+- J1 is still rev 1's straddle footprint in the netlist. It's replaced once a single-sided receptacle sample is measured (see Open).
 
 ## Carried over from rev 1
 

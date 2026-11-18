@@ -33,6 +33,26 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
    - The Springboard connector core is a standard PCMCIA 68-pin connector with different housing keying (Dev Guide §5, §7.1). Handspring used four board-offset variants (−0.3, 0, +0.3, +0.6 mm); a harvested connector's offset sets how high the board sits in the slot, so compare it against a (51) or dry-fit before soldering.
    - An earlier note here suggested XKB X1321FV-2x34 (LCSC C2881777) as a substitute. That was never verified: the closest LCSC listing (X1321FVS-2x34, C2881881) is a vertical SMD socket, not an edge straddle, and won't fit this footprint.
    - Pin 1 is marked on silk at the right-hand end of the top row.
+   - **Without the Hirose part.** The order for one was cancelled (Nov 2026). Rev 1 only uses these Springboard pins, so any receptacle that fits the slot needs about 12 good joints:
+
+     | Signal | Pins |
+     |---|---|
+     | GND | 1, 34, 35, 68 |
+     | CD1\*, CD2\* (to GND, or the OS sees no module) | 36, 67 |
+     | VCC (VSB) | 17, 51 |
+     | CS0\*, CS1\* | 7, 42 |
+     | A8, A17 | 12, 46 |
+     | D0 | 30 |
+     | IRQ\* | 16 |
+     | RESET\* | 58 |
+
+     VDOCK (18, 52) is only needed if JP1 is bridged. Temporary options, best first:
+     1. **Harvest a straddle connector** from a junk Springboard module (backup modules, Eyemodule, MiniJam and so on). It fits the footprint as designed; check its board offset against the slot first.
+     2. **Donor connector on wires.** Cut a junk module's PCB just behind its connector, cut its traces, and wire its pads for the pins above to the matching J1 pads (or vias on the same nets). The donor strip sets the height in the slot; rev 1 sits outside, glued or taped to it.
+     3. **Single-sided SMT PC Card receptacle** glued to the top at the edge. Top-row tails (1-34) go to the top pads where they line up (staggered tails need short jumpers). The 8 used bottom-row pins (35, 36, 42, 46, 51, 58, 67, 68) are wired around the edge to the bottom pads. The board then sits about 1 mm off the contact centre line, so dry-fit it: the edges may need filing to run in the slot's rails.
+     4. **Receptacle from a junk PCMCIA card.** Same contacts, but its housing keys may block the Springboard slot, and a straddle part is sized for a thinner card PCB than 1.6 mm. Try it only if one is to hand.
+
+     Whichever you use, check continuity from each used pin to its net and do the bench-power checks in [BRINGUP.md](BRINGUP.md) before it goes in the Visor.
 2. **J2/J3**: two 1x7 2.54 mm female headers (low-profile if you can find them). Your XIAO+Wio stack plugs in here. You can also solder the stack's pins straight into the holes.
 3. **JP1**: leave **open**. See VDOCK below.
 
