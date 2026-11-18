@@ -4,6 +4,8 @@ A Springboard module for the Handspring Visor that carries a Seeed XIAO nRF52840
 
 **Status: prototype design, not yet built.** DRC is clean (0 unconnected pads) and the netlist was cross-checked against the Springboard Development Guide pin table, the SC16IS740 datasheet pinout, and Dmitry Grinberg's springSD v1.1 connector footprint. Order 5 boards and build one before trusting it.
 
+This README covers rev 1 (`hw-v0.1`). Rev 2 (flash, bus UART, XIAO and Wio side by side, 4 layers) is laid out in `rev2/`; see [REV2.md](REV2.md) for its status and what has to happen before it can be ordered.
+
 ## What's in here
 
 | Path | What |

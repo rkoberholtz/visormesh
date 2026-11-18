@@ -1,6 +1,6 @@
 # SB-LoRa rev 2 plan
 
-Draft, not laid out yet. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one was cancelled (2026-11-17). Until rev 2 arrives, rev 1 is built with a harvested or wired-on connector (see "Without the Hirose part" in [README.md](README.md)). Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
+Laid out, not ordered: J1's land pattern is a placeholder until a connector is chosen. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one was cancelled (2026-11-17). Until rev 2 arrives, rev 1 is built with a harvested or wired-on connector (see "Without the Hirose part" in [README.md](README.md)). Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
 
 ## Decided
 
@@ -68,7 +68,7 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 
 ## Open
 
-- **Connector: the Hirose IC1HA order was cancelled (2026-11-17)**, so rev 2 drops the straddle footprint for a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (TE 5535657-2 and Amphenol 1C1K are candidates; check they're the card-side receptacle). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
+- **Connector: the Hirose IC1HA order was cancelled (2026-11-17)**, so rev 2 drops the straddle footprint for a single-sided SMT PC Card receptacle (both rows of tails on the top side), harvested or stocked (Amphenol 1C1K is a candidate. TE 5535657 is the host-side header, so it isn't; the stocked SMT card-side parts found so far, Hirose IC1F-68RD-1.27SF and IC9, are obsolete). The Springboard uses the same 68-pin PCMCIA contacts (Dev Guide §5, §7.1), and the keying is in the module's plastic case, not the connector. Needed from a sample: markings, tail pitch, row spacing, tail distance from the mating face, and board surface height relative to the contact centre line.
 - **Case.** The keying is in the module case, so rev 2 needs a case (printed, or a harvested Springboard shell) whose key and latch match the slot, with the board held at the connector's height. Dry-fit a bare harvested connector in the slot to check the contacts seat fully.
 - **Board thickness.** The straddle connector forces 1.6 mm; a top-mount one may allow 0.8-1.0 mm.
 - **LiPo size.** The aim is at least a few days per charge. Estimate, to be replaced by a measurement:
@@ -77,11 +77,21 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
   - Flat pouches of that size: about 5 x 30 x 50 mm for 1000 mAh, 4 x 25 x 50 mm for 500-600 mAh. The extension is 50.4 x 24.6 mm, so a 50 mm cell fits across it, under or beside the boards.
   - To measure: current into BAT+ with a meter in series, USB unplugged, over a few minutes of idle listening and one message sent.
 
-## Netlist
+## Netlist and layout
 
-`rev2/netlist.py`, same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). Not laid out yet. Before layout:
-- Footprints: `rev2/make_footprints.py` writes `rev2/visormesh.pretty` (XIAO_SMD, WIO_PTH, BAT_PADS) from Seeed's own KiCad files. Open them in KiCad and check against a real XIAO and Wio with calipers before ordering.
-- J1 is still rev 1's straddle footprint in the netlist. It's replaced once a single-sided receptacle sample is measured (see Open).
+`rev2/netlist.py` has the parts and connections, in the same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). The board is laid out and routed. **Don't order it until J1 is settled** (below).
+
+- **Board:** 50.43 x 75.05 mm, the same outline as rev 1. 4 layers, 1.6 mm: In1.Cu is a solid GND plane, F.Cu, In2.Cu and B.Cu carry signals, with GND pours on In2 and B. Every part is on the top except the LiPo pads (BT1), which are on the bottom under the radio boards. Tracks are 0.15 mm with 0.15 mm gaps, and vias are 0.5/0.25 mm, all within JLCPCB's standard 4-layer rules.
+- **Build:** `rev2/make.sh` runs the whole pipeline: `set_project.py`, then `build_board.py` (placement and GND vias), then Freerouting 1.9.0, then `finish_board.py` (pours), DRC and `verify.py`. It needs KiCad 10 (the Homebrew cask), Java 21 (`openjdk@21`) and `FREEROUTING=/path/to/freerouting-1.9.0.jar`; Freerouting 2.x ignores the pass limit and never finishes. `rev2/make_fab.py fab` writes the JLCPCB gerbers zip, BOM, CPL and the hand-fit list.
+- **Checks:** DRC reports 0 unconnected pads and no clearance errors. What's left is the XIAO footprint's outline silk being clipped at its pads, and warnings about the missing footprint-library table. `verify.py` checks every pad's net against the netlist, J1 against Table 5-1, the flash's word mode, the UART strobes and register select, the inverters, and that only U5 and U6 cross the two power domains.
+- **Renders:** `rev2/renders/`.
+
+Before ordering:
+1. **J1.** Choose a card-side single-sided receptacle, then replace the `J1_*` constants at the top of `build_board.py` from its drawing: pitch, row stagger, each row's distance from the edge, and pad size. Keep the 5.5 mm strip along the edge free (`J1_KEEP`), and check whether the connector body needs the board edge moved. Then run `make.sh` and `make_fab.py` again. The current pattern is a placeholder: two staggered rows of 0.5 x 1.6 mm pads, 1.3 and 3.5 mm in from the edge. TE 5535657 is not a candidate: it's the host-side header.
+2. **XIAO and Wio footprints.** Check them against the real boards with calipers (print the top copper at 1:1).
+3. **Assembly.** In JLC's placement preview, check the rotation of U1 (pin 1 at the top left, beside the triangle), U2, U3, U5 and Y1.
+4. **Board thickness.** It stays 1.6 mm unless the chosen connector wants a thinner board.
+5. Tag the commit you order from as `hw-v0.2`.
 
 ## Carried over from rev 1
 

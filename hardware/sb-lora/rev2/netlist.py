@@ -1,5 +1,5 @@
 """
-VisorMesh Springboard module, rev 2: parts and connectivity. Draft: not laid out or built.
+VisorMesh Springboard module, rev 2: parts and connectivity. Laid out (build_board.py), not built; J1 is a placeholder.
 Same shape as ../source/netlist.py (rev 1, hw-v0.1), so its board and schematic scripts can be adapted.
 See ../REV2.md for the reasons behind each choice.
 
@@ -24,11 +24,11 @@ Pin tables that still need checking against a datasheet are marked VERIFY.
 # ref: (value, footprint_lib, footprint_name, lcsc, description, dnp)
 # An empty LCSC number is still to be looked up.
 PARTS = {
-    "J1": ("Springboard 68p straddle", None, "SPRINGBOARD_68", "",
-           "Hirose IC1HA-68RD-1.27SH(51); pending the order (REV2.md). Hand-solder", True),
+    "J1": ("Springboard 68p SMT", None, "SPRINGBOARD_68_SMT", "",
+           "Single-sided SMT PC Card receptacle, card side; part not chosen, land pattern is a placeholder (REV2.md). Hand-solder", True),
     "U1": ("S29AL016J70TFI020", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "C914935",
            "2 MB NOR flash, x16, 70 ns, csSlot0", False),
-    "U2": ("SC16C650BIBS", "Package_DFN_QFN", "HVQFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm", "C729132",
+    "U2": ("SC16C650BIBS", "Package_DFN_QFN", "HVQFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm", "C729132",
            "UART, 32-byte FIFOs, csSlot1 (SC16C750BIBS fits the same footprint)", False),
     "U3": ("SN74LVC2G32DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "C91874", "OR: UART read/write strobes", False),
     "U4": ("SN74LVC2G04DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C105251", "Inverters: INT -> IRQ*, RESET* -> RESET", False),
@@ -119,11 +119,11 @@ c("JP2", 1, "WE_N"); c("JP2", 2, "WE_FL_N")
 c("R4", 1, "VSB"); c("R4", 2, "WE_FL_N")
 
 # U2 SC16C650B HVQFN32 (NXP datasheet table 2; the SC16C750B matches, the SC16C550B does not).
-# CS, IOR, IOW are the active-low inputs in this package. The exposed pad is ground.
+# CS, IOR, IOW are the active-low inputs in this package. The exposed pad (33 in KiCad's SOT617-1 footprint) is ground.
 for pad, net in {1: "D5", 2: "D6", 3: "D7", 4: "UART_BAUD", 5: "UART_RX", 6: "UART_TX", 7: "GND",
                  8: "UART_BAUD", 9: "XTAL1", 10: "XTAL2", 11: "UART_IOW_N", 13: "GND", 14: "UART_IOR_N",
                  16: "A3", 17: "A2", 18: "A1", 20: "UART_INT", 24: "UART_RESET", 25: "GND", 26: "GND",
-                 27: "VSB", 28: "D0", 29: "D1", 30: "D2", 31: "D3", 32: "D4", "EP": "GND"}.items():
+                 27: "VSB", 28: "D0", 29: "D1", 30: "D2", 31: "D3", 32: "D4", 33: "GND"}.items():
     c("U2", pad, net)            # 4 RCLK = 8 BAUDOUT; 25 CTS / 26 DSR held asserted; 12 n.c.; 15, 19, 21-23 outputs unused
 # Y1 3225 4-pad: 1/3 crystal, 2/4 case
 c("Y1", 1, "XTAL1"); c("Y1", 3, "XTAL2"); c("Y1", 2, "GND"); c("Y1", 4, "GND")
