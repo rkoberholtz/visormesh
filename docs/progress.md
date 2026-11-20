@@ -8,11 +8,21 @@
 - [x] Order PCBs + assembly from JLCPCB (5 boards, 2-layer, 1.6 mm, leaded HASL); tagged `hw-v0.1`
 - [ ] Boards received
 - [x] Order J1: Hirose IC1HA-68RD-1.27SH(51) is obsolete; 1 ordered as new-old stock from eBay ($24)
+- [ ] J1 order cancelled 2026-11-17; rev 1 gets a harvested or wired-on connector instead (README.md, "Without the Hirose part")
 - [ ] Order 2x 1x7 female headers
 - [ ] Buy 2–3 cheap used Springboard modules (spare connectors to harvest + slot-fit reference)
 - [ ] Bare board: continuity check, dry-fit in Visor slot
 - [ ] Fit J1, bench-power VSB at 3.3 V, check current and 14.7456 MHz on Y1
 - [ ] In Visor: read/write SC16IS740 scratch register (SPR, 0x07) from Palm side
+
+### Hardware: SB-LoRa rev 2
+- [x] Plan (hardware/sb-lora/REV2.md): S29AL016J flash on CS0 so the app loads on insertion, SC16C650B UART on CS1 in place of the SC16IS740, XIAO and Wio side by side, LiPo pads
+- [x] Netlist, footprints and LCSC numbers; 4-layer layout routed, DRC 0 unconnected, verify.py passes
+- [x] Choose J1: Robinson Nugent / 3M MCS-068SMA1-TR30, female straddle receptacle; ordered from eBay 2026-11-19
+- [ ] Measure J1 (row gap, tail positions, body), then the straddle J1 pattern in build_board.py and the board thickness
+- [ ] Check the XIAO and Wio footprints against the boards at 1:1; check rotations in JLC's preview
+- [ ] Order; tag `hw-v0.2`
+- [ ] Case with the slot's key and latch
 
 ### Firmware
 - [x] Apply `firmware/meshcore-xiao-nrf52-uart-companion.patch` to MeshCore, build `Xiao_nrf52_companion_radio_uart` (`firmware/Makefile`, MeshCore a366955c, GCC 14 on Apple Silicon)
@@ -47,7 +57,8 @@
 - Which CF adapter is it, and does its ROM include an app installer?
 - Is the J1 footprint correct against the Hirose drawing? (Only checked against springSD.)
 - Which Handspring offset variant (−0.3 / 0 / +0.3 / +0.6 mm) is the (51)? This matters if a harvested connector replaces it.
-- Long-term J1 supply: no current-production part known. Could a PCMCIA card-side straddle receptacle work? (The keying fit is untested.)
+- Long-term J1 supply: no current-production card-side part found (Amphenol, Hirose, TE and Assmann parts are obsolete or host-side). Rev 2 uses eBay surplus MCS-068SMA1, so buy enough for every board. Does a PCMCIA card-side straddle receptacle seat fully in the Springboard slot? (The keying is in the case; untested.)
+- What board thickness does the MCS-068SMA1's row gap take?
 - Does the extension clear the Visor body? Is the slot-opening alignment right?
 
 ## Log
@@ -117,3 +128,7 @@
 - 2026-11-08: Verified on the Neo: Trace's result line fits ("Back in 1.2 s, N hops"); the command retry (with the bridge stopped a command goes offline after a few seconds, and after a reconnect everything works as before); the SB-LoRa Test with the slot empty says to insert the module and doesn't touch the bus (no reset); Add Contact's three-line note fits. The SB-LoRa Test's bus steps (mapping, registers, loopback, interrupt, radio) are untested until the board arrives.
 - 2026-11-08: Slot link restored at launch only while the OS reports a module. Verified on the Neo with the slot empty: Connect on Slot says "No module in the slot", and a relaunch doesn't reset the Visor and comes back on USB. Also new, untested until the board arrives: the radio's "message waiting" push wakes the Visor on the Slot link (open app: sync and sound, screen off; closed app with Check when closed on: a copy of the handler left in system-owned memory starts the closed-app check at once), checked on the host with the simulated module; and hardware/sb-lora/BRINGUP.md, the step-by-step bring-up plan. Segments: 20.1 / 23.7 / 22.4 / 25.6 / 24.1 KB.
 - 2026-11-08: Verified on the Neo: the three overlaps check_ui.py's new overlap rule found are fixed (Node "Version:", Preferences' Check when closed popup, Flood Scopes' default), and Add Channel's New Key gives a private channel a random key from the entropy pool (pen and key timing, the radio's packet readings; kept between launches in an unsaved preference). Adding a channel with it is untested (it writes to the radio). Also new, host-only: the request retry rules in request.c with tests/test_request.c and check_source.py's try-once rule, and make replay over the bridge's full-frame capture. Segments: 20.8 / 23.7 / 22.4 / 26.0 / 24.8 KB.
+- 2026-11-09: SB-LoRa rev 2 planned in hardware/sb-lora/REV2.md: a flash on CS0 so the app loads when the module goes in (the installer copies it to RAM, since the transport's interrupt handler can't live on a removable module), a 16550-style UART on CS1 in place of the SC16IS740 SPI bridge, and the XIAO and Wio side by side to make the module flat. Netlist, footprints and LCSC numbers done.
+- 2026-11-11: Release workflow: a v* tag builds and tests the app and publishes visormesh-<tag>.prc with SHA256SUMS. The toolchain install is shared with the Dockerfile (tools/install_toolchain.sh).
+- 2026-11-17: The Hirose IC1HA order for rev 1's J1 was cancelled. README.md lists the stopgaps for rev 1 (harvested straddle part, donor connector on wires). Rev 2 laid out: 4 layers, routed with Freerouting 1.9.0, DRC 0 unconnected, verify.py passes; J1 left as a placeholder.
+- 2026-11-19: Rev 2 J1 chosen: Robinson Nugent / 3M MCS-068SMA1-TR30, a female MEMPAK straddle receptacle at 1.27 mm with the rows directly opposite each other, ordered as eBay surplus. Ruled out as obsolete, host-side or the wrong part: Amphenol 10014744-007T, 71299-050CALF and 7111S1615A01LF (a SIM tray), Hirose IC1F, IC9 and IC1K, TE 5535657, Assmann A-PCMCIA-68 (male THT), and an AliExpress female part (photo and listing brands disagree; $39 shipping). The single-row MCS-068SSA1 would suit a single-sided board but no stock turned up. Next: measure the parts, then the straddle J1 pattern and board thickness.
