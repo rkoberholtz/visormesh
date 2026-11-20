@@ -79,22 +79,22 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 
 ## Netlist and layout
 
-`rev2/netlist.py` has the parts and connections, in the same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). The board is laid out and routed. **Don't order it until J1 is settled** (below).
+`rev2/netlist.py` has the parts and connections, in the same shape as rev 1's `source/netlist.py` (rev 1 stays as built under `hw-v0.1`). The board is laid out and routed with J1 as a straddle. **Don't order it until J1's pattern is measured** (below).
 
-- **Board:** 50.43 x 75.05 mm, the same outline as rev 1. 4 layers, 1.6 mm: In1.Cu is a solid GND plane, F.Cu, In2.Cu and B.Cu carry signals, with GND pours on In2 and B. Every part is on the top except the LiPo pads (BT1), which are on the bottom under the radio boards. Tracks are 0.15 mm with 0.15 mm gaps, and vias are 0.5/0.25 mm, all within JLCPCB's standard 4-layer rules.
+- **Board:** 50.43 x 75.05 mm, the same outline as rev 1. 4 layers, 1.6 mm: In1.Cu is a solid GND plane, F.Cu, In2.Cu and B.Cu carry signals, with GND pours on In2 and B. Every part is on the top except the LiPo pads (BT1), which are on the bottom under the radio boards, and J1's pins 35-68, which are on the bottom edge opposite pins 1-34. Tracks are 0.15 mm with 0.15 mm gaps, and vias are 0.5/0.25 mm, all within JLCPCB's standard 4-layer rules.
 - **Build:** `rev2/make.sh` runs the whole pipeline: `set_project.py`, then `build_board.py` (placement and GND vias), then Freerouting 1.9.0, then `finish_board.py` (pours), DRC and `verify.py`. It needs KiCad 10 (the Homebrew cask), Java 21 (`openjdk@21`) and `FREEROUTING=/path/to/freerouting-1.9.0.jar`; Freerouting 2.x ignores the pass limit and never finishes. `rev2/make_fab.py fab` writes the JLCPCB gerbers zip, BOM, CPL and the hand-fit list.
-- **Checks:** DRC reports 0 unconnected pads and no clearance errors. What's left is the XIAO footprint's outline silk being clipped at its pads, and warnings about the missing footprint-library table. `verify.py` checks every pad's net against the netlist, J1 against Table 5-1, the flash's word mode, the UART strobes and register select, the inverters, and that only U5 and U6 cross the two power domains.
-- **Renders:** `rev2/renders/`, below. They still show the placeholder J1 (two staggered rows on the top); they'll be regenerated after the straddle J1 rework.
+- **Checks:** DRC reports 0 unconnected pads and no clearance errors. What's left is the XIAO footprint's outline silk being clipped at its pads, and warnings about the missing footprint-library table. `verify.py` checks every pad's net against the netlist, J1 against Table 5-1, J1's straddle (pins 1-34 on F.Cu, 35-68 on B.Cu, each directly opposite its partner), the flash's word mode, the UART strobes and register select, the inverters, and that only U5 and U6 cross the two power domains.
+- **Renders:** `rev2/renders/`, below, made with `kicad-cli pcb render --side top|bottom -w 784 -h 1096 --background opaque`. J1's pads are the estimated straddle pattern.
 
 | Top | Bottom |
 |---|---|
 | ![SB-LoRa rev 2, top](rev2/renders/sb-lora-rev2-top.png) | ![SB-LoRa rev 2, bottom](rev2/renders/sb-lora-rev2-bottom.png) |
 
 Before ordering:
-1. **J1.** When the MCS-068SMA1 parts arrive (ordered 2026-11-19), measure one with calipers. The straddle needs a new pattern in `build_board.py`: one row of pads on F.Cu and one on B.Cu, directly opposite each other, in place of the current two staggered rows on top. Set the `J1_*` constants from the sample: pitch, each row's distance from the edge, and pad size. Keep the 5.5 mm strip along the edge free (`J1_KEEP`) on both sides, and check whether the connector body needs the board edge moved. Then run `make.sh` and `make_fab.py` again. The current pattern is a placeholder: two staggered rows of 0.5 x 1.6 mm pads on the top, 1.3 and 3.5 mm in from the edge.
+1. **J1.** The straddle pattern is in `build_board.py`: pins 1-34 on F.Cu and 35-68 on B.Cu directly opposite, at 1.27 mm (the same split as rev 1). The rest is estimated: 0.6 x 1.6 mm pads centred 1.3 mm from the edge. When the MCS-068SMA1 parts arrive (ordered 2026-11-19), measure one with calipers and set `J1_ROW`, `J1_PAD` and `BOARD_T` from it. Keep the 5.5 mm strip along the edge free (`J1_KEEP`) on both sides, and check whether the connector body needs the board edge moved. Then run `make.sh` and `make_fab.py` again, and regenerate the renders.
 2. **XIAO and Wio footprints.** Check them against the real boards with calipers (print the top copper at 1:1).
 3. **Assembly.** In JLC's placement preview, check the rotation of U1 (pin 1 at the top left, beside the triangle), U2, U3, U5 and Y1.
-4. **Board thickness.** Match it to the 3M part's gap between the rows. If that's thinner than 1.6 mm, change `SetBoardThickness` in `build_board.py` and the thickness in the JLC order to suit.
+4. **Board thickness.** Match it to the 3M part's gap between the rows. If that's thinner than 1.6 mm, change `BOARD_T` in `build_board.py` and the thickness in the JLC order to suit.
 5. Tag the commit you order from as `hw-v0.2`.
 
 ## Carried over from rev 1

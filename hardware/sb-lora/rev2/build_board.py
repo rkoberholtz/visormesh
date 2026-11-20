@@ -5,9 +5,11 @@ Same frame as rev 1 (../source/build_board.py): springSD's in-slot outline, conn
 bottom, the extension for the radio boards at the top. 4 layers: F.Cu, In2.Cu and B.Cu carry
 signals; In1.Cu is a solid GND plane.
 
-J1 is a placeholder. No single-sided card-side receptacle has been chosen, so its land pattern
-comes from the J1_* constants below. Replace them from the part's drawing before ordering, and
-keep the J1 zone (J1_KEEP from the edge) free of other parts so the real pattern fits.
+J1 is a Robinson Nugent / 3M MCS-068SMA1-TR30 straddle receptacle: pins 1-34 on F.Cu, 35-68 on
+B.Cu directly opposite, 1.27 mm pitch. There's no drawing, so the row's distance from the edge,
+the pad size and the board thickness are estimates in the J1_* constants below. Set them from a
+measured part before ordering, and keep the J1 zone (J1_KEEP from the edge, both sides) free of
+other parts so the real pattern fits.
 """
 import sys, os
 import pcbnew
@@ -29,19 +31,18 @@ LOCAL = os.path.join(HERE, "visormesh.pretty")
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "visormesh.kicad_pcb")
 REV = "v0.2"
 
-# ---- J1 placeholder land pattern (replace from the chosen part's drawing) ----
-J1_PITCH = 1.27       # contact pitch within a row (PC Card standard)
-J1_STAGGER = 0.635    # row B tails offset from row A along the edge
-J1_ROW_A = 1.3        # pins 1-34: pad centre distance from the board edge
-J1_ROW_B = 3.5        # pins 35-68
-J1_PAD = (0.5, 1.6)   # pad width along the edge, length into the board
-J1_KEEP = 5.5         # no other parts within this distance of the edge
+# ---- J1 straddle land pattern: pitch from the catalogue, the rest estimated until a part is measured ----
+J1_PITCH = 1.27       # contact pitch within a row (catalogue: .050")
+J1_ROW = 1.3          # pad centre distance from the board edge, both rows (estimate)
+J1_PAD = (0.6, 1.6)   # pad width along the edge, length into the board (estimate)
+J1_KEEP = 5.5         # no other parts within this distance of the edge, top or bottom
+BOARD_T = 1.6         # set by the connector's gap between the rows (not yet measured)
 
 board = pcbnew.BOARD()
 board.SetCopperLayerCount(4)
 board.SetLayerType(pcbnew.In1_Cu, pcbnew.LT_POWER)
 ds = board.GetDesignSettings()
-ds.SetBoardThickness(MM(1.6))
+ds.SetBoardThickness(MM(BOARD_T))
 ds.m_TrackMinWidth = MM(0.15)
 ds.m_MinClearance = MM(0.15)
 ds.m_ViasMinSize = MM(0.45)
@@ -66,10 +67,11 @@ for lyr in (pcbnew.F_Fab, pcbnew.B_Fab, pcbnew.F_SilkS):
     s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_SEGMENT)
     s.SetStart(V(X0 + 1, Y_SLOT)); s.SetEnd(V(X1 - 1, Y_SLOT)); s.SetLayer(lyr); s.SetWidth(MM(0.12))
     board.Add(s)
-# J1 zone on the fab layer, so the placeholder's extent shows on the assembly drawing
-s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_RECT)
-s.SetStart(V(X0 + 0.5, Y_EDGE - J1_KEEP)); s.SetEnd(V(X1 - 0.5, Y_EDGE - 0.2))
-s.SetLayer(pcbnew.F_Fab); s.SetWidth(MM(0.1)); board.Add(s)
+# J1 zone on both fab layers, so the connector's extent shows on the assembly drawings
+for lyr in (pcbnew.F_Fab, pcbnew.B_Fab):
+    s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_RECT)
+    s.SetStart(V(X0 + 0.5, Y_EDGE - J1_KEEP)); s.SetEnd(V(X1 - 0.5, Y_EDGE - 0.2))
+    s.SetLayer(lyr); s.SetWidth(MM(0.1)); board.Add(s)
 
 # ---------------- nets ----------------
 netinfo = {}
@@ -78,17 +80,19 @@ for n in NETS:
 
 def springboard_fp():
     fp = pcbnew.FOOTPRINT(board)
-    fp.SetFPID(pcbnew.LIB_ID("visormesh", "SPRINGBOARD_68_SMT"))
-    fp.SetReference("J1"); fp.SetValue("Springboard 68p SMT (placeholder)")
+    fp.SetFPID(pcbnew.LIB_ID("visormesh", "SPRINGBOARD_68_STRADDLE"))
+    fp.SetReference("J1"); fp.SetValue("MCS-068SMA1 straddle (pattern estimated)")
     for n in range(1, 69):
-        a = n <= 34
-        k = (n - 1) if a else (n - 35)
-        x = 0.8 * IN - k * J1_PITCH - (0 if a else J1_STAGGER)
-        y = -(J1_ROW_A if a else J1_ROW_B)
+        top = n <= 34       # same split as rev 1: pin n on F.Cu, pin n + 34 opposite it on B.Cu
+        k = (n - 1) if top else (n - 35)
+        x = 0.8 * IN - k * J1_PITCH
+        y = -J1_ROW
         p = pcbnew.PAD(fp)
         p.SetNumber(str(n)); p.SetShape(pcbnew.PAD_SHAPE_RECT); p.SetAttribute(pcbnew.PAD_ATTRIB_SMD)
         p.SetSize(V(*J1_PAD))
-        ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); ls.AddLayer(pcbnew.F_Mask); ls.AddLayer(pcbnew.F_Paste)
+        ls = pcbnew.LSET()
+        for l in ((pcbnew.F_Cu, pcbnew.F_Mask, pcbnew.F_Paste) if top else (pcbnew.B_Cu, pcbnew.B_Mask, pcbnew.B_Paste)):
+            ls.AddLayer(l)
         p.SetLayerSet(ls)
         fp.Add(p)
         p.SetPosition(V(OX + x, Y_EDGE + y))
@@ -213,7 +217,7 @@ for ref, fp in placed.items():
         n = p.GetNumber()
         if ref == "J1":
             row_a = int(n) <= 34
-            dx = (1 if int(n) == 1 else -1) if row_a else 0     # row A ends go sideways, row B inward
+            dx = (1 if int(n) == 1 else -1) if row_a else 0     # top row's ends go sideways, bottom row inward
             fanout(p, dx, 0 if row_a else -1)
             continue
         if ref in ("U2", "BT1"):
@@ -261,7 +265,7 @@ ka.SetLayerSet(ls)
 ka.SetDoNotAllowTracks(True); ka.SetDoNotAllowVias(True); ka.SetDoNotAllowPads(False)
 ka.SetDoNotAllowFootprints(False); ka.SetDoNotAllowZoneFills(False)
 ol = ka.Outline(); ol.NewOutline()
-ky = Y_EDGE - J1_ROW_A + J1_PAD[1] / 2 - 0.1      # just inside row A's pad tips
+ky = Y_EDGE - J1_ROW + J1_PAD[1] / 2 - 0.1      # just inside the pad tips
 for x, y in ((X0, ky), (X1, ky), (X1, Y_EDGE), (X0, Y_EDGE)):
     ol.Append(MM(x), MM(y))
 board.Add(ka)
@@ -280,6 +284,8 @@ silk("^ SLOT OPENING ^", 84.0, Y_SLOT + 1.3, 0.8)
 silk("USB-C this edge", 87.0, Y_TOP + 1.0, 0.8, pcbnew.B_SilkS, True)
 silk("1", OX + 0.8 * IN, Y_EDGE - J1_KEEP - 0.8, 0.8)
 silk("34", OX - 0.85 * IN, Y_EDGE - J1_KEEP - 0.8, 0.8)
+silk("35", OX + 0.8 * IN, Y_EDGE - J1_KEEP - 0.8, 0.8, pcbnew.B_SilkS, True)
+silk("68", OX - 0.85 * IN, Y_EDGE - J1_KEEP - 0.8, 0.8, pcbnew.B_SilkS, True)
 silk("LiPo", 100.25, YX + 4.3, 0.8, pcbnew.B_SilkS, True)
 for i, lab in enumerate(("IO", "CK", "RS", "G")):     # SWDIO, SWCLK, NRST, GND
     silk(lab, 102.5, Y_TOP + 2.5 + 2.8 * i, 0.8)

@@ -1,5 +1,5 @@
 """
-VisorMesh Springboard module, rev 2: parts and connectivity. Laid out (build_board.py), not built; J1 is a placeholder.
+VisorMesh Springboard module, rev 2: parts and connectivity. Laid out (build_board.py), not built; J1's land pattern is estimated until a part is measured.
 Same shape as ../source/netlist.py (rev 1, hw-v0.1), so its board and schematic scripts can be adapted.
 See ../REV2.md for the reasons behind each choice.
 
@@ -24,8 +24,8 @@ Pin tables that still need checking against a datasheet are marked VERIFY.
 # ref: (value, footprint_lib, footprint_name, lcsc, description, dnp)
 # An empty LCSC number is still to be looked up.
 PARTS = {
-    "J1": ("Springboard 68p SMT", None, "SPRINGBOARD_68_SMT", "",
-           "Single-sided SMT PC Card receptacle, card side; part not chosen, land pattern is a placeholder (REV2.md). Hand-solder", True),
+    "J1": ("MCS-068SMA1-TR30", None, "SPRINGBOARD_68_STRADDLE", "",
+           "Robinson Nugent / 3M PC Card receptacle, card side, straddle mount; land pattern estimated until a part is measured (REV2.md). Hand-solder", True),
     "U1": ("S29AL016J70TFI020", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "C914935",
            "2 MB NOR flash, x16, 70 ns, csSlot0", False),
     "U2": ("SC16C650BIBS", "Package_DFN_QFN", "HVQFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm", "C729132",

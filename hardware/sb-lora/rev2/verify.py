@@ -33,6 +33,13 @@ def want(name):
     return ""
 jbad = [(p, SB_NAMES[p], pad_net[("J1", str(p))]) for p in range(1, 69) if pad_net[("J1", str(p))] != want(SB_NAMES[p])]
 check(not jbad, f"J1 pins 1-68 agree with Table 5-1 {jbad[:4]}")
+j1 = {p.GetNumber(): p for fp in b.GetFootprints() if fp.GetReference() == "J1" for p in fp.Pads()}
+def side(p):
+    return {(True, False): "F", (False, True): "B"}.get((p.IsOnLayer(pcbnew.F_Cu), p.IsOnLayer(pcbnew.B_Cu)), "?")
+sbad = [n for n in range(1, 69) if side(j1[str(n)]) != ("F" if n <= 34 else "B")]
+check(not sbad, f"J1 straddle: pins 1-34 on F.Cu only, 35-68 on B.Cu only {sbad[:4]}")
+obad = [n for n in range(1, 35) if j1[str(n)].GetPosition() != j1[str(n + 34)].GetPosition()]
+check(not obad, f"J1 straddle: pin n + 34 directly opposite pin n {obad[:4]}")
 
 # 3. flash in word mode on the slot bus: flash A0 = slot A1, all 16 data lines, CS0*
 check(pad_net[("U1", "25")] == "A1" and pad_net[("U1", "9")] == "A20" and pad_net[("U1", "26")] == "CS0_N"
