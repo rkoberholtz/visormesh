@@ -84,7 +84,11 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 - **Board:** 50.43 x 75.05 mm, the same outline as rev 1. 4 layers, 1.6 mm: In1.Cu is a solid GND plane, F.Cu, In2.Cu and B.Cu carry signals, with GND pours on In2 and B. Every part is on the top except the LiPo pads (BT1), which are on the bottom under the radio boards. Tracks are 0.15 mm with 0.15 mm gaps, and vias are 0.5/0.25 mm, all within JLCPCB's standard 4-layer rules.
 - **Build:** `rev2/make.sh` runs the whole pipeline: `set_project.py`, then `build_board.py` (placement and GND vias), then Freerouting 1.9.0, then `finish_board.py` (pours), DRC and `verify.py`. It needs KiCad 10 (the Homebrew cask), Java 21 (`openjdk@21`) and `FREEROUTING=/path/to/freerouting-1.9.0.jar`; Freerouting 2.x ignores the pass limit and never finishes. `rev2/make_fab.py fab` writes the JLCPCB gerbers zip, BOM, CPL and the hand-fit list.
 - **Checks:** DRC reports 0 unconnected pads and no clearance errors. What's left is the XIAO footprint's outline silk being clipped at its pads, and warnings about the missing footprint-library table. `verify.py` checks every pad's net against the netlist, J1 against Table 5-1, the flash's word mode, the UART strobes and register select, the inverters, and that only U5 and U6 cross the two power domains.
-- **Renders:** `rev2/renders/`.
+- **Renders:** `rev2/renders/`, below. They still show the placeholder J1 (two staggered rows on the top); they'll be regenerated after the straddle J1 rework.
+
+| Top | Bottom |
+|---|---|
+| ![SB-LoRa rev 2, top](rev2/renders/sb-lora-rev2-top.png) | ![SB-LoRa rev 2, bottom](rev2/renders/sb-lora-rev2-bottom.png) |
 
 Before ordering:
 1. **J1.** When the MCS-068SMA1 parts arrive (ordered 2026-11-19), measure one with calipers. The straddle needs a new pattern in `build_board.py`: one row of pads on F.Cu and one on B.Cu, directly opposite each other, in place of the current two staggered rows on top. Set the `J1_*` constants from the sample: pitch, each row's distance from the edge, and pad size. Keep the 5.5 mm strip along the edge free (`J1_KEEP`) on both sides, and check whether the connector body needs the board edge moved. Then run `make.sh` and `make_fab.py` again. The current pattern is a placeholder: two staggered rows of 0.5 x 1.6 mm pads on the top, 1.3 and 3.5 mm in from the edge.
