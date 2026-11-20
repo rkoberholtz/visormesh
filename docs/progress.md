@@ -23,7 +23,9 @@
 - [ ] Measure J1 (row gap, tail positions, pad size, body), set `J1_ROW`, `J1_PAD` and `BOARD_T` in build_board.py, rebuild
 - [ ] Check the XIAO and Wio footprints against the boards at 1:1; check rotations in JLC's preview
 - [ ] Order; tag `hw-v0.2`
-- [ ] Case with the slot's key and latch
+- [x] Draft case (hardware/sb-lora/rev2/case/): two-part OpenSCAD shell for FDM, in-slot part from nkorth's CC0 slot cover, bump for the radio boards, LiPo and an FPC antenna; not printed
+- [ ] Print nkorth's blank and check it fits the slot
+- [ ] Measure the connector's contact height in the slot, J1's body, and the radio and LiPo heights; set them in sb_lora_case.scad and print the case
 
 ### Firmware
 - [x] Apply `firmware/meshcore-xiao-nrf52-uart-companion.patch` to MeshCore, build `Xiao_nrf52_companion_radio_uart` (`firmware/Makefile`, MeshCore a366955c, GCC 14 on Apple Silicon)
@@ -133,3 +135,4 @@
 - 2026-11-11: Release workflow: a v* tag builds and tests the app and publishes visormesh-<tag>.prc with SHA256SUMS. The toolchain install is shared with the Dockerfile (tools/install_toolchain.sh).
 - 2026-11-17: The Hirose IC1HA order for rev 1's J1 was cancelled. README.md lists the stopgaps for rev 1 (harvested straddle part, donor connector on wires). Rev 2 laid out: 4 layers, routed with Freerouting 1.9.0, DRC 0 unconnected, verify.py passes; J1 left as a placeholder.
 - 2026-11-19: Rev 2 J1 chosen: Robinson Nugent / 3M MCS-068SMA1-TR30, a female MEMPAK straddle receptacle at 1.27 mm with the rows directly opposite each other, ordered as eBay surplus. Ruled out as obsolete, host-side or the wrong part: Amphenol 10014744-007T, 71299-050CALF and 7111S1615A01LF (a SIM tray), Hirose IC1F, IC9 and IC1K, TE 5535657, Assmann A-PCMCIA-68 (male THT), and an AliExpress female part (photo and listing brands disagree; $39 shipping). The single-row MCS-068SSA1 would suit a single-sided board but no stock turned up. J1 laid out as a straddle the same day (rev 1's top/bottom split, rows directly opposite) and the board rerouted: DRC 0 unconnected, verify.py passes and now checks the straddle; renders regenerated. The row's distance from the edge, the pad size and the 1.6 mm thickness are estimates. Next: measure the parts and set `J1_ROW`, `J1_PAD` and `BOARD_T`.
+- 2026-11-19: Rev 2 draft case in hardware/sb-lora/rev2/case/: base and lid split at the board's top face, both printed flat with no supports, two M2 x 8 screws. The in-slot shape (rails, side latches, end tabs) is nkorth's public-domain Springboard slot cover (Thingiverse 4776750); past the slot opening a bump holds the XIAO and Wio, the LiPo below them, a 42 x 10 mm FPC antenna pocket and the USB-C opening. 54 x 77 x 17.4 mm assembled. Not printed. The connector's contact height in the slot (3.35 mm), J1's body, and the radio and LiPo heights are guesses to measure; the bump also needs checking against the Visor's IR window and stylus.
