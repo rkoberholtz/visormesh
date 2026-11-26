@@ -48,10 +48,10 @@ pcb_bot = conn_z + pcb_t / 2;
 assert(pcb_top - lid_t >= part_h + 0.2, "conn_z leaves no room for the in-slot parts under the lid");
 assert(pcb_bot <= slot_h - 0.8, "conn_z leaves less than 0.8 mm of floor under the board");
 
-// ---- J1 body (MEASURE from the MCS-068SMA1) ----
-j1_w = 52;          // body width with the mounting ears
-j1_d = 5.5;         // body depth from the board edge (J1_KEEP)
-j1_h = 3.6;         // body thickness, centred on the contacts
+// ---- J1 body (measured MCS-068SMA1: 47.5 mm with ears, 44.5 without, 5.2 deep, 2.8 thick) ----
+j1_w = 47.5 + 2 * clr; // body width with the mounting ears
+j1_d = 5.5;         // body depth from the board edge (J1_KEEP); MEASURE where the board edge sits in the body
+j1_h = 2.8 + 2 * clr;  // body thickness, centred on the contacts
 
 // ---- extension bump ----
 bump_y1 = pcb_y1 + clr + 4.5;                       // room for the screw bosses past the board end
