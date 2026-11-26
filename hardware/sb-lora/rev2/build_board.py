@@ -36,7 +36,7 @@ J1_PAD = (0.7, 1.83)  # pad width along the edge, length into the board (rev 1)
 J1_ROW = J1_PAD[1] / 2 + 0.01  # pads run from the board edge inward, as on rev 1 (10 um in, so DRC sees no contact)
 J1_KEEP = 5.5         # no other parts within this distance of the edge, top or bottom
 # J1 body (measured): 47.5 mm across the ears, 44.5 mm without; each ear has a hole 1.0 wide, 1.8 high
-# and 1.5 deep facing the board, taken as centred in the ear. The board takes the ears' width, centred
+# and 1.5 deep facing the board, centred in the ear. The board takes the ears' width, centred
 # on J1, with a tab into each ear hole so the connector is located on the board.
 J1_EAR_W, J1_BODY_W = 47.5, 44.5
 J1_HOLE = (1.0, 1.5)    # ear hole width, depth
