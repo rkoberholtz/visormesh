@@ -138,7 +138,18 @@ PCBWay will assemble a single board, where JLC wants 2 or more. They buy the par
 
 **1. Make the files** as in JLC's step 1, then check the radio footprints as in step 2.
 
-**2. The board.** Upload `visormesh_gerbers_pcbway.zip` and set the same options as JLC's step 3: 4 layers, **0.8 mm** (not the default), ENIG, 1 oz outer copper, tented vias. Quantity 5 (you pay for the bare boards; only the assembled count can be 1). In the remarks, say that J1's pads run to the board edge and the two small tabs on the connector edge are intentional, and not to pull the pads back or trim the tabs.
+**2. The board.** Upload `visormesh_gerbers_pcbway.zip` and set the same options as JLC's step 3: 4 layers, **0.8 mm** (not the default), ENIG, 1 oz outer copper, tented vias. Quantity 5 (you pay for the bare boards; only the assembled count can be 1). In the remarks, say that J1's pads run to the board edge and the two small tabs on the connector edge are intentional, and not to pull the pads back or trim the tabs. Set the minimum hole size to 0.25 mm: the vias are drilled 0.25 mm, below PCBWay's 0.3 mm default.
+
+When PCBWay asks for the layer order, top to bottom:
+
+| Layer | Gerber file | Carries |
+|---|---|---|
+| L1 (top) | `visormesh-F_Cu.gtl` | parts and signals |
+| L2 | `visormesh-In1_Cu.g1` | solid GND plane |
+| L3 | `visormesh-In2_Cu.g2` | signals, GND pour |
+| L4 (bottom) | `visormesh-B_Cu.gbl` | J1 pins 35-68, LiPo pads, signals, GND pour |
+
+The stack-up is their default for 4 layers at 0.8 mm; nothing is impedance controlled.
 
 **3. Assembly.** Choose turnkey assembly, top side only, quantity 1, and upload `visormesh_bom_pcbway.csv` and `visormesh_cpl_pcbway.csv`.
 
