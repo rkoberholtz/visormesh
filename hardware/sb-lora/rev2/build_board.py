@@ -6,10 +6,9 @@ bottom, the extension for the radio boards at the top. 4 layers: F.Cu, In2.Cu an
 signals; In1.Cu is a solid GND plane.
 
 J1 is a Robinson Nugent / 3M MCS-068SMA1-TR30 straddle receptacle: pins 1-34 on F.Cu, 35-68 on
-B.Cu directly opposite, 1.27 mm pitch. There's no drawing, so the row's distance from the edge,
-the pad size and the board thickness are estimates in the J1_* constants below. Set them from a
-measured part before ordering, and keep the J1 zone (J1_KEEP from the edge, both sides) free of
-other parts so the real pattern fits.
+B.Cu directly opposite, 1.27 mm pitch. The pads are rev 1's, which the part fits. Rev 1's 1.6 mm
+board is too thick for it, so BOARD_T must be set from the gap between its rows before ordering.
+Keep the J1 zone (J1_KEEP from the edge, both sides) free of other parts.
 """
 import sys, os
 import pcbnew
@@ -31,12 +30,12 @@ LOCAL = os.path.join(HERE, "visormesh.pretty")
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "visormesh.kicad_pcb")
 REV = "v0.2"
 
-# ---- J1 straddle land pattern: pitch from the catalogue, the rest estimated until a part is measured ----
+# ---- J1 straddle land pattern: rev 1's pads, checked against an MCS-068SMA1 on a rev 1 board ----
 J1_PITCH = 1.27       # contact pitch within a row (catalogue: .050")
-J1_ROW = 1.3          # pad centre distance from the board edge, both rows (estimate)
-J1_PAD = (0.6, 1.6)   # pad width along the edge, length into the board (estimate)
+J1_PAD = (0.7, 1.83)  # pad width along the edge, length into the board (rev 1)
+J1_ROW = J1_PAD[1] / 2  # pads run from the board edge inward, as on rev 1
 J1_KEEP = 5.5         # no other parts within this distance of the edge, top or bottom
-BOARD_T = 1.6         # set by the connector's gap between the rows (not yet measured)
+BOARD_T = 1.0         # the MCS-068SMA1 gap between its rows measures 1.0 mm
 
 board = pcbnew.BOARD()
 board.SetCopperLayerCount(4)
@@ -81,7 +80,7 @@ for n in NETS:
 def springboard_fp():
     fp = pcbnew.FOOTPRINT(board)
     fp.SetFPID(pcbnew.LIB_ID("visormesh", "SPRINGBOARD_68_STRADDLE"))
-    fp.SetReference("J1"); fp.SetValue("MCS-068SMA1 straddle (pattern estimated)")
+    fp.SetReference("J1"); fp.SetValue("MCS-068SMA1 straddle")
     for n in range(1, 69):
         top = n <= 34       # same split as rev 1: pin n on F.Cu, pin n + 34 opposite it on B.Cu
         k = (n - 1) if top else (n - 35)

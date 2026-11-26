@@ -19,3 +19,5 @@ r.update({"min_clearance": 0.15, "min_track_width": 0.15, "min_via_diameter": 0.
           "min_through_hole_diameter": 0.25, "min_hole_clearance": 0.25, "min_copper_edge_clearance": 0.3,
           "min_text_height": 0.8})
 json.dump(p, open(out, "w"), indent=2)
+# Rev 1's rule: J1's straddle pads run to the board edge by design (the connector clamps the edge).
+open(os.path.splitext(out)[0] + ".kicad_dru", "w").write(open(os.path.join(HERE, "..", "kicad", "visormesh.kicad_dru")).read())
