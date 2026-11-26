@@ -24,7 +24,7 @@ lip_h = 1.6;        // the slot is narrower (lip_w) for its first lip_h
 lip_w = 49.8;
 
 // ---- board (from rev2/kicad/visormesh.kicad_pcb) ----
-pcb_w = 50.43;
+pcb_w = 46.8;                   // J1's ear width less the tab clearances, centred on J1
 pcb_t = 0.8;                    // = BOARD_T in build_board.py (the MCS-068SMA1 gap)
 pcb_in = 50.47;                 // in-slot section
 pcb_ext = 24.6;                 // extension past the slot opening
@@ -59,7 +59,7 @@ bump_y1 = pcb_y1 + clr + 4.5;                       // room for the screw bosses
 bump_top = pcb_top - radio_h - 0.6 - wall;          // outermost z (negative: stands proud of the Visor)
 bump_bot = pcb_bot + under_h + lipo[2] + 0.5 + wall;
 // USB-C on the XIAO, in the board end wall (x from the board, z from the XIAO's height)
-usb_x = 13.25;
+usb_x = 14.28;
 usb_z = pcb_top - 2.8;
 usb_open = [12.6, 6.8];                             // plug overmould clearance
 // M2 screws through the lid into the base, at the bump's far corners

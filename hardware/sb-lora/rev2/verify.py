@@ -73,7 +73,10 @@ tr = [t for t in b.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
 check(len(tr) > 0, f"board is routed ({len(tr)} segments)")
 bb = b.GetBoardEdgesBoundingBox()
 w, h = pcbnew.ToMM(bb.GetWidth()) - 0.1, pcbnew.ToMM(bb.GetHeight()) - 0.1
-check(abs(w - 50.43) < 0.05, f"board width {w:.2f} mm = springSD width 50.43 mm")
+j1x = [pcbnew.ToMM(p.GetPosition().x) for f in b.GetFootprints() if f.GetReference() == "J1" for p in f.Pads()]
+cx = (min(j1x) + max(j1x)) / 2
+check(w <= 47.5 and abs(pcbnew.ToMM(bb.GetCenter().x) - cx) < 0.05,
+      f"board width {w:.2f} mm within J1's 47.5 mm ears, centred on J1")
 print(f"INFO board {w:.2f} x {h:.2f} mm, {b.GetCopperLayerCount()} layers, "
       f"thickness {pcbnew.ToMM(b.GetDesignSettings().GetBoardThickness())} mm")
 print("RESULT", "ALL PASS" if not fail else f"{len(fail)} FAIL")
