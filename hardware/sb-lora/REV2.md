@@ -1,6 +1,6 @@
 # SB-LoRa rev 2 plan
 
-Laid out, not ordered: J1's land pattern is a placeholder until a connector is chosen. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one was cancelled (2026-11-17). Until rev 2 arrives, rev 1 is built with a harvested or wired-on connector (see "Without the Hirose part" in [README.md](README.md)). Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
+Laid out and ready to order (see [Ordering](#ordering-jlcpcb)); the case is a draft. Rev 1 (`hw-v0.1`) is ordered and shipping, but its Hirose IC1HA straddle connector is obsolete and the order for one was cancelled (2026-11-17). Until rev 2 arrives, rev 1 is built with a harvested or wired-on connector (see "Without the Hirose part" in [README.md](README.md)). Rev 2 changes the connector, adds a flash chip so the app loads itself, and makes the module as flat as possible.
 
 ## Decided
 
@@ -90,12 +90,47 @@ A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latc
 |---|---|
 | ![SB-LoRa rev 2, top](rev2/renders/sb-lora-rev2-top.png) | ![SB-LoRa rev 2, bottom](rev2/renders/sb-lora-rev2-bottom.png) |
 
-Before ordering:
-1. **J1.** The straddle pattern is in `build_board.py`: pins 1-34 on F.Cu and 35-68 on B.Cu directly opposite, at 1.27 mm (the same split as rev 1). The pads are rev 1's (0.7 x 1.83 mm, running from the board edge inward), which the MCS-068SMA1 fits, and the board is 0.8 mm, a little under its gap. As on rev 1, a custom DRC rule (`kicad/visormesh.kicad_dru`, written by `set_project.py`) lets J1's pads reach the edge. Still to check: the connector body's size, ears and pegs, against the 5.5 mm strip kept free along the edge (`J1_KEEP`) and the case's J1 cutout.
-2. **XIAO and Wio footprints.** Check them against the real boards with calipers (print the top copper at 1:1).
-3. **Assembly.** In JLC's placement preview, check the rotation of U1 (pin 1 at the top left, beside the triangle), U2, U3, U5 and Y1.
-4. **Board thickness.** Match it to the 3M part's gap between the rows. If that's thinner than 1.6 mm, change `BOARD_T` in `build_board.py` and the thickness in the JLC order to suit.
-5. Tag the commit you order from as `hw-v0.2`.
+## Ordering (JLCPCB)
+
+Order from a tagged commit, so the fab files can be made again.
+
+**1. Make the files.** From `hardware/sb-lora/rev2/`:
+
+```sh
+./make.sh            # only if the board changed: place, route, DRC, verify.py
+python3 make_fab.py fab
+```
+
+`fab/` gets the gerbers zip, the BOM and CPL, the hand-fit list and `check_top_copper_1to1.pdf`. It isn't in git.
+
+**2. Check the radio footprints.** Print `check_top_copper_1to1.pdf` at 100 % (actual size, not "fit to page"). Check the board outline measures 46.8 mm across, then lay the XIAO and the Wio on their footprints: every pad should sit under its castellation or pin.
+
+**3. The board.** Upload `visormesh_gerbers_jlcpcb.zip` and set:
+
+| Option | Setting |
+|---|---|
+| Layers | 4 |
+| Size | 46.8 x 77.5 mm (read from the gerbers) |
+| Quantity | 5 (the minimum) |
+| **Thickness** | **0.8 mm.** Not in the gerbers, and the default is 1.6 mm. J1's rows are 1.0 mm apart across their outer faces, so 1.6 mm won't fit |
+| Stack-up | the default for 0.8 mm |
+| Surface finish | ENIG: flat pads for the 0.5 mm TSOP and QFN and for J1's straddle |
+| Copper | 1 oz outer, 0.5 oz inner (the default) |
+| Via covering | tented (the default) |
+| Min via / track | 0.25 mm drill, 0.15/0.15 mm: within the standard rules, no extra options |
+| Order number | "Remove" or leave it; there's no reserved spot on the silkscreen |
+
+If JLC's review asks about copper at the board edge, or about the two small tabs on the connector edge, both are intentional: J1's pads run to the edge, and the 1.3 x 0.8 mm tabs go into J1's ear holes. Ask them not to pull the pads back or trim the tabs.
+
+**4. Assembly.** Turn on PCB assembly, top side only, for 2 or more of the 5 boards.
+
+- Upload `visormesh_bom_jlcpcb.csv` and `visormesh_cpl_jlcpcb.csv`. All 24 parts are on the top. Check that every line found its LCSC part and has stock, especially U1 (S29AL016J, C914935) and U2 (SC16C650B, C729132). Expect extended-part fees for the flash, the UART, the crystal and some of the logic.
+- **Check the placement preview before paying.** The CPL has no rotation corrections yet, so look at each IC's pin 1 against the silkscreen triangle: U1 (pin 1 top left, beside the triangle), U2 (QFN, pin 1 dot), U3-U6 (SC-70 and VSSOP, which KiCad and JLC often disagree on), Y1 and D1 (cathode bar). Fix any that are off in the preview, and note the corrections here for next time.
+- If JLC wants tooling holes or edge rails, take rails; holes in the board itself would land on parts.
+
+**5. After ordering.** Tag the commit (`git tag hw-v0.2`) and add the order to `docs/progress.md`.
+
+**Fitted by hand** (`hand_fit_parts.csv`): J1 (pushed on with the board's tabs in its ear holes, then both rows soldered), the XIAO (flat on its castellated pads), the Wio (pins through, cut flush), the LiPo, and the test points. JP2 is bridged and JP1 open from the factory.
 
 ## Carried over from rev 1
 
