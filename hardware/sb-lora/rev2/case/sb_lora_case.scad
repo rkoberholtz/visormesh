@@ -50,7 +50,8 @@ assert(pcb_bot <= slot_h - 0.8, "conn_z leaves less than 0.8 mm of floor under t
 
 // ---- J1 body (measured MCS-068SMA1: 47.5 mm with ears, 44.5 without, 5.2 deep, 2.8 thick) ----
 j1_w = 47.5 + 2 * clr; // body width with the mounting ears
-j1_d = 5.5;         // body depth from the board edge (J1_KEEP); MEASURE where the board edge sits in the body
+j1_d = 5.2;         // body depth, all of it in front of the board edge (the board butts against its back face)
+j1_tail = 2.0;      // tails reaching back over the board (rev 1's 1.83 mm pads)
 j1_h = 2.8 + 2 * clr;  // body thickness, centred on the contacts
 
 // ---- extension bump ----
@@ -129,8 +130,8 @@ module cavities() {
 	// pins under the board, then the LiPo
 	translate([pcb_x + 0.8, slot_l + 0.5, pcb_bot - e]) cube([pcb_w - 1.6, pcb_y1 - slot_l - 0.5 - 0.8, under_h + e]);
 	translate([(slot_w - lipo[0]) / 2 - 0.3, pcb_y1 - lipo[1] - 0.8, pcb_bot + under_h - e]) cube([lipo[0] + 0.6, lipo[1] + 0.6, lipo[2] + 0.5 + e]);
-	// J1 body at the connector end, open to the Visor's connector
-	translate([(slot_w - j1_w) / 2, -5, conn_z - j1_h / 2]) cube([j1_w, pcb_y0 + j1_d + 5 + 0.3, j1_h]);
+	// J1 body and tails at the connector end, open to the Visor's connector
+	translate([(slot_w - j1_w) / 2, pcb_y0 - j1_d - clr, conn_z - j1_h / 2]) cube([j1_w, j1_d + j1_tail + 2 * clr, j1_h]);
 	// USB-C opening in the far wall
 	translate([usb_x - usb_open[0] / 2, pcb_y1, usb_z - usb_open[1] / 2]) cube([usb_open[0], bump_y1 - pcb_y1 + 1, usb_open[1]]);
 	// antenna pocket in the lid's ceiling

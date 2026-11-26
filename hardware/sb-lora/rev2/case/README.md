@@ -28,7 +28,7 @@ openscad -D 'part="lid"' -o sb-lora-case-lid.stl sb_lora_case.scad
 
 1. **Print nkorth's blank first** (the files are on PalmDB and Thingiverse). If it doesn't fit the slot, this case won't either.
 2. **Measure in the Visor's slot:** how deep the connector's contact centre line sits below the back surface (`conn_z`, now 3.35 mm), and where the connector face sits relative to the slot's end (the board's connector edge is 2.67 mm past the shell, from springSD's outline).
-3. **Measure the J1 parts** when they arrive: the body's width, depth and thickness (`j1_w`, `j1_d`, `j1_h`), and the row gap, which sets `pcb_t`.
+3. **J1 measured** (2026-11-26): the MCS-068SMA1 body is 47.5 mm wide with its ears, 5.2 mm deep and 2.8 mm thick, and sits wholly in front of the board edge, so with the edge 2.67 mm past the shell its front face is about 7.9 mm past the shell. Check that against the Visor (step 2).
 4. **Measure the radio boards and the LiPo:** the height of the XIAO with its USB-C and of the Wio with its u.FL plug above the carrier (`radio_h`), the pin stubs below it (`under_h`), and the cell (`lipo`).
 5. **Check the Visor's top end:** the bump sits against it, so make sure it clears the IR window and the stylus.
 
