@@ -54,6 +54,12 @@ j1_d = 5.2;         // body depth, all of it in front of the board edge (the boa
 j1_tail = 2.0;      // tails reaching back over the board (rev 1's 1.83 mm pads)
 j1_h = 2.8 + 2 * clr;  // body thickness, centred on the contacts
 
+// ---- nose: the shell reaches past nkorth's cover to enclose J1, its face flush with J1's, as on a
+// Memplug (56.8 mm long, connector face flush with its end, 5.2 mm thick there) ----
+nose_l = j1_d - pcb_y0;         // 7.9 mm: the cover's end to J1's face
+nose_t = 5.2;                   // centred on the contacts
+notch = [2.0, 1.2];             // MEASURE (Memplug): side slot depth into the width, height; centred on conn_z
+
 // ---- extension bump ----
 bump_y1 = pcb_y1 + clr + 4.5;                       // room for the screw bosses past the board end
 bump_top = pcb_top - radio_h - 0.6 - wall;          // outermost z (negative: stands proud of the Visor)
@@ -105,6 +111,17 @@ module slot_envelope() {      // nkorth's slot cover, minus its grip
 	}
 }
 
+module nose() {
+	difference() {
+		union() {   // narrower inside the slot's lips, like the envelope
+			translate([2, -nose_l, conn_z - nose_t / 2]) cube([lip_w, nose_l + e, nose_t]);
+			translate([0, -nose_l, lip_h]) cube([slot_w, nose_l + e, conn_z + nose_t / 2 - lip_h]);
+		}
+		for (x = [-e, slot_w - notch[0] + e])
+			translate([x, -nose_l - e, conn_z - notch[1] / 2]) cube([notch[0], nose_l + 3 * e, notch[1]]);
+	}
+}
+
 module bump() {               // the part past the slot opening, rounded on its outer edges
 	r = 2;
 	hull() for (x = [r, slot_w - r], y = [slot_l, bump_y1 - r], z = [bump_top + r, bump_bot - r])
@@ -114,6 +131,7 @@ module bump() {               // the part past the slot opening, rounded on its 
 module outer() {
 	union() {
 		slot_envelope();
+		nose();
 		// fill between the envelope and the bump so the two parts join
 		translate([0, slot_l - 2, bump_top + 2]) cube([slot_w, 2.5, bump_bot - bump_top - 4]);
 		bump();
