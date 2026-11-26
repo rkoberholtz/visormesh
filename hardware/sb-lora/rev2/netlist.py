@@ -68,6 +68,24 @@ PARTS = {
     "TP4": ("GND", "TestPoint", "TestPoint_Pad_D1.0mm", "", "Probe ground", True),
 }
 
+# lcsc: (manufacturer, part number, full spec), for assemblers that buy from distributors (PCBWay).
+# Read from LCSC's listing of each number, 2026-11-26. The passives' specs are what a substitute must meet.
+MFR = {
+    "C2759923": ("Infineon (Cypress)", "S29AL008J70TFI010", "8 Mbit NOR flash, x16, 70 ns, top boot, 3.0 V, TSOP-48"),
+    "C2653222": ("Texas Instruments", "TL16C2550RHBR", "Dual UART, 16-byte FIFOs, VQFN-32 5x5 mm"),
+    "C91874": ("Texas Instruments", "SN74LVC2G32DCUR", "Dual 2-input OR, VSSOP-8"),
+    "C105251": ("Texas Instruments", "SN74LVC2G04DCKR", "Dual inverter, SC-70-6"),
+    "C15741": ("Texas Instruments", "SN74LVC2T45DCUR", "2-bit level translator, VSSOP-8"),
+    "C9382": ("Texas Instruments", "SN74LVC1T45DCKR", "1-bit level translator, SC-70-6"),
+    "C2901666": ("SCTF", "SX3B14.7456F2010F30", "Crystal 14.7456 MHz, 20 pF load, +-10 ppm, 3225 4-pad"),
+    "C15849": ("Samsung Electro-Mechanics", "CL10A105KB8NNNC", "1 uF 50 V X5R +-10 % 0603"),
+    "C14663": ("Yageo", "CC0603KRX7R9BB104", "100 nF 50 V X7R +-10 % 0603"),
+    "C24658": ("FH (Fenghua)", "0805CG220J500NT", "22 pF 50 V C0G +-5 % 0805"),
+    "C25803": ("Uni-Royal", "0603WAF1003T5E", "100 k +-1 % 0.1 W 0603"),
+    "C25804": ("Uni-Royal", "0603WAF1002T5E", "10 k +-1 % 0.1 W 0603"),
+    "C8598": ("JSCJ (Changjiang)", "B5819W", "Schottky 40 V 1 A, SOD-123"),
+}
+
 SB_NAMES = {  # Table 5-1 of the Springboard Development Guide
     1: "GND", 2: "D3", 3: "D4", 4: "D5", 5: "D6", 6: "D7", 7: "CS0*", 8: "A10", 9: "OE*", 10: "A11", 11: "A9",
     12: "A8", 13: "A13", 14: "A14", 15: "WE*", 16: "IRQ*", 17: "VCC", 18: "VDOCK", 19: "A16", 20: "A15",

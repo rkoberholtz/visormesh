@@ -101,7 +101,7 @@ Order from a tagged commit, so the fab files can be made again.
 python3 make_fab.py fab
 ```
 
-`fab/` gets the gerbers zip, the BOM and CPL, the hand-fit list and `check_top_copper_1to1.pdf`. It isn't in git.
+`fab/` gets a gerbers zip, BOM and CPL for each of JLCPCB (`*_jlcpcb.*`) and PCBWay (`*_pcbway.*`), the hand-fit list and `check_top_copper_1to1.pdf`. It isn't in git. The two zips and the two CPLs are the same files under each assembler's name; the BOMs differ.
 
 **2. Check the radio footprints.** Print `check_top_copper_1to1.pdf` at 100 % (actual size, not "fit to page"). Check the board outline measures 46.8 mm across, then lay the XIAO and the Wio on their footprints: every pad should sit under its castellation or pin.
 
@@ -126,11 +126,29 @@ If JLC's review asks about copper at the board edge, or about the two small tabs
 
 - Upload `visormesh_bom_jlcpcb.csv` and `visormesh_cpl_jlcpcb.csv`. All 25 parts are on the top. Check that every line found its LCSC part and has stock, especially U1 (S29AL008J70TFI010, C2759923) and U2 (TL16C2550RHBR, C2653222), which are low-stock extended parts. Expect extended-part fees for the flash, the UART, the crystal and some of the logic.
 - **Check the placement preview before paying.** The CPL has no rotation corrections yet, so look at each IC's pin 1 against the silkscreen triangle: U1 (pin 1 top left, beside the triangle), U2 (QFN, pin 1 dot), U3-U6 (SC-70 and VSSOP, which KiCad and JLC often disagree on), Y1 and D1 (cathode bar). Fix any that are off in the preview, and note the corrections here for next time.
-- If JLC wants tooling holes or edge rails, take rails; holes in the board itself would land on parts.
+- If JLC wants tooling holes or edge rails, take rails, but none on the J1 edge: breaking a rail off there would tear J1's edge pads and the tabs. Holes in the board itself would land on parts.
 
 **5. After ordering.** Tag the commit (`git tag hw-v0.2`) and add the order to `docs/progress.md`.
 
 **Fitted by hand** (`hand_fit_parts.csv`): J1 (pushed on with the board's tabs in its ear holes, then both rows soldered), the XIAO (flat on its castellated pads), the Wio (pins through, cut flush), the LiPo, and the test points. JP2 is bridged and JP1 open from the factory.
+
+## Ordering (PCBWay)
+
+PCBWay will assemble a single board, where JLC wants 2 or more. They buy the parts from distributors (Digi-Key, Mouser and the like) rather than LCSC, so the BOM carries manufacturer part numbers. The gerbers and CPL are the same as JLC's.
+
+**1. Make the files** as in JLC's step 1, then check the radio footprints as in step 2.
+
+**2. The board.** Upload `visormesh_gerbers_pcbway.zip` and set the same options as JLC's step 3: 4 layers, **0.8 mm** (not the default), ENIG, 1 oz outer copper, tented vias. Quantity 5 (you pay for the bare boards; only the assembled count can be 1). In the remarks, say that J1's pads run to the board edge and the two small tabs on the connector edge are intentional, and not to pull the pads back or trim the tabs.
+
+**3. Assembly.** Choose turnkey assembly, top side only, quantity 1, and upload `visormesh_bom_pcbway.csv` and `visormesh_cpl_pcbway.csv`.
+
+- The BOM lists the 25 placed parts by manufacturer part number, with LCSC's number as a cross-reference, and J1, the XIAO, the Wio and the LiPo as do-not-place. The passives' descriptions give the full spec, so PCBWay may substitute an equivalent; accept that for the resistors and capacitors, but not for U1, U2 or Y1.
+- **U1 and U2 are the risk.** U2 (TL16C2550RHBR) is last-time-buy at TI and U1 is low-stock. If the quote can't source them, buy them from LCSC (C2759923, C2653222) and send them to PCBWay as customer-supplied parts; their order form has an option for it.
+- PCBWay's engineers check every part's orientation against the silkscreen and send a confirmation before building. Look at it for the same parts as JLC's preview: U1 and U2 pin 1, U3-U6, Y1, and D1 (cathode bar toward the J1 edge).
+- No edge rail on the J1 edge, as for JLC.
+- Expect a setup and stencil fee, and a longer lead time than JLC because the parts are bought for the order.
+
+**4. After ordering:** tag the commit and add the order to `docs/progress.md`, as for JLC.
 
 ## Carried over from rev 1
 
