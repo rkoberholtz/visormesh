@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="112" viewBox="0 0 1000 112" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<!-- Milestone bar for README.md. To move it on, change a segment's class (done, now, todo), its number or tick, and the count in the title. -->
+<style>.done{fill:#2da44e}.now{fill:#d4a72c}.todo{fill:#8c959f;fill-opacity:.35}.n{fill:#fff;font-size:14px;font-weight:600}.l{fill:#8c959f;font-size:12px}.t{fill:#8c959f;font-size:14px;font-weight:600}</style>
+<text class="t" x="2" y="16">SB-LoRa: 4 of 10 milestones done, one in progress</text>
+<rect class="done" x="2" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="50" y="46" text-anchor="middle">&#10003;</text>
+<text class="l" x="50" y="74" text-anchor="middle">Palm app</text>
+<text class="l" x="50" y="90" text-anchor="middle">over USB</text>
+<rect class="done" x="102" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="150" y="46" text-anchor="middle">&#10003;</text>
+<text class="l" x="150" y="74" text-anchor="middle">Radio</text>
+<text class="l" x="150" y="90" text-anchor="middle">firmware</text>
+<rect class="done" x="202" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="250" y="46" text-anchor="middle">&#10003;</text>
+<text class="l" x="250" y="74" text-anchor="middle">Rev 1</text>
+<text class="l" x="250" y="90" text-anchor="middle">built</text>
+<rect class="done" x="302" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="350" y="46" text-anchor="middle">&#10003;</text>
+<text class="l" x="350" y="74" text-anchor="middle">Rev 2</text>
+<text class="l" x="350" y="90" text-anchor="middle">designed</text>
+<rect class="now" x="402" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="450" y="46" text-anchor="middle">5</text>
+<text class="l" x="450" y="74" text-anchor="middle">Rev 2</text>
+<text class="l" x="450" y="90" text-anchor="middle">ordered</text>
+<rect class="todo" x="502" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="550" y="46" text-anchor="middle">6</text>
+<text class="l" x="550" y="74" text-anchor="middle">Rev 2</text>
+<text class="l" x="550" y="90" text-anchor="middle">assembled</text>
+<rect class="todo" x="602" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="650" y="46" text-anchor="middle">7</text>
+<text class="l" x="650" y="74" text-anchor="middle">Visor sees</text>
+<text class="l" x="650" y="90" text-anchor="middle">module</text>
+<rect class="todo" x="702" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="750" y="46" text-anchor="middle">8</text>
+<text class="l" x="750" y="74" text-anchor="middle">App loads</text>
+<text class="l" x="750" y="90" text-anchor="middle">from flash</text>
+<rect class="todo" x="802" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="850" y="46" text-anchor="middle">9</text>
+<text class="l" x="850" y="74" text-anchor="middle">Radio over</text>
+<text class="l" x="850" y="90" text-anchor="middle">the slot</text>
+<rect class="todo" x="902" y="28" width="96" height="26" rx="4"/>
+<text class="n" x="950" y="46" text-anchor="middle">10</text>
+<text class="l" x="950" y="74" text-anchor="middle">Case and</text>
+<text class="l" x="950" y="90" text-anchor="middle">daily use</text>
+</svg>
