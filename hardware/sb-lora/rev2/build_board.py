@@ -33,7 +33,7 @@ REV = "v0.2"
 # ---- J1 straddle land pattern: rev 1's pads, checked against an MCS-068SMA1 on a rev 1 board ----
 J1_PITCH = 1.27       # contact pitch within a row (catalogue: .050")
 J1_PAD = (0.7, 1.83)  # pad width along the edge, length into the board (rev 1)
-J1_ROW = J1_PAD[1] / 2  # pads run from the board edge inward, as on rev 1
+J1_ROW = J1_PAD[1] / 2 + 0.01  # pads run from the board edge inward, as on rev 1 (10 um in, so DRC sees no contact)
 J1_KEEP = 5.5         # no other parts within this distance of the edge, top or bottom
 # J1 body (measured): 47.5 mm across the ears, 44.5 mm without; each ear has a hole 1.0 wide, 1.8 high
 # and 1.5 deep facing the board, taken as centred in the ear. The board takes the ears' width, centred
@@ -64,8 +64,11 @@ HOLE_OUT = J1_EAR_W / 2 - ((J1_EAR_W - J1_BODY_W) / 2 - J1_HOLE[0]) / 2   # hole
 TAB_OUT, TAB_IN = HOLE_OUT - TAB_CLR, HOLE_OUT - J1_HOLE[0] + TAB_CLR
 TAB_L = J1_HOLE[1] - 2 * TAB_CLR
 X0, X1 = J1_CX - TAB_OUT, J1_CX + TAB_OUT               # outer edges flush with the tabs' outer sides
-Y_EDGE = sb(0, -0.926)[1]           # connector edge (bottom)
 Y_SLOT = sb(0, 1.060307)[1]         # top of springSD outline = slot opening
+# A Memplug module, flush with the slot opening when seated, has its connector face (flush with its
+# case end) 56.8 mm in. J1's face sits J1_D in front of the board edge. springSD's edge was 1.15 mm short.
+SLOT_TO_FACE, J1_D = 56.8, 5.2
+Y_EDGE = round(Y_SLOT + SLOT_TO_FACE - J1_D, 3)   # connector edge (bottom)
 EXT = 24.6                          # extension beyond the slot for the XIAO and Wio
 Y_TOP = Y_SLOT - EXT
 def side(sx):        # one tab and its relief notch, from the outer edge inward (sx = +1 right, -1 left)

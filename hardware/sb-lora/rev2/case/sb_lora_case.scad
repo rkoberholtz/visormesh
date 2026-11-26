@@ -26,7 +26,7 @@ lip_w = 49.8;
 // ---- board (from rev2/kicad/visormesh.kicad_pcb) ----
 pcb_w = 46.8;                   // J1's ear width less the tab clearances, centred on J1
 pcb_t = 0.8;                    // = BOARD_T in build_board.py (the MCS-068SMA1 gap)
-pcb_in = 50.47;                 // in-slot section
+pcb_in = 51.6;                  // in-slot section: J1's face 56.8 mm in from the opening, as on a Memplug
 pcb_ext = 24.6;                 // extension past the slot opening
 pcb_x = (slot_w - pcb_w) / 2;
 pcb_y0 = slot_l - pcb_in;       // connector edge (negative: J1 reaches past the shell into the Visor's connector)
