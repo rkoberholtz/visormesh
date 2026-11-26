@@ -25,7 +25,7 @@ lip_w = 49.8;
 
 // ---- board (from rev2/kicad/visormesh.kicad_pcb) ----
 pcb_w = 50.43;
-pcb_t = 1.0;                    // = BOARD_T in build_board.py (the MCS-068SMA1 gap)
+pcb_t = 0.8;                    // = BOARD_T in build_board.py (the MCS-068SMA1 gap)
 pcb_in = 50.47;                 // in-slot section
 pcb_ext = 24.6;                 // extension past the slot opening
 pcb_x = (slot_w - pcb_w) / 2;

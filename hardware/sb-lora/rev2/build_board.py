@@ -35,7 +35,7 @@ J1_PITCH = 1.27       # contact pitch within a row (catalogue: .050")
 J1_PAD = (0.7, 1.83)  # pad width along the edge, length into the board (rev 1)
 J1_ROW = J1_PAD[1] / 2  # pads run from the board edge inward, as on rev 1
 J1_KEEP = 5.5         # no other parts within this distance of the edge, top or bottom
-BOARD_T = 1.0         # the MCS-068SMA1 gap between its rows measures 1.0 mm
+BOARD_T = 0.8         # the MCS-068SMA1 tails measure 1.0 mm outside, so the gap is a little less; err thin
 
 board = pcbnew.BOARD()
 board.SetCopperLayerCount(4)

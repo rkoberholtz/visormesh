@@ -1,0 +1,11 @@
+Ref,Part,Notes
+J1,MCS-068SMA1-TR30,"Robinson Nugent / 3M PC Card receptacle, card side, straddle mount; land pattern estimated until a part is measured (REV2.md). Hand-solder"
+JP1,VDOCK EN,Open by default
+JP2,FLASH WE,Bridged by default; cut to write-protect the flash
+X1,XIAO nRF52840,Soldered flat by its castellated pads; bottom pads reached through solder-filled plated holes
+X2,Wio-SX1262 for XIAO,"Male pins through the carrier, spacer off, cut flush; top socket removed"
+BT1,LiPo,"Flat pouch LiPo, solder pads (size in REV2.md)"
+TP1,SWDIO,XIAO SWD
+TP2,SWCLK,XIAO SWD
+TP3,NRST,XIAO reset
+TP4,GND,Probe ground
