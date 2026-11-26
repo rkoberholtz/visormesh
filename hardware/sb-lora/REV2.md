@@ -101,7 +101,7 @@ Order from a tagged commit, so the fab files can be made again.
 python3 make_fab.py fab
 ```
 
-`fab/` gets a gerbers zip, BOM and CPL for each of JLCPCB (`*_jlcpcb.*`) and PCBWay (`*_pcbway.*`), the hand-fit list and `check_top_copper_1to1.pdf`. It isn't in git. The two zips and the two CPLs are the same files under each assembler's name; the BOMs differ.
+`fab/` gets a gerbers zip, BOM and CPL for each of JLCPCB (`*_jlcpcb.*`) and PCBWay (`*_pcbway.*`), the hand-fit list, `check_top_copper_1to1.pdf` and `assembly_top.pdf` (pin 1 of every part with an orientation ringed, with a table saying where it is). It isn't in git. The two zips and the two CPLs are the same files under each assembler's name; the BOMs differ.
 
 **2. Check the radio footprints.** Print `check_top_copper_1to1.pdf` at 100 % (actual size, not "fit to page"). Check the board outline measures 46.8 mm across, then lay the XIAO and the Wio on their footprints: every pad should sit under its castellation or pin.
 
@@ -144,7 +144,8 @@ PCBWay will assemble a single board, where JLC wants 2 or more. They buy the par
 
 - The BOM lists the 25 placed parts by manufacturer part number, with LCSC's number as a cross-reference, and J1, the XIAO, the Wio and the LiPo as do-not-place. The passives' descriptions give the full spec, so PCBWay may substitute an equivalent; accept that for the resistors and capacitors, but not for U1, U2 or Y1.
 - **U1 and U2 are the risk.** U2 (TL16C2550RHBR) is last-time-buy at TI and U1 is low-stock. If the quote can't source them, buy them from LCSC (C2759923, C2653222) and send them to PCBWay as customer-supplied parts; their order form has an option for it.
-- PCBWay's engineers check every part's orientation against the silkscreen and send a confirmation before building. Look at it for the same parts as JLC's preview: U1 and U2 pin 1, U3-U6, Y1, and D1 (cathode bar toward the J1 edge).
+- Upload `assembly_top.pdf` with the assembly files, as the assembly drawing.
+- PCBWay's engineers check every part's orientation against the silkscreen and send a confirmation before building. Don't approve until you've checked it against `assembly_top.pdf`: U1-U6 and Y1 pin 1, and D1's cathode bar toward the J1 edge.
 - No edge rail on the J1 edge, as for JLC.
 - Expect a setup and stencil fee, and a longer lead time than JLC because the parts are bought for the order.
 

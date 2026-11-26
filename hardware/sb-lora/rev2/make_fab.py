@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build rev 2's fab packages: gerbers+drill zip (4 layers), and a BOM and CPL each for JLCPCB (LCSC numbers)
 and PCBWay (manufacturer part numbers, hand-fit parts listed as do-not-place). Also the hand-fit list and a 1:1
-top copper print for checking the XIAO and Wio footprints against the real boards.
+top copper print for checking the XIAO and Wio footprints against the real boards, and an assembly drawing
+(assembly_drawing.py, run with KiCad's Python) marking pin 1 of every part with an orientation.
 Usage: make_fab.py <out dir> [kicad-cli]"""
-import csv, os, subprocess, sys, zipfile, shutil
+import csv, glob, os, subprocess, sys, zipfile, shutil
 sys.path.insert(0, os.path.dirname(__file__))
 from netlist import PARTS, MFR
 
@@ -78,4 +79,9 @@ with open(os.path.join(OUT, "hand_fit_parts.csv"), "w", newline="") as f:
 # 1:1 top copper and outline, to lay the XIAO and Wio on before ordering
 subprocess.run([CLI, "pcb", "export", "pdf", "--layers", "F.Cu,Edge.Cuts", "--mode-single", "--black-and-white",
                 "--scale", "1", "-o", os.path.join(OUT, "check_top_copper_1to1.pdf"), PCB], check=True, capture_output=True)
+# Assembly drawing: needs pcbnew, so KiCad's own Python
+KPY = sorted(glob.glob(os.path.join(os.path.dirname(os.path.dirname(CLI)),
+                                    "Frameworks/Python.framework/Versions/3*/bin/python3")))[-1]
+subprocess.run([KPY, os.path.join(HERE, "assembly_drawing.py"), PCB, os.path.join(OUT, "assembly_top.pdf"), CLI],
+               check=True, capture_output=True)
 print("ok", sorted(os.listdir(G)))
