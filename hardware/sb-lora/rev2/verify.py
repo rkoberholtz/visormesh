@@ -49,9 +49,13 @@ check(sorted(n for (r, p), n in pad_net.items() if r == "U1" and n.startswith("D
       "U1: DQ0-DQ15 on slot D0-D15")
 # 4. UART on CS1* through the OR strobes, register select from A1-A3
 check(pad_net[("U3", "2")] == "CS1_N" and pad_net[("U3", "6")] == "CS1_N" and pad_net[("U3", "1")] == "OE_N"
-      and pad_net[("U3", "5")] == "WE_N" and pad_net[("U2", "14")] == "UART_IOR_N" and pad_net[("U2", "11")] == "UART_IOW_N",
+      and pad_net[("U3", "5")] == "WE_N" and pad_net[("U2", "14")] == "UART_IOR_N" and pad_net[("U2", "12")] == "UART_IOW_N",
       "U2 IOR = OE* OR CS1*, IOW = WE* OR CS1*")
-check([pad_net[("U2", p)] for p in ("18", "17", "16")] == ["A1", "A2", "A3"], "U2 A0-A2 = slot A1-A3")
+check([pad_net[("U2", p)] for p in ("20", "19", "18")] == ["A1", "A2", "A3"], "U2 A0-A2 = slot A1-A3")
+check(pad_net[("U2", "7")] == "GND" and pad_net[("U2", "8")] == "VSB" and pad_net[("U2", "21")] == "UART_INT"
+      and pad_net[("U2", "24")] == "UART_RESET" and pad_net[("U2", "26")] == "VSB"
+      and pad_net[("R5", "1")] == "UART_INT" and pad_net[("R5", "2")] == "GND",
+      "U2 TL16C2550: CSA active, CSB inactive, INTA pulled down, RESET, VCC")
 check(pad_net[("U4", "1")] == "UART_INT" and pad_net[("U4", "6")] == "IRQ_N" and pad_net[("U4", "3")] == "RESET_N"
       and pad_net[("U4", "4")] == "UART_RESET", "U4 inverts INT -> IRQ* and RESET* -> RESET")
 

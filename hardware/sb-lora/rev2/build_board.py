@@ -151,6 +151,7 @@ place("U1", 101.0, 104.5, 0)     # flash: address pins left, data right
 place("C2", 113.5, 104.5, 90)    # U1 VCC (pin 37, right side)
 place("JP2", 101.0, 95.5, 0)     # WE* -> flash WE#
 place("R4", 105.5, 95.5, 90)
+place("R5", 96.5, 92.5, 90)      # UART INT pull-down, beside U4
 place("U2", 83.0, 89.0, 0)       # UART near D0-D2 and A1-A3
 place("C3", 83.0, 84.0, 0)
 place("Y1", 83.0, 98.0, 0)
@@ -252,13 +253,13 @@ for ref, fp in placed.items():
             fanout(p, 1 if ox > 0 else -1, 0)
         else:
             fanout(p, 0, 1 if oy > 0 else -1)
-# U2: GND pins 7, 13, 25, 26 join the exposed pad on F.Cu; the pad gets four vias to the plane
+# U2: GND pins 7, 13, 16, 25 join the exposed pad on F.Cu; the pad gets four vias to the plane
 u2 = placed["U2"]; ep = [p for p in u2.Pads() if p.GetNumber() == "33"][0]
 ec = ep.GetPosition()
 for p in u2.Pads():
-    if p.GetNumber() in ("7", "13", "25", "26"):
+    if p.GetNumber() in ("7", "13", "16", "25"):
         pp = p.GetPosition()          # straight in from the pin, so it stays in its own lane
-        lim = MM(1.3)                 # stay on the 3.1 mm exposed pad
+        lim = MM(1.5)                 # stay on the 3.45 mm exposed pad
         clamp = lambda v, c: max(c - lim, min(c + lim, v))
         end = (pcbnew.VECTOR2I(ec.x, clamp(pp.y, ec.y)) if abs(pp.x - ec.x) > abs(pp.y - ec.y)
                else pcbnew.VECTOR2I(clamp(pp.x, ec.x), ec.y))

@@ -35,7 +35,7 @@ The XIAO nRF52840 and the Wio-SX1262 board keep their roles but sit flat on the 
 
 A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard Development Guide requires for the module to be recognised (§2.1). With a Palm-MakeROM header and the app on it, the Visor mounts the module on insertion and switches to the app (§3.3; on Palm OS 3.5 and later the Welcome app is chosen by a ROM token, so the database can stay "VisorMesh").
 
-- Part: Infineon S29AL016J70TFI020 (2 MB, x16, 70 ns, TSOP-48, 1.2 mm, bottom boot). Its IDs (01h, 2249h) and sector layout (16-8-8-32 KB, then 64 KB) are the same as the Am29LV160BB's, so Handspring's Flash Manager drives it unchanged. The pin table in `rev2/netlist.py` is checked against the datasheet. Room for the app and the Map basemap.
+- Part: Infineon S29AL008J70TFI010 (1 MB, x16, 70 ns, TSOP-48, 1.2 mm, top boot; LCSC C2759923). It replaced the S29AL016J70TFI020 (2 MB) on 2026-11-26, when that was out of stock at JLC: same family and pinout, with pin 9 (A19 on the 2 MB part, slot A20 on the board) unused. Its IDs (01h, 22DAh) and top-boot sector layout are the Am29LV800BT's. 1 MB holds the installer and the app (143 KB) with room to spare, but not the 2 MB Map basemap. The 2 MB part still fits the footprint. The pin table in `rev2/netlist.py` is checked against the datasheet.
 - WE* is wired so the app can rewrite the flash itself: HotSync a new .prc to RAM, then update the module from the app.
 - A write-protect jumper: JP2 in the WE# line, bridged by default, cut to protect.
 - Software: only the app's own code and resources are read-only when it runs from the module. Checked: all of its data (channels, contacts, messages, beam inbox, screenshots, map) is in RAM databases on card 0, and it never writes to its own database, so nothing changes. To keep the Map basemap in flash too, `map_form.c` must also look on card 1. The alarms (`bgcheck.c`, `sb_spi.c`) point at the app's database, and they go away with the module, which is fine because the radio does too.
@@ -44,7 +44,7 @@ A 16-bit-wide 3.3 V NOR flash at the start of csSlot0 (CS0*), as the Springboard
   2. The image is wrapped in an updater .prc, as Handspring's Card Updater stationery does, and installed with HotSync like any app.
   3. The updater runs from RAM, erases and writes the flash, checks it, and asks for the module to be pulled and reinserted.
   - A blank or bad image has no valid header, so the module looks like rev 1 (hardware present, nothing mounted) and the updater can still write it. The first programming works the same way.
-  - Handspring's Flash Manager source (same zip, `FlashManager Resources`) has drivers for AMD-style (29LV160 family) and SST 4 KB-sector parts. Pick a chip it supports, or add its ID to the table. Infineon S29AL016J is the in-production 29LV160 equivalent.
+  - Handspring's Flash Manager source (same zip, `FlashManager Resources`) has drivers for AMD-style (29LV160 family) and SST 4 KB-sector parts. Pick a chip it supports, or add its ID to the table. The S29AL008J/016J are the in-production 29LV800/160 equivalents.
   - To check: what the launcher does when VisorMesh is in both RAM and the module during development.
 - **Decided: the flash holds a small installer, and VisorMesh runs from RAM.** The Dev Guide (§1.5) says a module whose code installs interrupt handlers needs a Setup app, or the Visor soft-resets when the module is pulled, because the handler's code goes with it. VisorMesh's SB-LoRa transport installs one. So the flash's Welcome app copies VisorMesh into RAM when it's missing or older, and launches it; the app then runs exactly as it does now. This also settles the RAM-and-module question above.
 
@@ -54,7 +54,7 @@ This takes CS0*, so the radio link moves to csSlot1 (CS1*). The flash needs abou
 
 A 16550-style UART on csSlot1 replaces rev 1's SC16IS740 SPI bridge and its latch logic (U1-U3). The flash already needs the full address and data bus, so the UART costs little routing, and each register access is one bus cycle instead of several per SPI bit.
 
-- Part: NXP SC16C650BIBS (32-byte FIFOs, HVQFN32, LCSC C729132). The SC16C750BIBS (64-byte) has the same HVQFN32 pinout and fits the footprint; the SC16C550B doesn't. At 115200 baud a 32-byte FIFO fills in 2.8 ms.
+- Part: TI TL16C2550RHBR (dual UART, channel A used, 16-byte FIFOs, VQFN-32 RHB, LCSC C2653222; TI lists it as last-time-buy). It replaced the NXP SC16C650BIBS (32-byte FIFOs) on 2026-11-26, when that and the pin-compatible SC16C750B were out of stock at JLC; the TI part has a different pinout, so the board was rerouted. Channel B is idle: CSB tied inactive, RXB idle-high, CTSA/CTSB asserted. INTA is high-impedance until MCR bit 3 is set, so R5 pulls UART_INT low. At 115200 baud a 16-byte FIFO fills in 1.4 ms, half the SC16C650B's margin: the rev 2 driver should set a low RX trigger level. Like the 16C650 it has an EFR (auto RTS/CTS).
 - Wiring:
   - Strobes: the slot may assert OE*/WE* at the same moment as CS1* (Dev Guide table 6-2), but the UART wants IOR/IOW 10 ns after its CS. So the UART's CS is tied active and a SN74LVC2G32 makes IOR = OE* OR CS1* and IOW = WE* OR CS1*. Nothing else on the bus is affected: the UART only drives the data bus while IOR is low.
   - Register select A0-A2 of the UART from A1-A3 of the slot, so the registers sit at word addresses.
@@ -124,7 +124,7 @@ If JLC's review asks about copper at the board edge, or about the two small tabs
 
 **4. Assembly.** Turn on PCB assembly, top side only, for 2 or more of the 5 boards.
 
-- Upload `visormesh_bom_jlcpcb.csv` and `visormesh_cpl_jlcpcb.csv`. All 24 parts are on the top. Check that every line found its LCSC part and has stock, especially U1 (S29AL016J, C914935) and U2 (SC16C650B, C729132). Expect extended-part fees for the flash, the UART, the crystal and some of the logic.
+- Upload `visormesh_bom_jlcpcb.csv` and `visormesh_cpl_jlcpcb.csv`. All 25 parts are on the top. Check that every line found its LCSC part and has stock, especially U1 (S29AL008J70TFI010, C2759923) and U2 (TL16C2550RHBR, C2653222), which are low-stock extended parts. Expect extended-part fees for the flash, the UART, the crystal and some of the logic.
 - **Check the placement preview before paying.** The CPL has no rotation corrections yet, so look at each IC's pin 1 against the silkscreen triangle: U1 (pin 1 top left, beside the triangle), U2 (QFN, pin 1 dot), U3-U6 (SC-70 and VSSOP, which KiCad and JLC often disagree on), Y1 and D1 (cathode bar). Fix any that are off in the preview, and note the corrections here for next time.
 - If JLC wants tooling holes or edge rails, take rails; holes in the board itself would land on parts.
 

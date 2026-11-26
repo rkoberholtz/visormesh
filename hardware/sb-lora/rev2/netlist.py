@@ -10,9 +10,9 @@ Every signal that crosses VSB <-> 3V3X goes through an SN74LVC1T45/2T45 (Ioff on
 so neither domain can back-power the other.
 
 Bus (Springboard A[23:0] are byte addresses; every access is 16 bits wide, so A0 is unused)
-  csSlot0: U1 S29AL016J NOR flash, 1M x 16. Holds the module image (header + installer + app).
+  csSlot0: U1 S29AL008J NOR flash, 512K x 16 (pin 9, slot A20, is unused on this size). Holds the module image (header + installer + app).
            Flash A0-A19 = slot A1-A20. WE# goes through JP2 (cut to write-protect).
-  csSlot1: U2 SC16C650B UART, registers at word addresses (UART A0-A2 = slot A1-A3), data on D0-D7.
+  csSlot1: U2 TL16C2550 dual UART, channel A only, registers at word addresses (UART A0-A2 = slot A1-A3), data on D0-D7.
            The slot allows OE*/WE* at the same moment as CS1* (Dev Guide table 6-2), but the UART
            wants its strobe 10 ns after CS. So the UART's CS is tied active and U3 makes the strobes:
            IOR = OE* OR CS1*, IOW = WE* OR CS1*.
@@ -26,10 +26,10 @@ Pin tables that still need checking against a datasheet are marked VERIFY.
 PARTS = {
     "J1": ("MCS-068SMA1-TR30", None, "SPRINGBOARD_68_STRADDLE", "",
            "Robinson Nugent / 3M PC Card receptacle, card side, straddle mount, on a 0.8 mm board. Push it on with the board's two tabs in its ear holes, then hand-solder both rows", True),
-    "U1": ("S29AL016J70TFI020", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "C914935",
-           "2 MB NOR flash, x16, 70 ns, csSlot0", False),
-    "U2": ("SC16C650BIBS", "Package_DFN_QFN", "HVQFN-32-1EP_5x5mm_P0.5mm_EP3.1x3.1mm", "C729132",
-           "UART, 32-byte FIFOs, csSlot1 (SC16C750BIBS fits the same footprint)", False),
+    "U1": ("S29AL008J70TFI010", "Package_SO", "TSOP-I-48_18.4x12mm_P0.5mm", "C2759923",
+           "1 MB NOR flash, x16, 70 ns, top boot, csSlot0 (S29AL016J pin-compatible)", False),
+    "U2": ("TL16C2550RHBR", "Package_DFN_QFN", "Texas_RHB0032E_VQFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm", "C2653222",
+           "Dual UART, channel A used, 16-byte FIFOs, csSlot1", False),
     "U3": ("SN74LVC2G32DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "C91874", "OR: UART read/write strobes", False),
     "U4": ("SN74LVC2G04DCKR", "Package_TO_SOT_SMD", "SOT-363_SC-70-6", "C105251", "Inverters: INT -> IRQ*, RESET* -> RESET", False),
     "U5": ("SN74LVC2T45DCUR", "Package_SO", "VSSOP-8_2.3x2mm_P0.5mm", "C15741",
@@ -52,6 +52,7 @@ PARTS = {
     "R2": ("100k", "Resistor_SMD", "R_0603_1608Metric", "C25803", "UART RX idle-high pull-up", False),
     "R3": ("100k", "Resistor_SMD", "R_0603_1608Metric", "C25803", "Visor-present pull-down", False),
     "R4": ("10k", "Resistor_SMD", "R_0603_1608Metric", "C25804", "Flash WE# pull-up (write-protect with JP2 cut)", False),
+    "R5": ("100k", "Resistor_SMD", "R_0603_1608Metric", "C25803", "UART INT pull-down (INTA floats until MCR bit 3 is set)", False),
     "D1": ("B5819W", "Diode_SMD", "D_SOD-123", "C8598", "VDOCK -> XIAO VBUS (only if JP1 bridged)", False),
     "JP1": ("VDOCK EN", "Jumper", "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm", "", "Open by default", False),
     "JP2": ("FLASH WE", "Jumper", "SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm", "",
@@ -102,8 +103,8 @@ for p, n in SB.items():
 def c(ref, pad, net):
     CONN[(ref, str(pad))] = net
 
-# U1 S29AL016J, 48-pin standard TSOP (datasheet figure 3.1). The -020 suffix is the bottom-boot part:
-# IDs 01h/2249h, the same as the Am29LV160BB in Handspring's flash driver table.
+# U1 S29AL008J, 48-pin standard TSOP, the same pinout as the S29AL016J it replaced (out of stock) with pin 9
+# (A19 there) unused. The -010 suffix is the top-boot part: IDs 01h/22DAh, as the Am29LV800BT.
 FLASH_A = {25: 0, 24: 1, 23: 2, 22: 3, 21: 4, 20: 5, 19: 6, 18: 7, 8: 8, 7: 9, 6: 10, 5: 11, 4: 12,
            3: 13, 2: 14, 1: 15, 48: 16, 17: 17, 16: 18, 9: 19}
 for pad, bit in FLASH_A.items():
@@ -118,13 +119,14 @@ for pad, net in {11: "WE_FL_N", 12: "RESET_N", 26: "CS0_N", 27: "GND", 28: "OE_N
 c("JP2", 1, "WE_N"); c("JP2", 2, "WE_FL_N")
 c("R4", 1, "VSB"); c("R4", 2, "WE_FL_N")
 
-# U2 SC16C650B HVQFN32 (NXP datasheet table 2; the SC16C750B matches, the SC16C550B does not).
-# CS, IOR, IOW are the active-low inputs in this package. The exposed pad (33 in KiCad's SOT617-1 footprint) is ground.
-for pad, net in {1: "D5", 2: "D6", 3: "D7", 4: "UART_BAUD", 5: "UART_RX", 6: "UART_TX", 7: "GND",
-                 8: "UART_BAUD", 9: "XTAL1", 10: "XTAL2", 11: "UART_IOW_N", 13: "GND", 14: "UART_IOR_N",
-                 16: "A3", 17: "A2", 18: "A1", 20: "UART_INT", 24: "UART_RESET", 25: "GND", 26: "GND",
-                 27: "VSB", 28: "D0", 29: "D1", 30: "D2", 31: "D3", 32: "D4", 33: "GND"}.items():
-    c("U2", pad, net)            # 4 RCLK = 8 BAUDOUT; 25 CTS / 26 DSR held asserted; 12 n.c.; 15, 19, 21-23 outputs unused
+# U2 TL16C2550 VQFN-32 RHB (TI SLWS161E pin functions). Channel A only; CSA is tied active and U3 gates the
+# strobes, CSB is tied inactive. CTSA/CTSB held asserted, RXB held idle. The exposed pad (33) is ground.
+for pad, net in {1: "D6", 2: "D7", 3: "VSB", 4: "UART_RX", 5: "UART_TX", 7: "GND", 8: "VSB",
+                 10: "XTAL1", 11: "XTAL2", 12: "UART_IOW_N", 13: "GND", 14: "UART_IOR_N", 16: "GND",
+                 18: "A3", 19: "A2", 20: "A1", 21: "UART_INT", 24: "UART_RESET", 25: "GND", 26: "VSB",
+                 27: "D0", 28: "D1", 29: "D2", 30: "D3", 31: "D4", 32: "D5", 33: "GND"}.items():
+    c("U2", pad, net)            # 6 TXB, 15 RTSB, 22 INTB, 23 RTSA unused outputs; 9, 17 n.c.
+c("R5", 1, "UART_INT"); c("R5", 2, "GND")
 # Y1 3225 4-pad: 1/3 crystal, 2/4 case
 c("Y1", 1, "XTAL1"); c("Y1", 3, "XTAL2"); c("Y1", 2, "GND"); c("Y1", 4, "GND")
 c("C6", 1, "XTAL1"); c("C6", 2, "GND"); c("C7", 1, "XTAL2"); c("C7", 2, "GND")
