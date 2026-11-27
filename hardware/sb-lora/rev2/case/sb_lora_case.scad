@@ -74,7 +74,7 @@ parts_z = pcb_top - part_h - 0.2;   // ceiling over the in-slot parts
 // ---- LiPo on the back, over the slot ----
 // The cell lies on the back of the in-slot section, sunk into the lid as far as the parts allow, between
 // the recessed connector end (which goes under the Visor's housing) and the radio boards.
-cell = [40, 42, 4.5]; // MEASURE: the cell bought: width across the slot, length along it, thickness
+cell = [30, 42, 5];   // Jauch LP503040JH+PCM, 600 mAh: 5 x 30 x 40, plus 2 mm for the PCM and leads (MEASURE)
 back_w = 47;          // tray width, inside the label face's lips (49.35 at the connector end)
 back_y0 = end_l + 1.0;                          // tray's connector end, clear of the Visor's housing
 cell_y0 = back_y0 + 1.2;
